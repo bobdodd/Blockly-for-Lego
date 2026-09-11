@@ -108,7 +108,17 @@ class RobotConfig:
     """Physical description of the robot. Matches a typical two-motor driving base."""
 
     wheel_diameter_mm: float = 56.0
-    axle_track_mm: float = 112.0
+    axle_track_mm: float = 160.0
+    """Distance between the drive wheels.
+
+    160mm is not an arbitrary default. A SPIKE large angular motor puts its
+    axle on the body axis, so two of them facing outwards need 60mm of body
+    each plus a 12mm shaft: below about 144mm the motor bodies would have to
+    pass through one another. The 3D model is what caught this -- the earlier
+    112mm default described a robot nobody could build.
+
+    Measure your own robot and pass --axle-track; this is only a sane start.
+    """
     body_radius_mm: float = 90.0
 
     left_motor: str = "A"

@@ -81,14 +81,19 @@ runloop.run(main())
 
 
 def test_spin_turns_the_robot_without_moving_it():
-    # with a 112mm axle track on 56mm wheels, 180 wheel degrees is a 90 degree spin
+    # Derived from the config rather than hardcoded, so changing the robot's
+    # dimensions cannot quietly invalidate the test. This is the same
+    # conversion the code generator emits as degrees_for_turn().
+    config = RobotConfig()
+    wheel_degrees = round(90 * config.axle_track_mm / config.wheel_diameter_mm)
+
     hub = run_program(
-        """
+        f"""
 import runloop, motor_pair
 from hub import port
 motor_pair.pair(motor_pair.PAIR_1, port.A, port.B)
 async def main():
-    await motor_pair.move_for_degrees(motor_pair.PAIR_1, 180, 100, velocity=360)
+    await motor_pair.move_for_degrees(motor_pair.PAIR_1, {wheel_degrees}, 100, velocity=360)
 runloop.run(main())
 """,
         world=bare_world(),
@@ -116,7 +121,7 @@ runloop.run(main())
     # the left wheel travels one circumference while the right stays planted,
     # so the robot swings clockwise about the right wheel by
     # circumference / axle_track radians -- which for these dimensions is 90
-    expected_turn = math.degrees(WHEEL_CIRCUMFERENCE / 112.0)
+    expected_turn = math.degrees(WHEEL_CIRCUMFERENCE / RobotConfig().axle_track_mm)
     assert robot.heading == pytest.approx(360 - expected_turn, abs=2.0)
     assert robot.x > 300, "pivoting about the right wheel still carries the body forward"
 

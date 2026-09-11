@@ -22,7 +22,10 @@ import { defineSpikeBlocks } from '../blocks/definitions.js';
  */
 export const robotConfig = {
   wheelDiameterMm: 56,
-  axleTrackMm: 112,
+  // See spike-sim's RobotConfig: two large angular motors facing outwards
+  // cannot sit closer than about 144mm apart, so 112 described an unbuildable
+  // robot. Must match whatever the simulator is running with.
+  axleTrackMm: 160,
   leftPort: 'A',
   rightPort: 'B',
 };

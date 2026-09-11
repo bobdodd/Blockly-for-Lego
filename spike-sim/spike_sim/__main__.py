@@ -47,6 +47,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--world", help="path to a world JSON file")
     parser.add_argument(
+        "--snapshot-interval", type=float, default=0.05,
+        help="seconds between robot telemetry snapshots for viewers (default 0.05)",
+    )
+    parser.add_argument(
         "--noise", type=float, default=0.0,
         help="wheel slip, e.g. 0.02 for 2%% scatter (default 0, perfectly repeatable)",
     )
@@ -57,8 +61,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--wheel-diameter", type=float, default=56.0, help="wheel diameter in mm (default 56)"
     )
     parser.add_argument(
-        "--axle-track", type=float, default=112.0,
-        help="distance between the drive wheels in mm (default 112)",
+        "--axle-track", type=float, default=160.0,
+        help="distance between the drive wheels in mm (default 160)",
     )
     return parser
 
@@ -134,7 +138,9 @@ async def run_one(args) -> int:
 async def serve(args) -> int:
     hub = make_hub(args)
     attach_printer(hub, args)
-    server = SimulatorServer(hub, host=args.host, port=args.port)
+    server = SimulatorServer(
+        hub, host=args.host, port=args.port, snapshot_interval=args.snapshot_interval
+    )
 
     if not args.quiet:
         # flush explicitly: Python block-buffers stdout when it is not a
