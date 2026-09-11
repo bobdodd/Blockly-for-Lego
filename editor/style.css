@@ -1,0 +1,189 @@
+/*
+ * Deliberately plain. Two things this stylesheet must not do:
+ * get in the way of a screen reader, and stop working at 200% zoom.
+ *
+ * Colour is never the only signal for anything. Focus is always visible, and
+ * the focus ring is thick enough to find at low vision without a magnifier.
+ */
+
+:root {
+  --ink: #12171c;
+  --muted: #4b5560;
+  --page: #f4f6f8;
+  --panel: #ffffff;
+  --line: #c9d2da;
+  --accent: #0a5f8a;
+  --accent-ink: #ffffff;
+  --warning-bg: #fdf3d8;
+  --warning-ink: #6b4a04;
+  --error-ink: #98241a;
+  --focus: #b2431a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #e8eef2;
+    --muted: #a9b6c0;
+    --page: #11161a;
+    --panel: #192126;
+    --line: #33414b;
+    --accent: #62c3ea;
+    --accent-ink: #06202c;
+    --warning-bg: #33290f;
+    --warning-ink: #f0cd7d;
+    --error-ink: #ff9d90;
+    --focus: #ffb27a;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--ink);
+  background: var(--page);
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  padding: 0.6rem 1rem;
+  z-index: 100;
+}
+.skip-link:focus {
+  left: 0.5rem;
+  top: 0.5rem;
+}
+
+.app-header {
+  padding: 0.75rem 1rem 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 1rem;
+}
+.app-header h1 { font-size: 1.3rem; margin: 0; }
+.connection-summary { margin: 0; color: var(--muted); }
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+}
+
+button {
+  font: inherit;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  cursor: pointer;
+}
+button.secondary {
+  background: var(--panel);
+  color: var(--ink);
+  border-color: var(--line);
+}
+button[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.shortcut {
+  font-size: 0.8em;
+  opacity: 0.85;
+  margin-left: 0.35rem;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 26rem);
+  gap: 1rem;
+  padding: 0 1rem 1rem;
+  align-items: start;
+}
+@media (max-width: 60rem) {
+  .layout { grid-template-columns: 1fr; }
+}
+
+h2 { font-size: 1.05rem; margin: 0 0 0.35rem; }
+.hint { margin: 0 0 0.5rem; color: var(--muted); font-size: 0.92rem; }
+
+.workspace-panel, .side-panel > section {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.75rem;
+}
+.side-panel { display: grid; gap: 1rem; }
+
+.blockly-host {
+  height: min(62vh, 40rem);
+  min-height: 20rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+.warnings { margin: 0.5rem 0 0; min-height: 1.5em; }
+.warnings.has-warnings {
+  background: var(--warning-bg);
+  color: var(--warning-ink);
+  padding: 0.5rem 0.7rem;
+  border-radius: 4px;
+}
+
+.log-options {
+  display: grid;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+.log-options label { display: flex; gap: 0.5rem; align-items: center; }
+
+.log {
+  list-style: none;
+  margin: 0 0 0.5rem;
+  padding: 0.5rem;
+  height: 16rem;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--page);
+  font-size: 0.95rem;
+}
+.log .entry { padding: 0.2rem 0; border-bottom: 1px solid var(--line); }
+.log .entry:last-child { border-bottom: none; }
+/* a leading marker, so kind is not signalled by colour alone */
+.log .entry-console::before { content: "printed: "; font-weight: 600; }
+.log .entry-error::before { content: "error: "; font-weight: 600; }
+.log .entry-warning::before { content: "warning: "; font-weight: 600; }
+.log .entry-error { color: var(--error-ink); }
+.log .entry-status { font-weight: 600; }
+
+.python {
+  width: 100%;
+  font: 0.9rem/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  padding: 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--page);
+  color: var(--ink);
+  resize: vertical;
+}

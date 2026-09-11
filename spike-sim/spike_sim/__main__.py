@@ -113,12 +113,21 @@ async def run_one(args) -> int:
         return 1
     await hub.stop()
 
-    if not args.quiet and not args.json:
+    failed = any(e.kind == ev.ERROR for e in hub.log.events)
+
+    if args.json:
+        # A final machine-readable line, so another program can assert on where
+        # the robot actually ended up rather than parsing the narration.
+        print(json.dumps({
+            "type": "final",
+            "failed": failed,
+            "robot": hub.robot.snapshot(),
+        }), flush=True)
+    elif not args.quiet:
         print()
         print(hub.robot.describe_position())
         print(f"It travelled {ev.say_distance(hub.robot.odometer_mm)} in total.")
 
-    failed = any(e.kind == ev.ERROR for e in hub.log.events)
     return 1 if failed else 0
 
 

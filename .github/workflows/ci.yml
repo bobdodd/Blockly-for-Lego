@@ -36,3 +36,42 @@ jobs:
             echo "--- $program"
             python -m spike_sim --run "$program" --speed 200
           done
+
+  editor:
+    name: Editor tests (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ["20.x", "22.x"]
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+          cache-dependency-path: editor/package-lock.json
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        working-directory: editor
+        run: npm ci
+
+      - name: Check the protocol vectors are up to date
+        working-directory: editor
+        run: |
+          python3 scripts/gen-vectors.py > /tmp/vectors.json
+          diff -u test/vectors.json /tmp/vectors.json
+
+      - name: Run tests
+        working-directory: editor
+        run: npm test
+
+      - name: Build the bundle
+        working-directory: editor
+        run: npm run build

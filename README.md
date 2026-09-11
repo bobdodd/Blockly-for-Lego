@@ -46,13 +46,18 @@ including why the SPIKE App fails and what the alternatives were.
 
 | Component | State |
 | --- | --- |
-| [`spike-sim/`](spike-sim/) — hub simulator | **Working.** 57 tests passing, no dependencies |
-| `editor/` — Blockly 13 block editor | Not started |
+| [`spike-sim/`](spike-sim/) — hub simulator | **Working.** 57 tests, no dependencies |
+| [`editor/`](editor/) — Blockly 13 block editor | **Working.** 85 tests, first block set |
 
 The simulator came first. Partly because the hardware had not arrived, but
 mainly because it is the regression harness the editor needs: a block that
 generates subtly wrong Python is the failure mode that matters most, and on
-hardware it is invisible until a robot moves wrongly.
+hardware it is invisible until a robot moves wrongly. The editor's end-to-end
+tests build the program a student would build, run it in the simulator, and
+check where the robot ended up.
+
+Neither half has yet been tested against real hardware, or with a screen
+reader by someone who uses one daily.
 
 ## Try it now
 
@@ -77,6 +82,13 @@ python3 -m spike_sim --run examples/follow_line.py --speed 50
 
 That is a real proportional line-follower driving a bent line to a red target
 square. Every line is written to be spoken aloud by a screen reader.
+
+To use the editor, start a simulated hub and point the editor at it:
+
+```bash
+cd spike-sim && python3 -m spike_sim      # one terminal
+cd editor && npm install && npm run serve # another; then open localhost:8080
+```
 
 ## Design commitments
 

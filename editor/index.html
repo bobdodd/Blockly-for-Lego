@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Blockly for Lego</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#workspace-heading">Skip to the blocks</a>
+
+    <header class="app-header">
+      <h1>Blockly for Lego</h1>
+      <p id="connection-summary" class="connection-summary">Not connected to a hub.</p>
+    </header>
+
+    <!--
+      Status is assertive: it changes what the student can do next, so it
+      should interrupt. The narration log below is polite.
+    -->
+    <p id="status" class="visually-hidden" role="status" aria-live="assertive"></p>
+
+    <nav class="toolbar" aria-label="Robot controls">
+      <button id="connect-simulator" type="button">
+        Connect to simulator
+      </button>
+      <button id="connect-hub" type="button">
+        Connect to a hub
+      </button>
+      <button id="run" type="button" disabled>
+        Run <span class="shortcut" aria-hidden="true">Ctrl+Enter</span>
+      </button>
+      <button id="stop" type="button" disabled>
+        Stop <span class="shortcut" aria-hidden="true">Ctrl+Shift+Enter</span>
+      </button>
+      <button id="read-sensors" type="button" disabled>
+        Read the sensors aloud
+      </button>
+    </nav>
+
+    <main class="layout">
+      <section class="workspace-panel" aria-labelledby="workspace-heading">
+        <h2 id="workspace-heading">Your program</h2>
+        <p class="hint">
+          Press Tab to move into the blocks, then use the arrow keys to move
+          around. Press T to open the block menu, and Escape to leave it.
+        </p>
+        <div id="blockly" class="blockly-host"></div>
+        <p id="warnings" class="warnings" role="status" aria-live="polite"></p>
+      </section>
+
+      <aside class="side-panel">
+        <section aria-labelledby="log-heading" class="log-section">
+          <h2 id="log-heading">What the robot is doing</h2>
+
+          <div class="log-options">
+            <label>
+              <input type="checkbox" id="speech" />
+              Read aloud with the browser voice
+            </label>
+            <label>
+              <input type="checkbox" id="quiet" />
+              Only announce printed messages and errors
+            </label>
+          </div>
+
+          <!--
+            role="log" makes a screen reader announce new entries as they
+            arrive, in order, without moving focus away from the blocks.
+          -->
+          <ul id="log" class="log" role="log" aria-live="polite" aria-relevant="additions"></ul>
+
+          <button id="clear-log" type="button" class="secondary">Clear this list</button>
+        </section>
+
+        <section aria-labelledby="python-heading" class="python-section">
+          <h2 id="python-heading">The Python your blocks make</h2>
+          <p class="hint">
+            This is ordinary SPIKE Python. It runs on a real hub unchanged.
+          </p>
+          <textarea
+            id="python"
+            class="python"
+            readonly
+            spellcheck="false"
+            aria-describedby="python-heading"
+            rows="18"
+          ></textarea>
+          <button id="copy-python" type="button" class="secondary">Copy the Python</button>
+        </section>
+      </aside>
+    </main>
+
+    <script type="module" src="dist/app.js"></script>
+  </body>
+</html>
