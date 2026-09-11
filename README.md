@@ -1,5 +1,8 @@
 # Blockly for Lego
 
+[![CI](https://github.com/bobdodd/Blockly-for-Lego/actions/workflows/ci.yml/badge.svg)](https://github.com/bobdodd/Blockly-for-Lego/actions/workflows/ci.yml)
+[![Licence: Apache 2.0](https://img.shields.io/badge/licence-Apache%202.0-blue.svg)](LICENSE)
+
 **An accessible block programming environment for LEGO® Education SPIKE™ Prime
 robots — one that a blind student can use independently, with a keyboard and a
 screen reader.**
