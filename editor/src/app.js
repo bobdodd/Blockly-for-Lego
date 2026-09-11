@@ -70,6 +70,8 @@ const ui = {
   openProgram: element('open-program'),
   saveProgram: element('save-program'),
   saveAsProgram: element('save-as-program'),
+  busy: element('busy'),
+  busyLabel: element('busy-label'),
 };
 
 const announcer = new Announcer({ log: element('log'), status: element('status') });
@@ -201,6 +203,41 @@ function loadBlocks(blocks, fallback = null) {
 }
 
 // --------------------------------------------------------------------------
+// showing that something is happening
+// --------------------------------------------------------------------------
+
+/** Controls that must not start a second, competing connection. */
+const CONNECT_CONTROLS = () => [ui.connectSimulator, ui.connectHub];
+
+/**
+ * Mark the page busy, visibly.
+ *
+ * The status region announces each stage, which is the whole story for
+ * someone listening to it and nothing at all for someone watching. Starting
+ * the built-in simulator downloads about five megabytes of Python, so without
+ * this a sighted student presses the button and the page appears to ignore
+ * them for several seconds.
+ *
+ * `aria-disabled` rather than `disabled`: the button that started this
+ * usually has focus, and disabling a focused element drops focus to the body
+ * in several browsers, stranding a keyboard user mid-task.
+ */
+function setBusy(label) {
+  const busy = Boolean(label);
+
+  document.body.classList.toggle('is-busy', busy);
+  ui.busy.hidden = !busy;
+  ui.busyLabel.textContent = label ?? '';
+
+  for (const control of CONNECT_CONTROLS()) {
+    if (busy) control.setAttribute('aria-disabled', 'true');
+    else control.removeAttribute('aria-disabled');
+  }
+}
+
+const isBusy = () => document.body.classList.contains('is-busy');
+
+// --------------------------------------------------------------------------
 // connection
 // --------------------------------------------------------------------------
 
@@ -272,6 +309,17 @@ async function connect(transport, description, { quiet = false } = {}) {
  * student comparing notes with a classmate should be able to tell.
  */
 async function connectSimulator() {
+  if (isBusy()) return; // already starting one
+
+  setBusy('Looking for a simulator…');
+  try {
+    await startSimulator();
+  } finally {
+    setBusy(null);
+  }
+}
+
+async function startSimulator() {
   if (isLocalOrigin()) {
     if (await connect(new SimulatorTransport(), 'the simulator', { quiet: true })) return;
   }
@@ -289,7 +337,9 @@ async function connectSimulator() {
   // as it happens is the difference between a wait and an apparent hang --
   // and a spinner says nothing to a screen reader.
   transport.onProgress = ({ stage, detail }) => {
-    if (stage !== 'error') announcer.status(detail ?? stage);
+    if (stage === 'error') return;
+    announcer.status(detail ?? stage);
+    setBusy(detail ?? stage);
   };
 
   await connect(transport, 'the built-in simulator');
@@ -580,6 +630,16 @@ function wireProgramControls() {
   }
 }
 
+async function connectHub() {
+  if (isBusy()) return;
+  setBusy('Connecting to the hub…');
+  try {
+    await connect(new BluetoothTransport(), 'a SPIKE Prime hub');
+  } finally {
+    setBusy(null);
+  }
+}
+
 function wireControls() {
   ui.connectSimulator.addEventListener('click', connectSimulator);
 
@@ -591,7 +651,7 @@ function wireControls() {
       );
       return;
     }
-    connect(new BluetoothTransport(), 'a SPIKE Prime hub');
+    connectHub();
   });
 
   ui.run.addEventListener('click', run);

@@ -239,3 +239,39 @@ h2 { font-size: 1.05rem; margin: 0 0 0.35rem; }
   max-width: 70ch;
 }
 .hosted-note a { color: inherit; }
+
+/* --- "something is happening" ------------------------------------------- */
+
+/*
+ * Starting the built-in simulator downloads about five megabytes of Python.
+ * The status region announces each stage, which does nothing for someone who
+ * is not listening to it, so the wait needs a visible form too: a progress
+ * bar, a caption, and a cursor that says the page is working.
+ *
+ * The cursor is set on the whole document and on buttons explicitly, because
+ * a button's own `cursor: pointer` would otherwise win over an inherited one.
+ */
+.is-busy,
+.is-busy button {
+  cursor: progress;
+}
+
+.busy {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0 1rem 0.75rem;
+  color: var(--muted);
+}
+
+.busy progress {
+  inline-size: 12rem;
+  block-size: 0.6rem;
+}
+
+/* A control that is temporarily unavailable, marked with aria-disabled rather
+   than disabled so it keeps focus and stays reachable while it is working. */
+button[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: progress;
+}

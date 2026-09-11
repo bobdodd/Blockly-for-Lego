@@ -50,6 +50,46 @@ describe('the hidden attribute', () => {
   });
 });
 
+describe('waiting is visible as well as spoken', () => {
+  const combined = stylesheets.map(([, css]) => strip(css)).join('\n');
+  const markup = read('index.html');
+
+  it('changes the cursor while the page is working', () => {
+    // Starting the built-in simulator downloads about five megabytes. The
+    // status region announces each stage, which is the whole story for
+    // someone listening and nothing at all for someone watching.
+    assert.match(combined, /\.is-busy[^{]*\{[^}]*cursor:\s*progress/);
+  });
+
+  it('overrides a button\'s own cursor, which would otherwise win', () => {
+    assert.match(combined, /\.is-busy\s+button/);
+  });
+
+  it('has somewhere visible to say what is happening', () => {
+    assert.ok(markup.includes('id="busy"'), 'no busy panel in the markup');
+    assert.ok(markup.includes('<progress'), 'no progress element');
+    assert.ok(markup.includes('id="busy-label"'));
+  });
+
+  it('does not announce the busy panel, because the status region already does', () => {
+    // Two live regions saying the same thing is worse than one.
+    const panel = markup.slice(markup.indexOf('id="busy"'));
+    const upToClose = panel.slice(0, panel.indexOf('</p>'));
+    assert.ok(!/aria-live/.test(upToClose), 'the busy panel must not be a live region');
+  });
+
+  it('marks a working button aria-disabled, never disabled', () => {
+    // The button that started the wait usually has focus, and disabling a
+    // focused element drops focus to the body in several browsers.
+    const app = read('src/app.js');
+    assert.match(app, /setAttribute\('aria-disabled', 'true'\)/);
+    assert.ok(
+      !/connectSimulator\.disabled\s*=|connectHub\.disabled\s*=/.test(app),
+      'connect buttons must not use the disabled property while working',
+    );
+  });
+});
+
 describe('focus is always visible', () => {
   it('styles :focus-visible rather than removing outlines', () => {
     // A keyboard user who cannot see where focus is cannot use the editor at

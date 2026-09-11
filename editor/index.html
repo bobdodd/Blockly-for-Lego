@@ -66,6 +66,17 @@
     </nav>
 
     <!--
+      The visible half of "something is happening". The status region above
+      announces the stage, so this panel is deliberately NOT a live region:
+      it would say the same thing twice. It exists for the people the status
+      region does nothing for.
+    -->
+    <p id="busy" class="busy" hidden>
+      <progress id="busy-progress" aria-labelledby="busy-label"></progress>
+      <span id="busy-label"></span>
+    </p>
+
+    <!--
       Shown only when this copy is served from the web. Browsers refuse a
       connection from a public page to a program on your own machine, so the
       simulator and the robot view need the project running locally.
