@@ -1,0 +1,16 @@
+{
+  "width_mm": 2362,
+  "height_mm": 1143,
+  "background": 10,
+  "walls": true,
+  "lines": [
+    {"points": [[300, 300], [900, 300], [1400, 600], [1900, 600]], "width_mm": 20, "color": 0}
+  ],
+  "patches": [
+    {"x": 1850, "y": 520, "width": 160, "height": 160, "color": 9},
+    {"x": 180, "y": 420, "width": 160, "height": 160, "color": 6}
+  ],
+  "obstacles": [
+    {"x": 2100, "y": 450, "width": 60, "height": 300, "name": "end wall"}
+  ]
+}

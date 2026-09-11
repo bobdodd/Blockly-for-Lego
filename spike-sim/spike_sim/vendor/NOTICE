@@ -1,0 +1,22 @@
+The files cobs.py, crc.py and messages.py in this directory are taken
+UNMODIFIED from the LEGO Group's official SPIKE Prime protocol
+documentation repository:
+
+    https://github.com/LEGO/spike-prime-docs
+    examples/python/{cobs.py,crc.py,messages.py}
+
+Copyright 2024 The LEGO Group.
+Licensed under the Apache License, Version 2.0, with a modified section 6
+(Trademarks). See the LICENSE file in this directory for the full text.
+
+They are vendored here deliberately and left untouched so that the
+simulator shares its wire codec with the LEGO reference implementation.
+Any divergence between the simulator and a real hub therefore cannot come
+from a difference in framing or serialization -- it can only come from
+behaviour, which is what we actually want to test.
+
+Note that messages.py is written from the CLIENT's point of view: requests
+know how to serialize, responses know how to deserialize. The simulator is
+the HUB, so it needs the mirror image. That lives in spike_sim/wire.py,
+and tests/test_wire_conformance.py checks the two halves against each
+other.

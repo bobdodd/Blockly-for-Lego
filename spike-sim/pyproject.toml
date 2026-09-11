@@ -1,0 +1,19 @@
+[project]
+name = "spike-sim"
+version = "0.1.0"
+description = "A LEGO Education SPIKE Prime hub simulator that speaks the real protocol"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+spike-sim = "spike_sim.__main__:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["spike_sim*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

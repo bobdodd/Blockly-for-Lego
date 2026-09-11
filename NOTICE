@@ -1,0 +1,21 @@
+Blockly for Lego
+Copyright 2026 Blockly for Lego contributors
+
+This product includes software developed by The LEGO Group.
+
+The files in spike-sim/spike_sim/vendor/ -- cobs.py, crc.py and messages.py --
+are taken UNMODIFIED from The LEGO Group's official SPIKE Prime protocol
+documentation repository:
+
+    https://github.com/LEGO/spike-prime-docs
+
+    Copyright 2024 The LEGO Group.
+
+They are licensed under the Apache License, Version 2.0, with a modified
+section 6 (Trademarks). The full text of that modified licence is retained
+alongside them in spike-sim/spike_sim/vendor/LICENSE, and applies to those
+files in place of the trademark clause of this project's LICENSE.
+
+LEGO(R), SPIKE(TM) and MINDSTORMS(R) are trademarks of The LEGO Group, which
+does not sponsor, authorise or endorse this project. This project is not
+affiliated with The LEGO Group.

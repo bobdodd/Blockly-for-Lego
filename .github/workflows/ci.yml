@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  simulator:
+    name: Simulator tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install pytest
+        run: python -m pip install --upgrade pip pytest
+
+      - name: Run tests
+        working-directory: spike-sim
+        run: python -m pytest tests/ -q
+
+      - name: Run the example programs
+        working-directory: spike-sim
+        run: |
+          for program in examples/*.py; do
+            echo "--- $program"
+            python -m spike_sim --run "$program" --speed 200
+          done
