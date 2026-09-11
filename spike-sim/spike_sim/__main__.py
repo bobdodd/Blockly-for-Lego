@@ -137,11 +137,14 @@ async def serve(args) -> int:
     server = SimulatorServer(hub, host=args.host, port=args.port)
 
     if not args.quiet:
+        # flush explicitly: Python block-buffers stdout when it is not a
+        # terminal, so under a process manager or a redirect the banner would
+        # otherwise sit unseen while the server looks like it never started
         print(f"SPIKE hub simulator listening on ws://{args.host}:{args.port}")
-        print(f"  browser editor : connect a WebSocket, send COBS frames as binary messages")
+        print("  browser editor : connect a WebSocket, send COBS frames as binary messages")
         print(f"  python client  : open a plain TCP socket to {args.host}:{args.port}")
         print(f"  simulated speed: {args.speed}x")
-        print("Press Ctrl+C to stop.\n")
+        print("Press Ctrl+C to stop.\n", flush=True)
 
     try:
         await server.serve_forever()
