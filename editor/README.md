@@ -8,7 +8,7 @@ Built on **Blockly 13**, which ships keyboard navigation and screen reader
 support switched on by default. This project does not implement accessible
 blocks; it inherits them, and takes care not to break them.
 
-**Status:** working editor, first block set, 3D robot view, save and open. 150 tests passing.
+**Status:** working editor, first block set, 3D robot view, save and open. 164 tests passing.
 
 ---
 
@@ -27,7 +27,7 @@ cd spike-sim
 python3 -m spike_sim   # ws://127.0.0.1:8765
 ```
 
-Then press **Connect to simulator**, and **Run** (or Ctrl+Enter). For real
+Then press **Connect to simulator**, and **Run** (or Ctrl+G). For real
 hardware press **Connect to a hub** instead — same editor, same bytes.
 
 `npm run build` produces a minified `dist/app.js` for deployment. Blockly's
@@ -111,9 +111,12 @@ is everything around them.
 - Colour is never the only signal; focus is always visible; the layout works
   at 200% zoom and in both colour schemes.
 
-Keyboard, beyond Blockly's own: **Ctrl+Enter** runs, **Ctrl+Shift+Enter**
-stops. Both bail out when focus is inside the workspace or a text field, so
-they never swallow a key meant for a block.
+Keyboard, beyond Blockly's own: **Ctrl+G** runs, **Ctrl+Shift+G** stops,
+**Ctrl+S** saves. All work everywhere, including inside the blocks, because
+none of them is a key Blockly binds — and none fires while Alt or Option is
+held, since Ctrl+Option is VoiceOver's modifier. `src/shortcuts.js` is a pure
+function of the event so both rules are tested, including a check against
+Blockly's live registry.
 
 ## Layout
 
@@ -149,6 +152,7 @@ npm test
 | `robot-model.test.js` | the 3D robot is geometry someone could build |
 | `project.test.js` | saved files, and what a student is told when one will not open |
 | `stylesheet.test.js` | mistakes in CSS with consequences beyond appearance |
+| `shortcuts.test.js` | our keys stay clear of Blockly's and of VoiceOver's |
 
 `e2e.test.js` is the one that earns its keep. Asserting on generated text only
 proves the generator agrees with itself; a reversed steering sign, a unit

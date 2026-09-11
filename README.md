@@ -60,7 +60,7 @@ Everything is indexed at [docs/](docs/).
 | Component | State |
 | --- | --- |
 | [`spike-sim/`](spike-sim/) — hub simulator | **Working.** 61 tests, no dependencies |
-| [`editor/`](editor/) — Blockly 13 block editor | **Working.** 150 tests, blocks, save and open |
+| [`editor/`](editor/) — Blockly 13 block editor | **Working.** 164 tests, blocks, save and open |
 | `editor/src/viewer/` — 3D robot view | **Working.** Real LEGO parts, for teaching |
 
 The simulator came first. Partly because the hardware had not arrived, but

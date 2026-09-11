@@ -110,7 +110,7 @@ npm run serve      # rebuilds on change, serves on http://localhost:8080
 Open **http://localhost:8080** in Chrome or Edge. Then:
 
 1. Press **Connect to simulator**.
-2. Press **Run**, or Ctrl+Enter.
+2. Press **Run**, or Ctrl+G.
 
 The starter program prints "hello", drives 25cm and turns right. Watch "What
 the robot is doing" fill up, and open the **Robot view** tab to see it in 3D.
@@ -192,7 +192,7 @@ python3 -m pytest tests/ -q          # 61 tests, needs pytest
 
 ```bash
 cd editor
-npm test                             # 150 tests
+npm test                             # 164 tests
 ```
 
 The editor's tests start real simulator processes, so **`python3` has to be

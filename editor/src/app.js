@@ -21,6 +21,7 @@ import 'blockly/blocks';
 
 import { Announcer, describeSensors } from './announcer.js';
 import { createTabs } from './tabs.js';
+import { matchShortcut, shortcutLabel } from './shortcuts.js';
 import * as files from './files.js';
 import {
   DEFAULT_NAME,
@@ -504,6 +505,16 @@ function confirmDiscard(action) {
   );
 }
 
+function labelShortcuts() {
+  const label = (element, action) => {
+    const hint = element?.querySelector('.shortcut');
+    if (hint) hint.textContent = shortcutLabel(action);
+  };
+  label(ui.run, 'run');
+  label(ui.stop, 'stop');
+  label(ui.saveProgram, 'save');
+}
+
 function wireProgramControls() {
   ui.programName.value = programName;
   updateSaveState();
@@ -585,26 +596,19 @@ function wireControls() {
   });
 
   document.addEventListener('keydown', (event) => {
-    if (!(event.ctrlKey || event.metaKey)) return;
+    const action = matchShortcut(event);
+    if (!action) return;
 
-    // Save works anywhere, including inside the blocks: Blockly binds no
-    // Ctrl+S, and a student at work is exactly who needs it.
-    if (event.key.toLowerCase() === 's') {
-      event.preventDefault();
-      saveProgram({ prompt: event.shiftKey });
-      return;
-    }
+    // Every one of these is free of Blockly's own bindings, so they work
+    // inside the blocks too -- which is where a student spends their time,
+    // and where the old Ctrl+Enter for Run quietly did nothing because
+    // Blockly had already claimed it for a block's menu.
+    event.preventDefault();
 
-    // Never steal a key from the blocks or from a field being edited.
-    const target = event.target;
-    if (target?.closest?.('.blockly-host')) return;
-    if (target?.matches?.('input, textarea, select')) return;
-
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      if (event.shiftKey) stop();
-      else run();
-    }
+    if (action === 'run') run();
+    else if (action === 'stop') stop();
+    else if (action === 'save') saveProgram();
+    else if (action === 'saveAs') saveProgram({ prompt: true });
   });
 }
 
@@ -612,6 +616,7 @@ function wireControls() {
 
 function start() {
   startWorkspace();
+  labelShortcuts();
   wireProgramControls();
   wireControls();
   wireRobotView();

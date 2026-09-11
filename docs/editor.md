@@ -89,26 +89,29 @@ from memory.
 
 ### This editor's own
 
-| Key | What it does | Where |
-| --- | --- | --- |
-| <kbd>Ctrl</kbd>+<kbd>S</kbd> | Save | anywhere, including in the blocks |
-| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> | Save as | anywhere |
-| <kbd>Ctrl</kbd>+<kbd>Enter</kbd> | Run | **outside the blocks only** — see below |
-| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Enter</kbd> | Stop | outside the blocks only |
+| Key | What it does |
+| --- | --- |
+| <kbd>Ctrl</kbd>+<kbd>G</kbd> | Run — *go* |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>G</kbd> | Stop |
+| <kbd>Ctrl</kbd>+<kbd>S</kbd> | Save |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> | Save as |
 
-On a Mac, <kbd>Cmd</kbd> works in place of <kbd>Ctrl</kbd> for this editor's
-shortcuts.
+All four work **everywhere, including inside the blocks**, which is where a
+student spends their time. On a Mac, <kbd>Cmd</kbd> stands in for
+<kbd>Ctrl</kbd>, and the buttons relabel themselves to say so.
 
-> **Known problem: Ctrl+Enter does not run the program while you are in the
-> blocks.** Blockly already binds that combination to "open the menu for this
-> block", and this editor stands aside so as not to break a shortcut people
-> may have learned elsewhere. The result is that Run's advertised shortcut
-> does not work in the place a student spends most of their time. Until it is
-> resolved, press <kbd>Tab</kbd> to leave the blocks and then
-> <kbd>Ctrl</kbd>+<kbd>Enter</kbd>, or activate the Run button directly.
-> Blockly offers two other ways to open the block menu
-> (<kbd>Shift</kbd>+<kbd>F10</kbd> and the menu key), so giving one of them up
-> is one of the options on the table.
+These keys are not arbitrary. They are what is left once Blockly and the
+browser have taken theirs — Blockly binds Control with C, J, V, X, Y, Z, the
+arrow keys and Enter, and the browser claims most of the rest.
+<kbd>Ctrl</kbd>+<kbd>G</kbd> is "go".
+
+**Nothing here fires while <kbd>Alt</kbd> or <kbd>Option</kbd> is held.** On a
+Mac, VoiceOver's own modifier is <kbd>Ctrl</kbd>+<kbd>Option</kbd>, so a
+shortcut that ignored Option would fire in the middle of VoiceOver commands —
+<kbd>Ctrl</kbd>+<kbd>Option</kbd>+<kbd>G</kbd> would run the program instead
+of doing what was asked of VoiceOver. There are no function-key shortcuts
+either: they are awkward on laptops and Chromebooks, and several are already
+claimed by screen readers.
 
 ---
 
@@ -298,8 +301,6 @@ What is not yet true:
 
 **Run does nothing** — you are not connected. Press Connect to simulator or
 Connect to a hub first; the button is disabled until you are.
-
-**Ctrl+Enter does nothing in the blocks** — see the known problem above.
 
 **"There is nothing to run yet"** — your blocks are not joined to *when the
 program starts*. The warning line under the workspace says how many are loose.
