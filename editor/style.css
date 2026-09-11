@@ -227,3 +227,15 @@ h2 { font-size: 1.05rem; margin: 0 0 0.35rem; }
   font-size: 0.92rem;
   min-width: 9rem;
 }
+
+/* Shown only when the editor is served from the web, where a browser will not
+   let the page reach a simulator running on the reader's own machine. */
+.hosted-note {
+  margin: 0 1rem 0.75rem;
+  padding: 0.65rem 0.9rem;
+  background: var(--warning-bg);
+  color: var(--warning-ink);
+  border-radius: 4px;
+  max-width: 70ch;
+}
+.hosted-note a { color: inherit; }

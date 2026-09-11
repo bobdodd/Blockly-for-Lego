@@ -22,6 +22,7 @@ import 'blockly/blocks';
 import { Announcer, describeSensors } from './announcer.js';
 import { createTabs } from './tabs.js';
 import { matchShortcut, shortcutLabel } from './shortcuts.js';
+import { isLocalOrigin, simulatorUnavailableMessage } from './environment.js';
 import * as files from './files.js';
 import {
   DEFAULT_NAME,
@@ -540,9 +541,15 @@ function wireProgramControls() {
 }
 
 function wireControls() {
-  ui.connectSimulator.addEventListener('click', () =>
-    connect(new SimulatorTransport(), 'the simulator'),
-  );
+  ui.connectSimulator.addEventListener('click', () => {
+    // Checked before trying, so the message explains the real reason rather
+    // than a misleading "could not reach the simulator".
+    if (!isLocalOrigin()) {
+      announcer.status(simulatorUnavailableMessage());
+      return;
+    }
+    connect(new SimulatorTransport(), 'the simulator');
+  });
 
   ui.connectHub.addEventListener('click', () => {
     if (!bluetoothSupported()) {
@@ -625,9 +632,20 @@ function start() {
     ui.connectHub.title =
       'This browser cannot talk to a hub over Bluetooth. Use Chrome or Edge.';
   }
-  announcer.status(
-    'Ready. Connect to the simulator to try your program without a robot.',
-  );
+
+  if (isLocalOrigin()) {
+    announcer.status(
+      'Ready. Connect to the simulator to try your program without a robot.',
+    );
+  } else {
+    // Say it once on arrival rather than only when the button disappoints.
+    element('hosted-note').hidden = false;
+    ui.connectSimulator.title = simulatorUnavailableMessage();
+    announcer.status(
+      'Ready. Connect a real SPIKE Prime hub over Bluetooth to run your program. ' +
+        'The simulator needs the project running on your own computer.',
+    );
+  }
 }
 
 if (document.readyState === 'loading') {
