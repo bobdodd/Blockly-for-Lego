@@ -21,10 +21,18 @@ import 'blockly/blocks';
 
 import { Announcer, describeSensors } from './announcer.js';
 import { createTabs } from './tabs.js';
+import * as files from './files.js';
+import {
+  DEFAULT_NAME,
+  cleanName,
+  fileNameFor,
+  parseProject,
+  serialiseProject,
+} from './project.js';
 import { Blockly } from './blockly.js';
 import { defineSpikeBlocks } from './blocks/definitions.js';
 import { STARTER_PROGRAM, toolbox } from './blocks/toolbox.js';
-import { generateProgram } from './generators/python.js';
+import { generateProgram, robotConfig } from './generators/python.js';
 import { BluetoothTransport, isSupported as bluetoothSupported } from './transport/bluetooth.js';
 import { HubClient } from './transport/hub-client.js';
 import { SimulatorTransport } from './transport/websocket.js';
@@ -53,6 +61,12 @@ const ui = {
   followRobot: element('follow-robot'),
   resetView: element('reset-view'),
   popOut: element('pop-out'),
+  programName: element('program-name'),
+  saveState: element('save-state'),
+  newProgram: element('new-program'),
+  openProgram: element('open-program'),
+  saveProgram: element('save-program'),
+  saveAsProgram: element('save-as-program'),
 };
 
 const announcer = new Announcer({ log: element('log'), status: element('status') });
@@ -70,6 +84,12 @@ let robotViewLoading = null;
  * after connecting has no mat to draw and no robot to put on it.
  */
 let lastWorldMessage = null;
+
+let programName = DEFAULT_NAME;
+/** The file this program came from, so Save can write back to it. */
+let fileHandle = null;
+/** Changed since it was last written to a file. */
+let unsaved = false;
 
 // --------------------------------------------------------------------------
 // workspace
@@ -96,7 +116,8 @@ function startWorkspace() {
 function onWorkspaceChanged(event) {
   if (event.isUiEvent) return;
   refreshPython();
-  save();
+  markUnsaved();
+  autosave();
 }
 
 function refreshPython() {
@@ -114,11 +135,21 @@ function refreshPython() {
   ui.warnings.classList.toggle('has-warnings', result.warnings.length > 0);
 }
 
-function save() {
+/**
+ * Keep a copy in the browser.
+ *
+ * This is crash protection, not saving. It survives a reload and nothing
+ * else: it is tied to one browser on one machine and disappears with the
+ * site data. Files are how a program actually leaves here.
+ */
+function autosave() {
   try {
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify(Blockly.serialization.workspaces.save(workspace)),
+      JSON.stringify({
+        name: programName,
+        blocks: Blockly.serialization.workspaces.save(workspace),
+      }),
     );
   } catch {
     // a full or disabled storage must not stop anyone programming
@@ -126,22 +157,43 @@ function save() {
 }
 
 function restore() {
-  let state = STARTER_PROGRAM;
+  let blocks = STARTER_PROGRAM;
+
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) state = JSON.parse(saved);
+    if (saved) {
+      const stored = JSON.parse(saved);
+      // Earlier versions stored the bare Blockly state. Recognise it rather
+      // than throwing away whatever a student had open.
+      if (stored?.blocks) {
+        blocks = stored.blocks;
+        programName = cleanName(stored.name);
+      } else {
+        blocks = stored;
+      }
+    }
   } catch {
     // fall back to the starter program
   }
 
+  loadBlocks(blocks, STARTER_PROGRAM);
+}
+
+/** Put a saved program on the canvas, falling back if it will not load. */
+function loadBlocks(blocks, fallback = null) {
   Blockly.Events.disable(); // loading should not look like 20 edits
   try {
-    Blockly.serialization.workspaces.load(state, workspace);
-  } catch {
     workspace.clear();
-    Blockly.serialization.workspaces.load(STARTER_PROGRAM, workspace);
+    Blockly.serialization.workspaces.load(blocks, workspace);
+    return true;
+  } catch (error) {
+    if (!fallback) throw error;
+    workspace.clear();
+    Blockly.serialization.workspaces.load(fallback, workspace);
+    return false;
   } finally {
     Blockly.Events.enable();
+    refreshPython();
   }
 }
 
@@ -323,6 +375,159 @@ function wireRobotView() {
   });
 }
 
+// --------------------------------------------------------------------------
+// saving, opening and starting again
+// --------------------------------------------------------------------------
+
+function markUnsaved() {
+  unsaved = true;
+  updateSaveState();
+}
+
+function markSaved() {
+  unsaved = false;
+  updateSaveState();
+}
+
+/**
+ * Show whether there is unsaved work.
+ *
+ * Written into an ordinary element rather than a live region on purpose:
+ * this changes on every block moved, and announcing it each time would bury
+ * everything else the student is listening for. It is there to be read when
+ * wanted.
+ */
+function updateSaveState() {
+  const where = fileHandle ? `Saved in ${fileHandle.name}` : 'Not saved to a file';
+  ui.saveState.textContent = unsaved ? 'Unsaved changes' : where;
+  document.title = `${unsaved ? '• ' : ''}${programName} — Blockly for Lego`;
+}
+
+function setProgramName(name) {
+  programName = cleanName(name);
+  if (ui.programName.value !== programName) ui.programName.value = programName;
+  updateSaveState();
+}
+
+/** Every block type this editor can load, for checking a file before opening it. */
+const knownBlockTypes = () => Object.keys(Blockly.Blocks ?? {});
+
+async function saveProgram({ prompt = false } = {}) {
+  const text = serialiseProject({
+    name: programName,
+    blocks: Blockly.serialization.workspaces.save(workspace),
+    robot: robotConfig,
+  });
+
+  try {
+    if (!prompt && fileHandle && (await files.saveToHandle(fileHandle, text))) {
+      markSaved();
+      announcer.status(`Saved ${programName} to ${fileHandle.name}.`);
+      return;
+    }
+
+    const result = await files.saveAs(text, fileNameFor(programName));
+    if (!result) {
+      announcer.status('Saving was cancelled.');
+      return;
+    }
+
+    fileHandle = result.handle;
+    markSaved();
+    announcer.status(
+      result.silent
+        // a download finishes without a word and lands wherever the browser
+        // puts things, so it has to be said out loud
+        ? `Downloaded ${programName} as ${result.name}. Look in your downloads folder.`
+        : `Saved ${programName} to ${result.name}.`,
+    );
+  } catch (error) {
+    announcer.status(`The program could not be saved: ${error.message}`);
+  }
+}
+
+async function openProgram() {
+  if (!confirmDiscard('Open another program')) return;
+
+  let opened;
+  try {
+    opened = await files.open();
+  } catch (error) {
+    announcer.status(`That file could not be read: ${error.message}`);
+    return;
+  }
+  if (!opened) {
+    announcer.status('Opening was cancelled.');
+    return;
+  }
+
+  const { project, error, warnings } = parseProject(opened.text, {
+    knownBlockTypes: knownBlockTypes(),
+    robot: robotConfig,
+  });
+
+  if (error) {
+    announcer.status(error);
+    return;
+  }
+
+  loadBlocks(project.blocks);
+  fileHandle = opened.handle;
+  setProgramName(project.name);
+  markSaved();
+
+  announcer.status(`Opened ${project.name}.`);
+  // A robot mismatch is not a reason to refuse the program, but it is the
+  // difference between a program that drives properly and one that looks
+  // badly written, so it is said rather than left to be discovered.
+  for (const warning of warnings) announcer.narrate(warning, 'warning');
+}
+
+function newProgram() {
+  if (!confirmDiscard('Start a new program')) return;
+
+  loadBlocks(STARTER_PROGRAM);
+  fileHandle = null;
+  setProgramName(DEFAULT_NAME);
+  markSaved();
+  announcer.status('Started a new program.');
+  ui.programName.focus();
+  ui.programName.select();
+}
+
+/** A native dialog: keyboard-operable and screen-reader-known everywhere. */
+function confirmDiscard(action) {
+  if (!unsaved) return true;
+  return globalThis.confirm(
+    `${programName} has changes you have not saved to a file.\n\n` +
+      `${action} anyway and lose them?`,
+  );
+}
+
+function wireProgramControls() {
+  ui.programName.value = programName;
+  updateSaveState();
+
+  ui.programName.addEventListener('input', (event) => {
+    programName = cleanName(event.target.value);
+    markUnsaved();
+    autosave();
+  });
+  // tidy the displayed value only once they have finished typing
+  ui.programName.addEventListener('blur', () => setProgramName(ui.programName.value));
+
+  ui.newProgram.addEventListener('click', newProgram);
+  ui.openProgram.addEventListener('click', openProgram);
+  ui.saveProgram.addEventListener('click', () => saveProgram());
+  ui.saveAsProgram.addEventListener('click', () => saveProgram({ prompt: true }));
+
+  if (!files.canPickFiles()) {
+    ui.saveProgram.title =
+      'This browser downloads the file instead of asking where to put it.';
+    ui.saveAsProgram.hidden = true;
+  }
+}
+
 function wireControls() {
   ui.connectSimulator.addEventListener('click', () =>
     connect(new SimulatorTransport(), 'the simulator'),
@@ -381,6 +586,15 @@ function wireControls() {
 
   document.addEventListener('keydown', (event) => {
     if (!(event.ctrlKey || event.metaKey)) return;
+
+    // Save works anywhere, including inside the blocks: Blockly binds no
+    // Ctrl+S, and a student at work is exactly who needs it.
+    if (event.key.toLowerCase() === 's') {
+      event.preventDefault();
+      saveProgram({ prompt: event.shiftKey });
+      return;
+    }
+
     // Never steal a key from the blocks or from a field being edited.
     const target = event.target;
     if (target?.closest?.('.blockly-host')) return;
@@ -398,6 +612,7 @@ function wireControls() {
 
 function start() {
   startWorkspace();
+  wireProgramControls();
   wireControls();
   wireRobotView();
 

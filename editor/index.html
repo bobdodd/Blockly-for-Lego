@@ -21,6 +21,32 @@
     -->
     <p id="status" class="visually-hidden" role="status" aria-live="assertive"></p>
 
+    <!--
+      Two toolbars rather than one long row: what you do to your program and
+      what you do to the robot are different jobs, and a screen reader user
+      moving by landmark should be able to reach one without hearing the
+      other.
+    -->
+    <nav class="toolbar" aria-label="Program">
+      <label class="program-name" for="program-name">Program name</label>
+      <input
+        type="text"
+        id="program-name"
+        class="program-name-input"
+        maxlength="80"
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <span id="save-state" class="save-state"></span>
+
+      <button type="button" id="new-program" class="secondary">New</button>
+      <button type="button" id="open-program" class="secondary">Open…</button>
+      <button type="button" id="save-program">
+        Save <span class="shortcut" aria-hidden="true">Ctrl+S</span>
+      </button>
+      <button type="button" id="save-as-program" class="secondary">Save as…</button>
+    </nav>
+
     <nav class="toolbar" aria-label="Robot controls">
       <button id="connect-simulator" type="button">
         Connect to simulator

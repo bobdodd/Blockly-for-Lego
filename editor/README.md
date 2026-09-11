@@ -8,7 +8,7 @@ Built on **Blockly 13**, which ships keyboard navigation and screen reader
 support switched on by default. This project does not implement accessible
 blocks; it inherits them, and takes care not to break them.
 
-**Status:** working editor, first block set, 3D robot view. 123 tests passing.
+**Status:** working editor, first block set, 3D robot view, save and open. 150 tests passing.
 
 ---
 
@@ -147,6 +147,8 @@ npm test
 | `websocket-transport.test.js` | the pipe the browser actually uses |
 | `viewer.test.js` | snapshot interpolation and narration-to-highlight |
 | `robot-model.test.js` | the 3D robot is geometry someone could build |
+| `project.test.js` | saved files, and what a student is told when one will not open |
+| `stylesheet.test.js` | mistakes in CSS with consequences beyond appearance |
 
 `e2e.test.js` is the one that earns its keep. Asserting on generated text only
 proves the generator agrees with itself; a reversed steering sign, a unit
@@ -163,6 +165,57 @@ npm run vectors   # regenerate test/vectors.json
 
 Since the simulator is tested against that same codec in Python, passing means
 the editor, the simulator and a real hub all agree on the bytes.
+
+## Saving and opening
+
+Blockly hands the program over as JSON and has no opinion about where it goes.
+This editor puts it in a file.
+
+**Save**, **Save as…**, **Open…** and **New**, plus a program name, live in
+their own toolbar. Ctrl+S saves and works inside the blocks too, since a
+student at work is exactly who needs it. The browser's local storage is still
+written on every change, but only as crash protection — it survives a reload
+and nothing else.
+
+Where the File System Access API exists — Chrome and Edge, which this editor
+already requires for Bluetooth — saving gives real Save and Open dialogs, and
+saving again writes back to the same file. Those dialogs are also among the
+best-tested screen reader surfaces on any platform, which is much of why this
+was preferred over a projects list inside the page.
+
+Elsewhere it falls back to a download and a file input. That works, but a
+download finishes **silently** and lands wherever the browser puts things, so
+the editor says so out loud rather than leaving it to be discovered.
+
+### What is in a file
+
+```json
+{
+  "format": "blockly-for-lego.program",
+  "version": 1,
+  "name": "Line follower",
+  "savedAt": "2026-09-11T...",
+  "robot": { "wheelDiameterMm": 56, "axleTrackMm": 160,
+             "leftPort": "A", "rightPort": "B" },
+  "blocks": { ... }
+}
+```
+
+**The robot is in there on purpose.** The same blocks mean different distances
+on a different driving base, and opening a program written for one is the
+difference between a robot that drives properly and one that looks badly
+programmed. A mismatch is a warning, not a refusal: the editor says which
+numbers differ and by how much, then loads the program anyway.
+
+Two rules follow from files existing at all:
+
+- **Never rename a block type.** Blockly's loader fails on a type it does not
+  recognise, so a rename silently breaks every file a student has saved.
+  `version` is there to hang a migration on if that ever becomes unavoidable.
+- **Check before loading.** A file is scanned for unknown block types before
+  Blockly sees it, because Blockly throws part-way through and would leave
+  half a program on the canvas — losing whatever the student had open, with
+  no explanation.
 
 ## The robot view
 
@@ -215,8 +268,6 @@ holds that invariant.
 - Only English. Block messages are inline rather than in a message catalogue.
 - The robot's wheel diameter, axle track and drive ports are constants in
   `src/generators/python.js`; they need a settings panel.
-- No way to save or load a program to a file — only the browser's local
-  storage, which is per-browser and easily lost.
 - Not yet tested with a screen reader by anyone who uses one daily. Until it
   is, treat the accessibility claims above as intentions rather than results.
 - The 3D view models one robot. Whatever your students actually build,

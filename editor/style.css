@@ -202,3 +202,28 @@ h2 { font-size: 1.05rem; margin: 0 0 0.35rem; }
   color: var(--ink);
   resize: vertical;
 }
+
+/* --- the program toolbar ------------------------------------------------ */
+
+.program-name { font-weight: 600; }
+
+.program-name-input {
+  font: inherit;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--panel);
+  color: var(--ink);
+  min-width: 12rem;
+  flex: 0 1 18rem;
+}
+
+/*
+ * Deliberately not a live region. Whether there are unsaved changes is worth
+ * knowing on demand and maddening to hear announced after every block moved.
+ */
+.save-state {
+  color: var(--muted);
+  font-size: 0.92rem;
+  min-width: 9rem;
+}
