@@ -38,6 +38,21 @@
 
 * { box-sizing: border-box; }
 
+/*
+ * The `hidden` attribute must win.
+ *
+ * Its `display: none` comes from the browser's own stylesheet, and ANY author
+ * rule that sets `display` beats it -- so a single `.tab-panel { display:
+ * flex }` silently un-hides every hidden panel. That is not just a layout
+ * bug: a panel that is still rendered is still in the accessibility tree, so
+ * a screen reader announces content the tab says is not showing, and
+ * aria-selected becomes a lie.
+ *
+ * !important is the standard fix, and is why normalize.css carries the same
+ * rule. Toggle visibility with `element.hidden`, never with a display rule.
+ */
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;

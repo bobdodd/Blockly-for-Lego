@@ -59,6 +59,21 @@ A few rules specific to this codebase:
   the initial build, including one where driving a negative distance never
   terminated.
 
+## Editor changes
+
+- **Show and hide with the `hidden` property, never with `display`.** And if
+  you add a rule that sets `display`, check it cannot apply to something that
+  gets hidden. `hidden` takes its `display: none` from the browser's
+  stylesheet, so any author rule beats it — a single
+  `.tab-panel { display: flex }` once un-hid every tab panel in the editor.
+  That is not just a layout bug: a panel still rendered is still in the
+  accessibility tree, so a screen reader announces content the tab says is
+  not showing, and `aria-selected` becomes a lie. `test/stylesheet.test.js`
+  guards it.
+- **Never remove a focus outline** without replacing it with something at
+  least as visible. A keyboard user who cannot see where focus is cannot use
+  the editor at all.
+
 ## Dependencies
 
 The simulator has none, deliberately — a robotics club should be able to run it
