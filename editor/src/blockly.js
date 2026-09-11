@@ -13,16 +13,27 @@ import * as CoreNamespace from 'blockly/core';
 import * as EnglishMessages from 'blockly/msg/en';
 import * as PythonNamespace from 'blockly/python';
 
-export const Blockly = CoreNamespace.default ?? CoreNamespace;
+/**
+ * Unwrap a namespace that may be a CommonJS interop object.
+ *
+ * Taking `.default` off the namespace directly makes bundlers warn that the
+ * property can never exist in the browser build -- true, but the same source
+ * has to keep working under Node, where it does. Going through a parameter
+ * puts it beyond static analysis, which is honest: the shape genuinely is not
+ * known until runtime.
+ */
+const interop = (namespace) => namespace.default ?? namespace;
+
+export const Blockly = interop(CoreNamespace);
 
 // Without a message catalogue the built-in blocks fail to initialise, because
 // their definitions reference strings like %{BKY_CONTROLS_REPEAT_TITLE}. This
 // catalogue also carries Blockly 13's screen reader announcements -- the
 // ANNOUNCE_* strings that describe moving a block around the workspace -- so
 // loading it is what makes keyboard navigation speak.
-Blockly.setLocale(EnglishMessages.default ?? EnglishMessages);
+Blockly.setLocale(interop(EnglishMessages));
 
-const python = PythonNamespace.default ?? PythonNamespace;
+const python = interop(PythonNamespace);
 export const pythonGenerator = python.pythonGenerator;
 export const Order = python.Order;
 
