@@ -20,6 +20,7 @@
 import 'blockly/blocks';
 
 import { Announcer, describeSensors } from './announcer.js';
+import { createTabs } from './tabs.js';
 import { Blockly } from './blockly.js';
 import { defineSpikeBlocks } from './blocks/definitions.js';
 import { STARTER_PROGRAM, toolbox } from './blocks/toolbox.js';
@@ -45,6 +46,13 @@ const ui = {
   python: element('python'),
   warnings: element('warnings'),
   summary: element('connection-summary'),
+  tablist: document.querySelector('.tablist'),
+  scene: element('scene'),
+  pose: element('pose'),
+  focusLabel: element('focus-label'),
+  followRobot: element('follow-robot'),
+  resetView: element('reset-view'),
+  popOut: element('pop-out'),
 };
 
 const announcer = new Announcer({ log: element('log'), status: element('status') });
@@ -52,6 +60,16 @@ const announcer = new Announcer({ log: element('log'), status: element('status')
 let workspace = null;
 let client = null;
 let latestTelemetry = [];
+let robotView = null;
+let robotViewLoading = null;
+
+/**
+ * The simulator describes the mat once, in its `hello`, right after
+ * connecting. The robot view is built later — the first time its tab is
+ * opened — so that message has to be kept and replayed, or a view opened
+ * after connecting has no mat to draw and no robot to put on it.
+ */
+let lastWorldMessage = null;
 
 // --------------------------------------------------------------------------
 // workspace
@@ -157,11 +175,17 @@ async function connect(transport, description) {
       if (payload.type === 'event' && payload.kind !== 'console') {
         announcer.narrate(payload.message, payload.kind);
       }
+      if (payload.type === 'hello') lastWorldMessage = payload;
+      // the robot view draws from the same messages; it opens no socket of
+      // its own, so the picture can only ever show what the hub reported
+      robotView?.handleMessage(payload);
     };
   }
   transport.onClose = () => {
     announcer.status(`Disconnected from ${description}.`);
     setConnected(false);
+    lastWorldMessage = null;
+    robotView?.clear();
   };
 
   try {
@@ -237,6 +261,67 @@ async function stop() {
 // --------------------------------------------------------------------------
 // wiring
 // --------------------------------------------------------------------------
+
+// --------------------------------------------------------------------------
+// the robot view
+// --------------------------------------------------------------------------
+
+/**
+ * Build the 3D view the first time its tab is opened.
+ *
+ * Loaded on demand so that a student who never opens it never downloads
+ * three.js or the LDraw parts, and so the editor's own start-up is unaffected.
+ */
+function ensureRobotView() {
+  robotViewLoading ??= (async () => {
+    const { createRobotView } = await import('./viewer/create.js');
+    robotView = createRobotView(ui.scene, {
+      onStatus: (message) => { ui.pose.textContent = message; },
+      onPose: (text) => { ui.pose.textContent = text; },
+      onFocus: (label) => {
+        ui.focusLabel.textContent = label ? `Showing: ${label}` : '';
+      },
+      follow: ui.followRobot.checked,
+    });
+    // catch up on the mat description, which arrived before this existed
+    if (lastWorldMessage) await robotView.handleMessage(lastWorldMessage);
+    return robotView;
+  })();
+  return robotViewLoading;
+}
+
+function wireRobotView() {
+  createTabs(ui.tablist, {
+    initial: 'tab-python',
+    onChange: async (id) => {
+      if (id === 'tab-robot') {
+        const view = await ensureRobotView();
+        view.start();
+      } else {
+        // a hidden canvas should not be costing anyone a frame budget
+        robotView?.stop();
+      }
+    },
+  });
+
+  ui.followRobot.addEventListener('change', (event) => {
+    if (robotView) robotView.follow = event.target.checked;
+  });
+
+  ui.resetView.addEventListener('click', () => robotView?.resetView());
+
+  ui.popOut.addEventListener('click', () => {
+    // A separate window is the right shape for teaching: put the robot on a
+    // projector or second screen and leave the editor full size.
+    const opened = window.open('viewer.html', 'blockly-for-lego-robot',
+      'width=1000,height=760');
+    announcer.status(
+      opened
+        ? 'The robot view opened in its own window.'
+        : 'The browser blocked the new window. Allow pop-ups for this page and try again.',
+    );
+  });
+}
 
 function wireControls() {
   ui.connectSimulator.addEventListener('click', () =>
@@ -314,6 +399,7 @@ function wireControls() {
 function start() {
   startWorkspace();
   wireControls();
+  wireRobotView();
 
   if (!bluetoothSupported()) {
     ui.connectHub.title =

@@ -11,7 +11,8 @@
     "vectors": "python3 scripts/gen-vectors.py > test/vectors.json"
   },
   "dependencies": {
-    "blockly": "13.3.0"
+    "blockly": "13.3.0",
+    "three": "^0.186.0"
   },
   "devDependencies": {
     "esbuild": "^0.28.2"

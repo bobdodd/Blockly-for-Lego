@@ -46,8 +46,19 @@ class Connection:
         self.websocket = websocket
         self.queue: asyncio.Queue = asyncio.Queue()
 
+        self.observer = False
+        """A viewer that only watches.
+
+        A 3D view is a second client on the same socket, but it is not an app:
+        it never sends a program and has no use for protocol frames. Marking it
+        keeps it out of the narration, so a student is not told "an app
+        connected to the hub" because someone opened a window.
+        """
+
     def send_frame(self, frame: bytes) -> None:
         """Queue a protocol frame for delivery. Safe to call synchronously."""
+        if self.observer:
+            return
         self.queue.put_nowait((OP_BINARY, frame))
 
     def send_json(self, payload: dict) -> None:
@@ -68,7 +79,7 @@ class SimulatorServer:
     """Serves one shared hub to every client that connects."""
 
     def __init__(self, hub: HubSimulator, host: str = "127.0.0.1", port: int = 8765,
-                 snapshot_interval: float = 0.2):
+                 snapshot_interval: float = 0.05):
         self.hub = hub
         self.host = host
         self.port = port
@@ -130,9 +141,15 @@ class SimulatorServer:
 
         if is_websocket:
             rest = await reader.readuntil(b"\r\n\r\n")
-            if not await _ws_handshake(peek + rest, writer):
+            request = peek + rest
+            if not await _ws_handshake(request, writer):
                 writer.close()
                 return
+            # Read the observer flag off the handshake rather than waiting for
+            # a command: a command arrives after the connection is announced,
+            # which is exactly the announcement it is meant to prevent.
+            request_line = request.split(b"\r\n", 1)[0]
+            connection.observer = b"observe" in request_line
 
         # "hello" must be the first thing a client sees, so it is queued
         # before anything that broadcasts.
@@ -145,12 +162,13 @@ class SimulatorServer:
         self.connections.append(connection)
         pump = asyncio.create_task(connection.pump())
 
-        self.hub.log.emit(
-            ev.PROGRAM,
-            "An app connected to the hub."
-            if is_websocket
-            else "A program connected to the hub.",
-        )
+        if not connection.observer:
+            self.hub.log.emit(
+                ev.PROGRAM,
+                "An app connected to the hub."
+                if is_websocket
+                else "A program connected to the hub.",
+            )
 
         if not is_websocket:
             self.hub.receive_bytes(peek)
@@ -165,7 +183,8 @@ class SimulatorServer:
             pump.cancel()
             if connection in self.connections:
                 self.connections.remove(connection)
-            self.hub.log.emit(ev.PROGRAM, "The app disconnected.")
+            if not connection.observer:
+                self.hub.log.emit(ev.PROGRAM, "The app disconnected.")
             writer.close()
 
     async def _read_raw(self, reader: asyncio.StreamReader) -> None:
@@ -185,9 +204,9 @@ class SimulatorServer:
             elif opcode == OP_BINARY:
                 self.hub.receive_bytes(payload)
             elif opcode == OP_TEXT:
-                self._handle_command(payload)
+                self._handle_command(payload, connection)
 
-    def _handle_command(self, payload: bytes) -> None:
+    def _handle_command(self, payload: bytes, connection: "Connection | None" = None) -> None:
         """Simulator-only commands, which a real hub would have no idea about."""
         try:
             command = json.loads(payload)
@@ -197,7 +216,10 @@ class SimulatorServer:
         action = command.get("action")
         robot = self.hub.robot
 
-        if action == "press":
+        if action == "observe":
+            if connection is not None:
+                connection.observer = True
+        elif action == "press":
             robot.press_force_sensor(command.get("port", "E"), command.get("force", 100))
         elif action == "reset":
             robot.x = robot.config.start_x

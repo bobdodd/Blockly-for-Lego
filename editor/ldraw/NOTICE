@@ -1,0 +1,15 @@
+LDraw parts library
+===================
+
+The 200 part and primitive files in this directory are taken
+unmodified from the LDraw Parts Library at https://library.ldraw.org/
+
+They are licensed CC BY 4.0 (a few, CC BY 2.0 and 4.0) by their individual
+authors, whose names are recorded in the 0 Author line of each file. See
+CAreadme.txt, and the full licence at
+https://creativecommons.org/licenses/by/4.0/
+
+Regenerate with: python3 scripts/vendor-ldraw.py
+
+LDraw is a trademark of the LDraw.org. LEGO is a trademark of The LEGO
+Group. Neither sponsors or endorses this project.

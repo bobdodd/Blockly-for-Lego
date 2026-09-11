@@ -29,10 +29,16 @@ await cp(join(root, 'node_modules/blockly/media'), join(root, 'media'), {
 });
 
 const options = {
-  entryPoints: [join(root, 'src/app.js')],
-  outfile: join(outdir, 'app.js'),
+  entryPoints: {
+    app: join(root, 'src/app.js'),
+    viewer: join(root, 'src/viewer/main.js'),
+  },
+  outdir,
   bundle: true,
   format: 'esm',
+  // three.js and the LDraw loader are reached only through a dynamic import,
+  // so splitting keeps them out of the editor's initial download
+  splitting: true,
   target: ['chrome111', 'edge111', 'firefox115', 'safari16'],
   sourcemap: true,
   // Blockly is most of the bundle; minifying takes it from ~1.2MB to ~600KB,
@@ -51,5 +57,5 @@ if (serve) {
   console.log('  cd ../spike-sim && python3 -m spike_sim\n');
 } else {
   await esbuild.build(options);
-  console.log('Built dist/app.js');
+  console.log('Built dist/app.js and dist/viewer.js');
 }

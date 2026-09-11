@@ -16,6 +16,18 @@ section 6 (Trademarks). The full text of that modified licence is retained
 alongside them in spike-sim/spike_sim/vendor/LICENSE, and applies to those
 files in place of the trademark clause of this project's LICENSE.
 
+This product includes part files from the LDraw Parts Library.
+
+The files in editor/ldraw/ are taken unmodified from the LDraw Parts Library
+at https://library.ldraw.org/ and are licensed CC BY 4.0 by their individual
+authors, who are named in the "0 Author" line of each file. Attribution
+details and the licence text travel with them in editor/ldraw/NOTICE and
+editor/ldraw/CAreadme.txt.
+
+    https://creativecommons.org/licenses/by/4.0/
+
+LDraw is a trademark of LDraw.org.
+
 LEGO(R), SPIKE(TM) and MINDSTORMS(R) are trademarks of The LEGO Group, which
 does not sponsor, authorise or endorse this project. This project is not
 affiliated with The LEGO Group.

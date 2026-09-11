@@ -1,0 +1,193 @@
+{
+  "name": "Driving Base",
+  "description": "A two-motor driving base: SPIKE Prime hub, two large angular motors, two 56mm wheels. Our own design, assembled from LDraw parts. LEGO's published Driving Base instructions are their copyright and are deliberately not reproduced here.",
+  "wheelDiameterMm": 56,
+  "axleTrackMm": 160,
+  "_trackNote": "160mm is not a free choice. A large angular motor puts its axle on the body axis, so two of them facing outwards need 60mm of body each plus a 12mm shaft: a track below 144mm cannot be built without the motor bodies passing through each other. 160mm leaves 16mm between them. The simulator and the code generator use the same figure.",
+  "_frame": "Positions are millimetres in LDraw's own axes: +x right, +y DOWN, +z forward. Rotations are degrees, applied X then Y then Z. The renderer converts the assembled robot into the simulator's frame (+x forward, +y left, +z up).",
+  "pieces": [
+    {
+      "id": "hub",
+      "part": "45601.dat",
+      "colour": 15,
+      "position": [
+        0,
+        -48,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "hub",
+      "label": "the hub",
+      "_note": "sits on top of the motors, whose bodies reach 48mm above the mat"
+    },
+    {
+      "id": "motor-left",
+      "part": "54675.dat",
+      "colour": 15,
+      "position": [
+        -68,
+        -28,
+        0
+      ],
+      "rotation": [
+        0,
+        90,
+        0
+      ],
+      "role": "motor",
+      "port": "A",
+      "label": "motor A, the left wheel motor",
+      "_note": "body runs inboard from -68 to -8; the shaft reaches out to -80, the wheel"
+    },
+    {
+      "id": "motor-right",
+      "part": "54675.dat",
+      "colour": 15,
+      "position": [
+        68,
+        -28,
+        0
+      ],
+      "rotation": [
+        0,
+        -90,
+        0
+      ],
+      "role": "motor",
+      "port": "B",
+      "label": "motor B, the right wheel motor"
+    },
+    {
+      "id": "wheel-left",
+      "part": "39367.dat",
+      "colour": 71,
+      "position": [
+        -80,
+        -28,
+        0
+      ],
+      "rotation": [
+        0,
+        90,
+        0
+      ],
+      "role": "wheel",
+      "port": "A",
+      "label": "the left wheel",
+      "_note": "centre 28mm up, so a 56mm wheel just touches the mat"
+    },
+    {
+      "id": "wheel-right",
+      "part": "39367.dat",
+      "colour": 71,
+      "position": [
+        80,
+        -28,
+        0
+      ],
+      "rotation": [
+        0,
+        90,
+        0
+      ],
+      "role": "wheel",
+      "port": "B",
+      "label": "the right wheel"
+    },
+    {
+      "id": "bush-left",
+      "part": "3713.dat",
+      "colour": 71,
+      "position": [
+        -74,
+        -28,
+        0
+      ],
+      "rotation": [
+        0,
+        90,
+        0
+      ],
+      "role": "frame"
+    },
+    {
+      "id": "bush-right",
+      "part": "3713.dat",
+      "colour": 71,
+      "position": [
+        74,
+        -28,
+        0
+      ],
+      "rotation": [
+        0,
+        90,
+        0
+      ],
+      "role": "frame"
+    },
+    {
+      "id": "beam-front",
+      "part": "41239.dat",
+      "colour": 72,
+      "position": [
+        0,
+        -44,
+        30
+      ],
+      "rotation": [
+        0,
+        90,
+        0
+      ],
+      "role": "frame",
+      "_note": "a 13-stud beam across the base, fore and aft of the motors where there is room between the mat and the hub"
+    },
+    {
+      "id": "beam-back",
+      "part": "41239.dat",
+      "colour": 72,
+      "position": [
+        0,
+        -44,
+        -30
+      ],
+      "rotation": [
+        0,
+        90,
+        0
+      ],
+      "role": "frame",
+      "_note": "a 13-stud beam across the base, fore and aft of the motors where there is room between the mat and the hub"
+    }
+  ],
+  "sensors": [
+    {
+      "id": "colour-sensor",
+      "port": "C",
+      "kind": "color",
+      "positionMm": [
+        70,
+        0,
+        15
+      ],
+      "label": "the colour sensor",
+      "_note": "70mm ahead of centre, matching the simulator's ColorSensor.forward_mm"
+    },
+    {
+      "id": "distance-sensor",
+      "port": "D",
+      "kind": "distance",
+      "positionMm": [
+        80,
+        0,
+        50
+      ],
+      "label": "the distance sensor"
+    }
+  ]
+}

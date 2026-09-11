@@ -8,7 +8,7 @@ Built on **Blockly 13**, which ships keyboard navigation and screen reader
 support switched on by default. This project does not implement accessible
 blocks; it inherits them, and takes care not to break them.
 
-**Status:** working editor, first block set. 89 tests passing.
+**Status:** working editor, first block set, 3D robot view. 123 tests passing.
 
 ---
 
@@ -145,6 +145,8 @@ npm test
 | `e2e.test.js` | it *does* the right thing, run in the simulator |
 | `hub-client.test.js` | the editor can deliver it, over a real socket |
 | `websocket-transport.test.js` | the pipe the browser actually uses |
+| `viewer.test.js` | snapshot interpolation and narration-to-highlight |
+| `robot-model.test.js` | the 3D robot is geometry someone could build |
 
 `e2e.test.js` is the one that earns its keep. Asserting on generated text only
 proves the generator agrees with itself; a reversed steering sign, a unit
@@ -162,6 +164,52 @@ npm run vectors   # regenerate test/vectors.json
 Since the simulator is tested against that same codec in Python, passing means
 the editor, the simulator and a real hub all agree on the bytes.
 
+## The robot view
+
+The right-hand panel has a **Robot view** tab: the simulated robot in 3D, on
+its mat, built from real LDraw parts — the actual SPIKE Prime hub (45601),
+large angular motors (54675) and 56mm wheels (39367). There is also a button
+to open it in its own window, which is the right shape for teaching: put the
+robot on a projector and leave the editor full size on the student's laptop.
+
+Three rules shape it.
+
+**It has no physics.** It renders the pose and motor angles the simulator
+sends and nothing else. If it simulated anything itself, a sighted student
+watching the screen and a blind student listening to the narration would be
+looking at two different robots. It opens no connection of its own either —
+the editor feeds it the messages it already receives.
+
+**It follows the narration.** When the student hears "the colour sensor is on
+the edge of a line", the colour sensor is what lights up on screen. That
+inverts the usual dynamic: the spoken description leads and the picture
+follows, so a sighted teammate is looking at what the blind student is hearing
+rather than at a parallel channel. The mapping lives in `narration-focus.js`.
+
+**It is off by default and costs nothing when off.** Python is the selected
+tab on load. three.js and the LDraw loader sit behind a dynamic import, so a
+student who never opens the view never downloads the 587KB chunk.
+
+### The robot
+
+`src/viewer/driving-base.json` describes the robot: which parts, where, and
+which port drives which wheel. Swap it to model a different robot. Part files
+are vendored into `ldraw/` — about 200 files and half a megabyte, pulled from
+the 139MB library by `scripts/vendor-ldraw.py`, which will also print the
+bounding box of any part:
+
+```bash
+python3 scripts/vendor-ldraw.py --measure 54675.dat
+```
+
+That is worth knowing about, because it caught a real error. A SPIKE large
+angular motor puts its axle on its body axis, so two of them facing outwards
+cannot sit closer than 144mm apart. Our axle track was 112mm — the robot we
+had been simulating, and generating turn code for, could not be built. The
+kinematics were self-consistent at any track and every test passed; it only
+showed up when real parts had to occupy real space. `robot-model.test.js` now
+holds that invariant.
+
 ## Not done yet
 
 - Only English. Block messages are inline rather than in a message catalogue.
@@ -171,3 +219,6 @@ the editor, the simulator and a real hub all agree on the bytes.
   storage, which is per-browser and easily lost.
 - Not yet tested with a screen reader by anyone who uses one daily. Until it
   is, treat the accessibility claims above as intentions rather than results.
+- The 3D view models one robot. Whatever your students actually build,
+  measure its wheel diameter and axle track: the accuracy of every turn
+  depends directly on those two numbers, and 160mm is only a sane default.

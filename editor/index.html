@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Blockly for Lego</title>
     <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="viewer.css" />
   </head>
   <body>
     <a class="skip-link" href="#workspace-heading">Skip to the blocks</a>
@@ -50,6 +51,69 @@
       </section>
 
       <aside class="side-panel">
+        <!--
+          The robot view and the Python are both things you look at one at a
+          time, so they share a tabbed panel. The narration below is the
+          primary output for a student who cannot see either, and is never
+          hidden behind a tab.
+
+          Python is selected first, so the editor is unchanged for anyone who
+          never opens the robot view: no extra canvas, no extra tab stops, and
+          none of the 3D code is even downloaded.
+        -->
+        <section class="tab-section" aria-labelledby="reference-heading">
+          <h2 id="reference-heading" class="visually-hidden">Robot view and Python</h2>
+
+          <div class="tablist" role="tablist" aria-label="Robot view and Python">
+            <button type="button" role="tab" id="tab-robot"
+                    aria-controls="panel-robot" aria-selected="false" tabindex="-1">
+              Robot view
+            </button>
+            <button type="button" role="tab" id="tab-python"
+                    aria-controls="panel-python" aria-selected="true" tabindex="0">
+              Python
+            </button>
+          </div>
+
+          <div id="panel-robot" role="tabpanel" aria-labelledby="tab-robot"
+               class="tab-panel" hidden>
+            <p class="hint">
+              Shows the simulated robot. A real hub does not report where it is,
+              so this stays empty when you are connected to one.
+            </p>
+
+            <canvas id="scene" class="scene" role="img" aria-describedby="pose"></canvas>
+            <p id="pose" class="pose">Connect to the simulator to see the robot.</p>
+
+            <div class="scene-controls">
+              <label>
+                <input type="checkbox" id="follow-robot" checked />
+                Keep the camera on the robot
+              </label>
+              <button type="button" id="reset-view" class="secondary">Reset the view</button>
+              <button type="button" id="pop-out" class="secondary">
+                Open in its own window
+              </button>
+            </div>
+            <p id="focus-label" class="focus-label" role="status" aria-live="polite"></p>
+          </div>
+
+          <div id="panel-python" role="tabpanel" aria-labelledby="tab-python"
+               class="tab-panel">
+            <p class="hint">
+              This is ordinary SPIKE Python. It runs on a real hub unchanged.
+            </p>
+            <textarea
+              id="python"
+              class="python"
+              readonly
+              spellcheck="false"
+              rows="18"
+            ></textarea>
+            <button id="copy-python" type="button" class="secondary">Copy the Python</button>
+          </div>
+        </section>
+
         <section aria-labelledby="log-heading" class="log-section">
           <h2 id="log-heading">What the robot is doing</h2>
 
@@ -64,31 +128,12 @@
             </label>
           </div>
 
-          <!--
-            role="log" makes a screen reader announce new entries as they
-            arrive, in order, without moving focus away from the blocks.
-          -->
           <ul id="log" class="log" role="log" aria-live="polite" aria-relevant="additions"></ul>
 
           <button id="clear-log" type="button" class="secondary">Clear this list</button>
         </section>
-
-        <section aria-labelledby="python-heading" class="python-section">
-          <h2 id="python-heading">The Python your blocks make</h2>
-          <p class="hint">
-            This is ordinary SPIKE Python. It runs on a real hub unchanged.
-          </p>
-          <textarea
-            id="python"
-            class="python"
-            readonly
-            spellcheck="false"
-            aria-describedby="python-heading"
-            rows="18"
-          ></textarea>
-          <button id="copy-python" type="button" class="secondary">Copy the Python</button>
-        </section>
       </aside>
+
     </main>
 
     <script type="module" src="dist/app.js"></script>

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Robot view — Blockly for Lego</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="viewer.css" />
+  </head>
+  <body class="viewer-body">
+    <header class="app-header">
+      <h1>Robot view</h1>
+      <p id="viewer-status" class="connection-summary" role="status" aria-live="polite">
+        Starting up…
+      </p>
+    </header>
+
+    <main class="viewer-layout">
+      <section class="scene-panel" aria-labelledby="scene-heading">
+        <h2 id="scene-heading" class="visually-hidden">The robot on its mat</h2>
+
+        <!--
+          A canvas cannot be read by a screen reader. The description beside it
+          is not a fallback bolted on: it is the same sentence the student
+          hears, and it is what the picture is a picture of.
+        -->
+        <canvas
+          id="scene"
+          class="scene"
+          role="img"
+          aria-describedby="pose"
+        ></canvas>
+
+        <p id="pose" class="pose">Waiting for the robot…</p>
+
+        <div class="scene-controls">
+          <label>
+            <input type="checkbox" id="follow-robot" checked />
+            Keep the camera on the robot
+          </label>
+          <button type="button" id="reset-view" class="secondary">Reset the view</button>
+        </div>
+      </section>
+
+      <aside class="narration-panel" aria-labelledby="narration-heading">
+        <h2 id="narration-heading">What the robot is doing</h2>
+        <p id="focus-label" class="focus-label" role="status" aria-live="polite"></p>
+        <ul id="narration" class="narration" role="log" aria-live="polite" aria-relevant="additions"></ul>
+      </aside>
+    </main>
+
+    <script type="module" src="dist/viewer.js"></script>
+  </body>
+</html>

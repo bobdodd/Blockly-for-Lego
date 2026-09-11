@@ -47,7 +47,8 @@ including why the SPIKE App fails and what the alternatives were.
 | Component | State |
 | --- | --- |
 | [`spike-sim/`](spike-sim/) — hub simulator | **Working.** 57 tests, no dependencies |
-| [`editor/`](editor/) — Blockly 13 block editor | **Working.** 85 tests, first block set |
+| [`editor/`](editor/) — Blockly 13 block editor | **Working.** 123 tests, first block set |
+| `editor/src/viewer/` — 3D robot view | **Working.** Real LEGO parts, for teaching |
 
 The simulator came first. Partly because the hardware had not arrived, but
 mainly because it is the regression harness the editor needs: a block that
@@ -89,6 +90,11 @@ To use the editor, start a simulated hub and point the editor at it:
 cd spike-sim && python3 -m spike_sim      # one terminal
 cd editor && npm install && npm run serve # another; then open localhost:8080
 ```
+
+The editor's right-hand panel has a **Robot view** tab showing the simulated
+robot in 3D, built from real LEGO parts, and a button to open it in its own
+window for a projector. It is off by default: a student who never opens it
+gets no extra canvas, no extra tab stops, and none of the 3D code downloaded.
 
 ## Design commitments
 
