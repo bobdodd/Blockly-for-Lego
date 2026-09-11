@@ -15,6 +15,7 @@ something does not work.
 
 | | |
 | --- | --- |
+| **[Using the editor](editor.md)** | What is on the screen, every keyboard shortcut, and how programs are saved and opened. |
 | **[The blocks](blocks.md)** | Every block and the Python it generates. The page for a teacher, or anyone adding a block. |
 | **[The simulator](simulator.md)** | The simulated hub in full: command line, physics, mat format, the SPIKE API it implements, narration, network interface. |
 | **[Talking to a hub](protocol.md)** | The SPIKE Prime protocol — transports, framing, every message, the traps — and the client we built on it. |

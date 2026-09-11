@@ -115,6 +115,22 @@ Open **http://localhost:8080** in Chrome or Edge. Then:
 The starter program prints "hello", drives 25cm and turns right. Watch "What
 the robot is doing" fill up, and open the **Robot view** tab to see it in 3D.
 
+### Keeping your work
+
+Give the program a name and press **Save** (or Ctrl+S). In Chrome and Edge
+that opens your operating system's own Save dialog, and saving again writes
+back to the same file; elsewhere the file is downloaded. **Open…** loads one
+back, **New** starts again.
+
+The browser also keeps a copy of whatever is on screen, so closing the tab by
+accident and reopening it gets your work back — but that is crash protection,
+not saving. It is one program, in one browser, on one machine, and it goes
+when site data is cleared.
+
+A saved file records the robot it was written for as well as the blocks, so
+opening a program made for a different driving base tells you what will be
+out, and by how much. See [Using the editor](editor.md#saving-your-work).
+
 ### Building for deployment
 
 `npm run serve` is for development: it rebuilds as you edit and keeps the
@@ -171,12 +187,12 @@ Worth doing once after cloning, to confirm your setup is sound.
 
 ```bash
 cd spike-sim
-python3 -m pytest tests/ -q          # 57 tests, needs pytest
+python3 -m pytest tests/ -q          # 61 tests, needs pytest
 ```
 
 ```bash
 cd editor
-npm test                             # 123 tests
+npm test                             # 150 tests
 ```
 
 The editor's tests start real simulator processes, so **`python3` has to be
@@ -225,6 +241,11 @@ Set `npm config set proxy` and `https-proxy`, or install on another machine
 and copy the `editor/node_modules` directory across. The editor needs no
 network access at runtime.
 
+**A saved program will not open**
+The editor says why in a sentence — see
+[When a file will not open](editor.md#when-a-file-will-not-open). The most
+common cause is picking the wrong file.
+
 **The editor loads but the blocks are missing**
 `npm run build` has not been run, or `dist/` was not copied. Check the browser
 console for a 404 on `dist/app.js`.
@@ -235,6 +256,7 @@ console for a 404 on `dist/app.js`.
 
 | | |
 | --- | --- |
+| [Using the editor](editor.md) | the screen, every keyboard shortcut, saving and opening |
 | [The blocks](blocks.md) | every block, and the Python it generates |
 | [The simulator](simulator.md) | the simulated hub in full |
 | [Talking to a hub](protocol.md) | the SPIKE Prime protocol, and our client |

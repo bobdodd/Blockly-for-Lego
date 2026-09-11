@@ -285,6 +285,13 @@ twice.
 
 ## Adding a block
 
+**Never rename or remove an existing block type.** Blockly's loader fails on a
+type it does not recognise, so a rename silently breaks every file a student
+has already saved — and the editor can only tell them the file "uses blocks
+this editor does not have". Add a new type instead and leave the old one
+loadable. The `version` field in a saved file exists to hang a migration on if
+that ever becomes unavoidable; the policy is that it should not.
+
 1. Define it in `editor/src/blocks/definitions.js`. **Write the message as a
    spoken sentence** — a screen reader reads the block's text with its fields
    spliced in, so "drive forward for 25 centimetres" has to work aloud. That

@@ -61,6 +61,11 @@ A few rules specific to this codebase:
 
 ## Editor changes
 
+- **Never rename or remove a block type.** Students' saved programs name the
+  block types they use, and Blockly's loader fails on one it does not
+  recognise — so a rename silently breaks every file already saved. Add a new
+  type and leave the old one loadable.
+
 - **Show and hide with the `hidden` property, never with `display`.** And if
   you add a rule that sets `display`, check it cannot apply to something that
   gets hidden. `hidden` takes its `display: none` from the browser's

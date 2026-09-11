@@ -47,6 +47,7 @@ including why the SPIKE App fails and what the alternatives were.
 | | |
 | --- | --- |
 | [Getting started](docs/getting-started.md) | clone, build, run, and connect a real hub |
+| [Using the editor](docs/editor.md) | the screen, the keyboard, saving and opening |
 | [The blocks](docs/blocks.md) | every block and the Python it generates |
 | [The simulator](docs/simulator.md) | the simulated hub in full |
 | [Talking to a hub](docs/protocol.md) | the SPIKE Prime protocol, and our client |
@@ -58,8 +59,8 @@ Everything is indexed at [docs/](docs/).
 
 | Component | State |
 | --- | --- |
-| [`spike-sim/`](spike-sim/) — hub simulator | **Working.** 57 tests, no dependencies |
-| [`editor/`](editor/) — Blockly 13 block editor | **Working.** 123 tests, first block set |
+| [`spike-sim/`](spike-sim/) — hub simulator | **Working.** 61 tests, no dependencies |
+| [`editor/`](editor/) — Blockly 13 block editor | **Working.** 150 tests, blocks, save and open |
 | `editor/src/viewer/` — 3D robot view | **Working.** Real LEGO parts, for teaching |
 
 The simulator came first. Partly because the hardware had not arrived, but

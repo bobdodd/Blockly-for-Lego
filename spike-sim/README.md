@@ -10,7 +10,7 @@ Part of [Blockly for Lego](../README.md), which builds an accessible block
 programming environment for SPIKE Prime -- one a blind student can use
 independently, alongside sighted classmates working on the same program.
 
-**Status:** working. 57 tests pass, including conformance tests against
+**Status:** working. 61 tests pass, including conformance tests against
 LEGO's own reference codec. No third-party dependencies.
 
 ---
@@ -230,6 +230,7 @@ python3 -m pytest tests/ -q
 | `test_hub_protocol.py` | LEGO's client sequence end to end, over frames |
 | `test_robot.py` | kinematics and sensing, through the real SPIKE API |
 | `test_server.py` | WebSocket handshake and framing, raw TCP, commands |
+| `test_world.py` | the mat reads as deliberate, and a line follower opens on black |
 
 The physics tests found three real bugs while this was being written,
 including one where driving a negative distance never terminated.

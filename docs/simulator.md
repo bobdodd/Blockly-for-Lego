@@ -546,7 +546,7 @@ asyncio.run(main())
 
 ```bash
 cd spike-sim
-python3 -m pytest tests/ -q      # 57 tests
+python3 -m pytest tests/ -q      # 61 tests
 ```
 
 | File | Covers |
@@ -555,6 +555,7 @@ python3 -m pytest tests/ -q      # 57 tests
 | `test_hub_protocol.py` | LEGO's client sequence end to end, over frames |
 | `test_robot.py` | kinematics and sensing, through the real SPIKE API |
 | `test_server.py` | WebSocket handshake and framing, raw TCP, commands |
+| `test_world.py` | the mat reads as deliberate: both ends of the line attach to a square, and a line follower opens on black |
 
 The physics tests found three real bugs during the initial build, including
 one where driving a negative distance never terminated.
