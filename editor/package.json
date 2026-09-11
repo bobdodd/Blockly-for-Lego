@@ -7,7 +7,7 @@
   "scripts": {
     "build": "node scripts/build.js",
     "serve": "node scripts/build.js --serve",
-    "test": "node --test test/",
+    "test": "node --test",
     "vectors": "python3 scripts/gen-vectors.py > test/vectors.json"
   },
   "dependencies": {
