@@ -295,16 +295,22 @@ def default_world() -> World:
     return World(
         lines=[
             LinePath(
-                points=[(300, 300), (900, 300), (1400, 600), (1900, 600)],
+                # Starts inside the green square and finishes inside the red
+                # one, so both ends of the line are visibly attached to
+                # something rather than trailing off.
+                points=[(200, 300), (900, 300), (1400, 600), (1900, 600)],
                 width_mm=20.0,
             )
         ],
         patches=[
-            # a red target square the line runs into, to stop on
+            # the target to stop on; the line ends inside it
             ColorPatch(x=1850, y=520, width=160, height=160, color=RED),
-            # a green marker clear of the line, so the start of the line is
-            # plain black and a line-follower reads what it expects
-            ColorPatch(x=180, y=420, width=160, height=160, color=GREEN),
+            # the start area the line comes out of. Its right edge is at
+            # x=300, which is where the robot starts -- so the robot sits at
+            # the edge of the square with its colour sensor, 70mm further
+            # forward, already on plain black line. A line follower therefore
+            # reads what it expects on its first tick.
+            ColorPatch(x=140, y=220, width=160, height=160, color=GREEN),
         ],
         obstacles=[
             Obstacle(x=2100, y=450, width=60, height=300, name="end wall"),
