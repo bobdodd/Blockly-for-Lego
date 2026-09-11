@@ -8,7 +8,8 @@ Built on **Blockly 13**, which ships keyboard navigation and screen reader
 support switched on by default. This project does not implement accessible
 blocks; it inherits them, and takes care not to break them.
 
-**Status:** working editor, first block set, 3D robot view, save and open. 164 tests passing.
+**Status:** working editor, first block set, 3D robot view, save and open,
+and a simulator that runs in the browser. 178 tests passing.
 
 ---
 
@@ -153,6 +154,8 @@ npm test
 | `project.test.js` | saved files, and what a student is told when one will not open |
 | `stylesheet.test.js` | mistakes in CSS with consequences beyond appearance |
 | `shortcuts.test.js` | our keys stay clear of Blockly's and of VoiceOver's |
+| `environment.test.js` | telling a local copy from a hosted one |
+| `pyodide.test.js` | the simulator actually runs under WebAssembly |
 
 `e2e.test.js` is the one that earns its keep. Asserting on generated text only
 proves the generator agrees with itself; a reversed steering sign, a unit

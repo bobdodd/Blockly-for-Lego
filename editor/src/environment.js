@@ -44,13 +44,19 @@ export function isLocalOrigin(location = globalThis.location ?? {}) {
   return hostname.endsWith('.localhost');
 }
 
-/** What to tell someone who pressed "Connect to simulator" on a hosted copy. */
-export function simulatorUnavailableMessage() {
+/**
+ * What to tell someone about the simulator on a hosted copy.
+ *
+ * The simulator is not unavailable — it runs here, in this browser, compiled
+ * to WebAssembly. What is unavailable is reaching one on their own machine,
+ * and the difference worth stating is the one-off download, so the first
+ * connection does not look like a hang.
+ */
+export function builtInSimulatorNote() {
   return (
-    'The simulator runs on your own computer, and a browser will not let a ' +
-    'website connect to it. Everything else here works, including connecting ' +
-    'to a real SPIKE Prime hub over Bluetooth. To use the simulator and the ' +
-    'robot view, download the project and run it on your own machine — the ' +
-    'link is below the editor.'
+    'This copy runs the simulator inside your browser, because a website is ' +
+    'not allowed to reach a program on your own computer. The first time you ' +
+    'connect it downloads Python, which takes a moment; after that it is ' +
+    'stored and starts straight away.'
   );
 }

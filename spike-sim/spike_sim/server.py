@@ -27,6 +27,7 @@ import struct
 
 from . import events as ev
 from .hub import HubSimulator
+from .telemetry import event_payload, hello_payload, snapshot_payload
 
 WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
@@ -97,13 +98,7 @@ class SimulatorServer:
             connection.send_frame(frame)
 
     def _broadcast_event(self, event: ev.Event) -> None:
-        payload = {
-            "type": "event",
-            "kind": event.kind,
-            "message": event.message,
-            "time": round(event.sim_time, 3),
-            "data": event.data,
-        }
+        payload = event_payload(event)
         for connection in list(self.connections):
             connection.send_json(payload)
 
@@ -112,7 +107,7 @@ class SimulatorServer:
             await asyncio.sleep(self.snapshot_interval)
             if not self.connections:
                 continue
-            payload = {"type": "snapshot", "robot": self.hub.robot.snapshot()}
+            payload = snapshot_payload(self.hub.robot)
             for connection in list(self.connections):
                 connection.send_json(payload)
 
@@ -153,8 +148,7 @@ class SimulatorServer:
 
         # "hello" must be the first thing a client sees, so it is queued
         # before anything that broadcasts.
-        connection.send_json({"type": "hello", "world": self.hub.robot.world.to_dict(),
-                              "robot": self.hub.robot.snapshot()})
+        connection.send_json(hello_payload(self.hub.robot))
 
         # Register before feeding the hub anything. A raw client's first frame
         # arrives inside `peek`, and if the connection is not on the list yet

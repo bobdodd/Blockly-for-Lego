@@ -22,7 +22,8 @@ import 'blockly/blocks';
 import { Announcer, describeSensors } from './announcer.js';
 import { createTabs } from './tabs.js';
 import { matchShortcut, shortcutLabel } from './shortcuts.js';
-import { isLocalOrigin, simulatorUnavailableMessage } from './environment.js';
+import { builtInSimulatorNote, isLocalOrigin } from './environment.js';
+import { InBrowserSimulatorTransport, isSupported as builtInSupported } from './transport/in-browser.js';
 import * as files from './files.js';
 import {
   DEFAULT_NAME,
@@ -203,10 +204,10 @@ function loadBlocks(blocks, fallback = null) {
 // connection
 // --------------------------------------------------------------------------
 
-async function connect(transport, description) {
+async function connect(transport, description, { quiet = false } = {}) {
   if (client) await disconnect();
 
-  announcer.status(`Connecting to ${description}...`);
+  if (!quiet) announcer.status(`Connecting to ${description}...`);
   const hub = new HubClient(transport);
 
   hub.on('console', (text) => {
@@ -245,14 +246,53 @@ async function connect(transport, description) {
   try {
     await hub.connect();
   } catch (error) {
-    announcer.status(error.message);
-    return;
+    if (!quiet) announcer.status(error.message);
+    return false;
   }
 
   client = hub;
   setConnected(true);
   ui.summary.textContent = `Connected to ${hub.name}.`;
-  announcer.status(`Connected to ${hub.name}. Press Control and Enter to run your program.`);
+  announcer.status(
+    `Connected to ${hub.name}. Press ${shortcutLabel('run')} to run your program.`,
+  );
+  return true;
+}
+
+/**
+ * Connect to whichever simulator this copy can reach.
+ *
+ * A local copy prefers the one running beside it: it starts instantly, and
+ * its narration also appears in the terminal the student started it from.
+ * Failing that -- and always on a hosted copy, where a browser refuses to let
+ * a page reach a program on the reader's machine -- the simulator runs here,
+ * in a worker.
+ *
+ * Both are the same Python. Which one answered is announced, because a
+ * student comparing notes with a classmate should be able to tell.
+ */
+async function connectSimulator() {
+  if (isLocalOrigin()) {
+    if (await connect(new SimulatorTransport(), 'the simulator', { quiet: true })) return;
+  }
+
+  if (!builtInSupported()) {
+    announcer.status(
+      'This browser cannot run the built-in simulator. It needs support for ' +
+        'workers and WebAssembly.',
+    );
+    return;
+  }
+
+  const transport = new InBrowserSimulatorTransport();
+  // The first connection downloads about five megabytes of Python. Saying so
+  // as it happens is the difference between a wait and an apparent hang --
+  // and a spinner says nothing to a screen reader.
+  transport.onProgress = ({ stage, detail }) => {
+    if (stage !== 'error') announcer.status(detail ?? stage);
+  };
+
+  await connect(transport, 'the built-in simulator');
 }
 
 async function disconnect() {
@@ -541,15 +581,7 @@ function wireProgramControls() {
 }
 
 function wireControls() {
-  ui.connectSimulator.addEventListener('click', () => {
-    // Checked before trying, so the message explains the real reason rather
-    // than a misleading "could not reach the simulator".
-    if (!isLocalOrigin()) {
-      announcer.status(simulatorUnavailableMessage());
-      return;
-    }
-    connect(new SimulatorTransport(), 'the simulator');
-  });
+  ui.connectSimulator.addEventListener('click', connectSimulator);
 
   ui.connectHub.addEventListener('click', () => {
     if (!bluetoothSupported()) {
@@ -633,19 +665,14 @@ function start() {
       'This browser cannot talk to a hub over Bluetooth. Use Chrome or Edge.';
   }
 
-  if (isLocalOrigin()) {
-    announcer.status(
-      'Ready. Connect to the simulator to try your program without a robot.',
-    );
-  } else {
-    // Say it once on arrival rather than only when the button disappoints.
+  if (!isLocalOrigin()) {
+    // Said on arrival rather than when the first connection seems to hang.
     element('hosted-note').hidden = false;
-    ui.connectSimulator.title = simulatorUnavailableMessage();
-    announcer.status(
-      'Ready. Connect a real SPIKE Prime hub over Bluetooth to run your program. ' +
-        'The simulator needs the project running on your own computer.',
-    );
+    ui.connectSimulator.title = builtInSimulatorNote();
   }
+  announcer.status(
+    'Ready. Connect to the simulator to try your program without a robot.',
+  );
 }
 
 if (document.readyState === 'loading') {

@@ -1,0 +1,191 @@
+/**
+ * The simulator, running under Pyodide.
+ *
+ * This is the one layer the Python tests cannot reach and the browser tests
+ * cannot isolate: whether the simulator package actually runs on CPython
+ * compiled to WebAssembly. Pyodide runs in Node as well as a browser, so it
+ * can be tested here rather than by loading a page and hoping.
+ *
+ * What is genuinely at risk, and therefore what these check:
+ *
+ *  - **asyncio.** Pyodide has no event loop of its own to start; it borrows
+ *    the host's. Anything calling `asyncio.run` fails there, and the
+ *    simulator's tasks — the physics ticker, the snapshot loop, a running
+ *    program — have to work on a loop they did not create.
+ *  - **The standard library.** `dataclasses`, `struct`, `binascii`,
+ *    `traceback` and the rest have to be present in the wasm build.
+ *  - **The boundary.** Frames and narration cross into JavaScript as strings;
+ *    that is a deliberate choice and it has to hold.
+ *
+ * Slow by the standards of the rest of the suite — Pyodide takes a few
+ * seconds to start — so it starts once and every test shares it.
+ */
+
+import { strict as assert } from 'node:assert';
+import { readFile, readdir } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { after, before, describe, it } from 'node:test';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const simulatorRoot = join(here, '..', '..', 'spike-sim', 'spike_sim');
+
+let pyodide;
+let hub;
+let receive;
+const frames = [];
+const messages = [];
+
+/** The same bootstrap the worker uses, kept in step by being read from it. */
+async function bootstrapSource() {
+  const worker = await readFile(join(here, '..', 'src', 'simulator-worker.js'), 'utf8');
+  const match = worker.match(/const BOOTSTRAP = `([\s\S]*?)`;/);
+  assert.ok(match, 'could not find BOOTSTRAP in simulator-worker.js');
+  return match[1];
+}
+
+async function writeSimulator(runtime) {
+  runtime.FS.mkdirTree('/simulator/spike_sim');
+
+  async function walk(directory, prefix) {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      if (entry.name === '__pycache__') continue;
+      const full = join(directory, entry.name);
+      const target = `/simulator/spike_sim/${prefix}${entry.name}`;
+      if (entry.isDirectory()) {
+        runtime.FS.mkdirTree(target);
+        await walk(full, `${prefix}${entry.name}/`);
+      } else if (entry.name.endsWith('.py')) {
+        runtime.FS.writeFile(target, await readFile(full, 'utf8'), { encoding: 'utf8' });
+      }
+    }
+  }
+  await walk(simulatorRoot, '');
+}
+
+describe('the simulator under Pyodide', () => {
+  before(async () => {
+    const { loadPyodide } = await import('pyodide');
+    pyodide = await loadPyodide();
+
+    await writeSimulator(pyodide);
+    await pyodide.runPythonAsync(await bootstrapSource());
+
+    const make = pyodide.globals.get('_make');
+    const created = make(
+      (payload) => frames.push(payload),
+      (payload) => messages.push(JSON.parse(payload)),
+      20,      // speed
+      0.01,    // snapshot interval
+    );
+    hub = created.get(0);
+    receive = created.get(1);
+    created.destroy();
+    make.destroy();
+
+    await hub.start();
+  });
+
+  after(async () => {
+    await hub?.stop();
+  });
+
+  it('imports the whole simulator package', async () => {
+    // Every module, not just the entry point: a missing standard library
+    // module shows up as an ImportError deep in the package, not at the top.
+    const missing = await pyodide.runPythonAsync(`
+import importlib, pkgutil, spike_sim
+bad = []
+for info in pkgutil.walk_packages(spike_sim.__path__, "spike_sim."):
+    if "server" in info.name or "__main__" in info.name:
+        continue  # sockets and argparse: not reachable in a browser
+    try:
+        importlib.import_module(info.name)
+    except Exception as error:
+        bad.append(f"{info.name}: {error}")
+bad
+`);
+    assert.deepEqual(missing.toJs(), [], 'every simulator module must import');
+    missing.destroy();
+  });
+
+  it('says hello with the mat and the robot', () => {
+    const hello = messages.filter((m) => m.type === 'hello');
+    assert.equal(hello.length, 1);
+    assert.ok(hello[0].world.width_mm > 0);
+    assert.ok('pose' in hello[0].robot);
+  });
+
+  it('runs its event loop on the host\'s, with no asyncio.run', async () => {
+    // The ticker is a task the simulator created on a loop Pyodide owns. If
+    // that did not work, simulated time would never advance.
+    const before = await pyodide.runPythonAsync('0');
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const snapshots = messages.filter((m) => m.type === 'snapshot');
+    assert.ok(snapshots.length >= 3, `expected a stream, got ${snapshots.length}`);
+    assert.ok(
+      snapshots.at(-1).robot.time > before,
+      'simulated time should be advancing',
+    );
+  });
+
+  it('answers the protocol, in base64 across the boundary', async () => {
+    const { infoRequest, decode } = await import('../src/protocol/messages.js');
+    const cobs = await import('../src/protocol/cobs.js');
+
+    const before = frames.length;
+    receive(Buffer.from(cobs.pack(infoRequest())).toString('base64'));
+
+    assert.ok(frames.length > before, 'the hub should have answered');
+    const reply = frames.at(-1);
+    assert.equal(typeof reply, 'string', 'frames cross the boundary as strings');
+
+    const info = decode(cobs.unpack(new Uint8Array(Buffer.from(reply, 'base64'))));
+    assert.equal(info.type, 'InfoResponse');
+    assert.equal(info.maxChunkSize % 4, 0);
+  });
+
+  it('runs a student program and narrates it', async () => {
+    const { block, codeFor, num, str } = await import('./helpers.js');
+    const cobs = await import('../src/protocol/cobs.js');
+    const messagesModule = await import('../src/protocol/messages.js');
+    const { crc } = await import('../src/protocol/crc32.js');
+
+    const code = codeFor(
+      block('spike_print', { values: { TEXT: str('hello from wasm') } }),
+      block('spike_move_for', {
+        fields: { DIRECTION: 'FORWARD', UNIT: 'CM' },
+        values: { AMOUNT: num(20) },
+      }),
+    );
+
+    const send = (bytes) =>
+      receive(Buffer.from(cobs.pack(bytes)).toString('base64'));
+    const program = new TextEncoder().encode(code);
+
+    send(messagesModule.infoRequest());
+    send(messagesModule.startFileUploadRequest('program.py', 0, crc(program)));
+    send(messagesModule.transferChunkRequest(crc(program), program));
+    send(messagesModule.programFlowRequest(false, 0));
+
+    // let it run
+    const deadline = Date.now() + 20_000;
+    const printed = () =>
+      frames
+        .map((f) => messagesModule.decode(cobs.unpack(new Uint8Array(Buffer.from(f, 'base64')))))
+        .filter((m) => m.type === 'ConsoleNotification')
+        .map((m) => m.text.trim());
+
+    while (!printed().includes('hello from wasm') && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+
+    assert.ok(printed().includes('hello from wasm'), 'the program should have printed');
+
+    const spoken = messages
+      .filter((m) => m.type === 'event')
+      .map((m) => m.message)
+      .join('\n');
+    assert.match(spoken, /The robot drove 20 centimetres/);
+  });
+});
