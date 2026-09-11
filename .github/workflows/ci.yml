@@ -70,7 +70,14 @@ jobs:
 
       - name: Run tests
         working-directory: editor
-        run: npm test
+        # Node 20 needs a flag for the global WebSocket the browser transport
+        # uses; without it those tests skip rather than fail.
+        run: |
+          if [ "${{ matrix.node-version }}" = "20.x" ]; then
+            node --experimental-websocket --test
+          else
+            npm test
+          fi
 
       - name: Build the bundle
         working-directory: editor

@@ -8,7 +8,7 @@ Built on **Blockly 13**, which ships keyboard navigation and screen reader
 support switched on by default. This project does not implement accessible
 blocks; it inherits them, and takes care not to break them.
 
-**Status:** working editor, first block set. 85 tests passing.
+**Status:** working editor, first block set. 89 tests passing.
 
 ---
 
@@ -144,6 +144,7 @@ npm test
 | `generator.test.js` | the generated Python says the right thing |
 | `e2e.test.js` | it *does* the right thing, run in the simulator |
 | `hub-client.test.js` | the editor can deliver it, over a real socket |
+| `websocket-transport.test.js` | the pipe the browser actually uses |
 
 `e2e.test.js` is the one that earns its keep. Asserting on generated text only
 proves the generator agrees with itself; a reversed steering sign, a unit
