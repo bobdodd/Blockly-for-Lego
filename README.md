@@ -42,6 +42,18 @@ What is left is the glue: a block set, a Python generator, and a transport.
 See [docs/background.md](docs/background.md) for the full technical basis,
 including why the SPIKE App fails and what the alternatives were.
 
+## Documentation
+
+| | |
+| --- | --- |
+| [Getting started](docs/getting-started.md) | clone, build, run, and connect a real hub |
+| [The blocks](docs/blocks.md) | every block and the Python it generates |
+| [The simulator](docs/simulator.md) | the simulated hub in full |
+| [Talking to a hub](docs/protocol.md) | the SPIKE Prime protocol, and our client |
+| [Background](docs/background.md) | why this project exists |
+
+Everything is indexed at [docs/](docs/).
+
 ## Status
 
 | Component | State |
