@@ -384,3 +384,7 @@ button[aria-disabled="true"] {
   background: var(--warning-bg);
   color: var(--warning-ink);
 }
+
+/* The voice picker. Long names, so let it size to its content but not run
+   away with the row. */
+#commentary-voice { max-width: 18rem; }

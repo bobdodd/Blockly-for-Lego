@@ -29,7 +29,9 @@ function fakeSynth({ works = true, voices = 1 } = {}) {
     speaking: false,
     pending: false,
     listeners: {},
-    getVoices: () => Array.from({ length: voices }, (_, i) => ({ name: `voice ${i}` })),
+    getVoices: () => Array.from({ length: voices }, (_, i) => ({
+      name: `voice ${i}`, lang: 'en-GB', localService: true, default: i === 0,
+    })),
     speak(utterance) {
       this.spoken.push(utterance);
       if (!works) return;              // accepted, and nothing comes out
@@ -52,6 +54,7 @@ function fakeWindow({ synth = fakeSynth(), region = true } = {}) {
     speechSynthesis: synth,
     SpeechSynthesisUtterance: class { constructor(text) { this.text = text; } },
     document: {
+      documentElement: { lang: 'en' },
       addEventListener() {},
       getElementById: (id) => (region && id === 'talk' ? element : null),
     },
@@ -554,5 +557,82 @@ describe('testing the voice', () => {
       'audioOn', 'volume', 'channel', 'lastError']) {
       assert.ok(key in report, `the report should include ${key}`);
     }
+  });
+});
+
+
+describe('choosing a voice rather than taking what comes', () => {
+  /** macOS Chrome lists roughly this many, local and network mixed. */
+  const many = () => {
+    const synth = fakeSynth();
+    synth.getVoices = () => [
+      { name: 'Google UK English', lang: 'en-GB', localService: false },
+      { name: 'Daniel', lang: 'en-GB', localService: true },
+      { name: 'Amelie', lang: 'fr-CA', localService: true },
+    ];
+    return synth;
+  };
+
+  it('names a voice on every utterance', () => {
+    // Chrome will report that it is speaking while making no sound, and the
+    // voice it picks when nobody picks one is the usual reason.
+    const win = fakeWindow({ synth: many() });
+    const speaker = speakerIn(win);
+    speaker.announce('anything');
+    assert.ok(win.speechSynthesis.spoken[0].voice, 'no voice was set');
+  });
+
+  it('prefers a local voice over one that needs the network', () => {
+    // A network voice is the one that fails quietly when the fetch does.
+    const speaker = speakerIn(fakeWindow({ synth: many() }));
+    assert.equal(speaker.pickVoice().name, 'Daniel');
+  });
+
+  it('prefers the page\'s own language', () => {
+    const win = fakeWindow({ synth: many() });
+    win.document.documentElement = { lang: 'fr' };
+    assert.equal(speakerIn(win).pickVoice().name, 'Amelie');
+  });
+
+  it('uses the one the student picked, over anything it would choose', () => {
+    const win = fakeWindow({ synth: many() });
+    const speaker = speakerIn(win);
+    speaker.setVoice('Google UK English');
+
+    assert.equal(speaker.pickVoice().name, 'Google UK English');
+    speaker.announce('anything');
+    assert.equal(win.speechSynthesis.spoken.at(-1).voice.name, 'Google UK English');
+  });
+
+  it('remembers that choice', () => {
+    const storage = memoryStorage();
+    speakerIn(fakeWindow({ synth: many() }), storage).setVoice('Amelie');
+    assert.equal(speakerIn(fakeWindow({ synth: many() }), storage).pickVoice().name, 'Amelie');
+  });
+
+  it('falls back gracefully when the chosen voice has gone', () => {
+    // Voices come and go with the operating system.
+    const win = fakeWindow({ synth: many() });
+    const speaker = speakerIn(win);
+    speaker.setVoice('A Voice That Left');
+    assert.equal(speaker.pickVoice().name, 'Daniel');
+  });
+
+  it('copes with a browser offering none at all', () => {
+    const win = fakeWindow({ synth: fakeSynth({ voices: 0 }) });
+    const speaker = speakerIn(win);
+    assert.equal(speaker.pickVoice(), null);
+    assert.doesNotThrow(() => speaker.announce('anything'));
+  });
+
+  it('lists local voices first, so the reliable ones are nearest', () => {
+    const names = speakerIn(fakeWindow({ synth: many() })).voices().map((v) => v.name);
+    assert.deepEqual(names, ['Amelie', 'Daniel', 'Google UK English']);
+  });
+
+  it('reports which voice it used, for the bug report', () => {
+    const report = speakerIn(fakeWindow({ synth: many() })).diagnose();
+    assert.equal(report.voice, 'Daniel');
+    assert.equal(report.voiceIsLocal, true);
   });
 });

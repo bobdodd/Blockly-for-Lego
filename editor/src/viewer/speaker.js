@@ -33,6 +33,7 @@
 
 const AUDIO_KEY = 'blockly-for-lego.commentary-audio';
 const VOLUME_KEY = 'blockly-for-lego.commentary-volume';
+const VOICE_KEY = 'blockly-for-lego.commentary-voice';
 
 /** How long to wait before deciding an engine that never started is dead. */
 const ENGINE_DEAD_MS = 6000;
@@ -125,6 +126,7 @@ export class Speaker {
     // the live region instead can say so once and have it remembered.
     this.audioOn = this.storage.getItem(AUDIO_KEY) !== 'off';
     this.volume = clampVolume(Number(this.storage.getItem(VOLUME_KEY) ?? 1));
+    this.voiceName = this.storage.getItem(VOICE_KEY) || '';
 
     // iOS unlocks the speech engine only inside a user gesture, and the first
     // gesture here is usually pressing Run — by which time the robot is
@@ -208,6 +210,60 @@ export class Speaker {
     if (!this.audioOn) this.stop();
   }
 
+  /** Every voice the browser offers, local ones first. */
+  voices() {
+    let all = [];
+    try {
+      all = this.synth?.getVoices() ?? [];
+    } catch {
+      return [];
+    }
+    return [...all].sort((a, b) => {
+      if (Boolean(a.localService) !== Boolean(b.localService)) return a.localService ? -1 : 1;
+      return String(a.name).localeCompare(String(b.name));
+    });
+  }
+
+  /**
+   * Which voice to use.
+   *
+   * Chrome will happily report that it is speaking while producing no sound
+   * at all, and the usual reason is the voice it picks when nobody picks one:
+   * with two hundred of them listed, including network voices that need a
+   * fetch to work, the default is not reliably one that can be heard. Naming
+   * a **local** voice in the page's own language removes the guesswork.
+   */
+  pickVoice() {
+    const voices = this.voices();
+    if (voices.length === 0) return null;
+
+    if (this.voiceName) {
+      const chosen = voices.find((voice) => voice.name === this.voiceName);
+      if (chosen) return chosen;
+    }
+
+    const language = (this.window?.document?.documentElement?.lang || 'en')
+      .toLowerCase().slice(0, 2);
+    const speaks = (voice) => String(voice.lang ?? '').toLowerCase().startsWith(language);
+    const local = voices.filter((voice) => voice.localService);
+
+    return local.find(speaks)
+      ?? local.find((voice) => voice.default)
+      ?? local[0]
+      ?? voices.find(speaks)
+      ?? voices[0]
+      ?? null;
+  }
+
+  /** Use a particular voice from now on. An empty name goes back to choosing. */
+  setVoice(name) {
+    this.voiceName = name || '';
+    this.storage.setItem(VOICE_KEY, this.voiceName);
+    this.speechBroken = false;
+    this._failures = 0;
+    this.onChannelChange?.(this.channel);
+  }
+
   setVolume(value) {
     const wasSpeaking = this.willSpeak;
     this.volume = clampVolume(value);
@@ -280,6 +336,13 @@ export class Speaker {
 
       const utterance = new this.window.SpeechSynthesisUtterance(text);
       utterance.volume = this.volume;
+
+      // Naming the voice rather than leaving it to the browser. See pickVoice.
+      const voice = this.pickVoice();
+      if (voice) {
+        utterance.voice = voice;
+        if (voice.lang) utterance.lang = voice.lang;
+      }
 
       let settled = false;
       const giveUp = (reason) => {
@@ -393,6 +456,9 @@ export class Speaker {
       paused: this.synth?.paused ?? null,
       audioOn: this.audioOn,
       volume: this.volume,
+      voice: this.pickVoice()?.name ?? null,
+      voiceIsLocal: this.pickVoice()?.localService ?? null,
+      chosenByHand: this.voiceName || null,
       channel: this.channel,
       lastError: this.lastError,
       failures: this._failures,

@@ -446,6 +446,7 @@ that arrives late describes somewhere the robot has already left.
 | Control | What it does |
 | --- | --- |
 | **Speak the commentary** | Speech on or off. With it **off**, the same sentences go to a polite live region instead, so a screen reader still reads them — off means "do not use the browser voice", not "say nothing". |
+| **Voice** | Which of the browser's voices to use. Left alone it picks one for you, preferring a **local** voice in the page's language. |
 | **Volume** | How loud the browser voice is. At **0** the commentary moves to the screen reader, for the same reason. |
 | **Describe the scene** | The whole thing again, now — the mat, the line, what is standing on it, and where the robot is among it. Use it when you have lost track. |
 | **Test the voice** | Speaks one sentence straight out of the button press. If you hear it, the browser voice works. If your screen reader reads it instead, it does not — and the line underneath says what the browser gave as the reason. |
@@ -467,6 +468,24 @@ the robot turns, so "you are looking at it from behind" is wrong a second
 later. When a classmate swings the view round and says "look at this", both
 students need to know which way "this" is being looked at, or they are
 talking about two different things.
+
+##### If Chrome says it is speaking and you hear nothing
+
+The console report from **Test the voice** will show `speaking: true` with no
+error. That means the engine took the words and is playing them somewhere you
+cannot hear. Three things to check, in order:
+
+1. **The voice.** Pick a different one from **Voice** — anything not marked
+   "needs the internet". This is the common cause.
+2. **The tab is muted.** Right-click the tab; if it offers *Unmute site*,
+   that was it. Chrome mutes per site, and it silences speech while still
+   reporting that it is speaking.
+3. **Chrome's sound setting for the site**, at the padlock in the address bar
+   → Site settings → Sound. And Chrome's audio output device, which can
+   differ from the system's.
+
+None of those are things the page can detect or fix, which is why the report
+exists.
 
 ##### Why speech rather than a live region
 
@@ -503,6 +522,13 @@ worth knowing about if you touch this code:
 - **Do not call `speak()` in the same tick as `cancel()`.** Chrome drops it,
   silently. A cancel now hands over to the next macrotask; the latest
   announcement still wins, a tick later.
+- **Name the voice; do not take the default.** Chrome will report
+  `speaking: true`, `paused: false` and no error while producing no sound at
+  all, and the voice it picks when nobody picks one is the usual reason —
+  macOS Chrome lists around two hundred, including network voices that need a
+  fetch to work and fail quietly when it does not. The editor names a local
+  voice in the page's language, and offers the list so a student can pick
+  another.
 - **Nudge long speech.** Chrome stops after about fifteen seconds with no
   error, and the description of the mat runs past that, so it would trail off
   mid-sentence. A `resume()` every ten seconds keeps it going and is a no-op

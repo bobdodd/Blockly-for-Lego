@@ -43,7 +43,50 @@ const CHANNELS = {
  * @param {{speaker: object, commentary: object}} parts
  */
 export function mountCommentaryControls(elements, { speaker, commentary }) {
-  const { toggle, volume, volumeValue, describe, transcript, channel, testVoice } = elements;
+  const {
+    toggle, volume, volumeValue, describe, transcript, channel, testVoice, voice,
+  } = elements;
+
+  /**
+   * Offer the browser's voices, local ones first.
+   *
+   * Not a luxury. Chrome will report that it is speaking while producing no
+   * sound, and which voice was picked is the usual reason — so being able to
+   * pick a different one is the remedy a student can apply themselves. It is
+   * also just useful: a voice you can follow for an hour is not the same as
+   * one you can tolerate for a sentence.
+   */
+  function fillVoices() {
+    if (!voice) return;
+    const available = speaker.voices();
+    const chosen = voice.value || speaker.voiceName;
+    const doc = voice.ownerDocument;
+
+    voice.replaceChildren();
+    const auto = doc.createElement('option');
+    auto.value = '';
+    auto.textContent = available.length ? `Chosen for you (${speaker.pickVoice()?.name ?? '—'})` : 'Chosen for you';
+    voice.append(auto);
+
+    for (const option of available) {
+      const item = doc.createElement('option');
+      item.value = option.name;
+      item.textContent = option.localService ? option.name : `${option.name} (needs the internet)`;
+      voice.append(item);
+    }
+    voice.value = available.some((v) => v.name === chosen) ? chosen : '';
+  }
+
+  if (voice) {
+    fillVoices();
+    // Chrome fills its voice list after the page has loaded, so the first
+    // attempt is often empty and has to be redone.
+    speaker.synth?.addEventListener?.('voiceschanged', fillVoices);
+    voice.addEventListener('change', () => {
+      speaker.setVoice(voice.value);
+      speaker.announce(voice.value ? 'This is the voice you chose.' : 'Back to the usual voice.');
+    });
+  }
 
   function showChannel() {
     if (!channel) return;
