@@ -90,6 +90,39 @@ describe('waiting is visible as well as spoken', () => {
   });
 });
 
+describe('the spoken commentary\'s markup', () => {
+  const pages = ['index.html', 'viewer.html'].map((name) => [name, read(name)]);
+
+  it('has a live region to fall back to, on every page that shows the robot', () => {
+    // Speech is the primary channel, but a browser with no usable voices has
+    // to have somewhere to put the words or a blind student gets nothing at
+    // all from the 3D view.
+    for (const [name, markup] of pages) {
+      assert.ok(markup.includes('id="commentary-region"'), `${name} has no fallback region`);
+      const region = markup.slice(markup.indexOf('id="commentary-region"'));
+      assert.match(region.slice(0, region.indexOf('>')), /aria-live="polite"/, name);
+    }
+  });
+
+  it('does not make the transcript a second live region', () => {
+    // The transcript is the visible mirror of what was already spoken or put
+    // in the live region. Making it live too would announce everything twice.
+    for (const [name, markup] of pages) {
+      const start = markup.indexOf('id="commentary-transcript"');
+      assert.ok(start > 0, `${name} has no transcript`);
+      const tag = markup.slice(start, markup.indexOf('>', start));
+      assert.ok(!/aria-live|role="log"|role="status"/.test(tag), `${name} double-announces`);
+    }
+  });
+
+  it('labels the volume slider', () => {
+    for (const [name, markup] of pages) {
+      assert.match(markup, /for="commentary-volume"/, `${name} has an unlabelled slider`);
+      assert.match(markup, /id="commentary-volume"[^>]*type="range"|type="range" id="commentary-volume"/, name);
+    }
+  });
+});
+
 describe('focus is always visible', () => {
   it('styles :focus-visible rather than removing outlines', () => {
     // A keyboard user who cannot see where focus is cannot use the editor at

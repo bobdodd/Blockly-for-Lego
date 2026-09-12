@@ -226,6 +226,245 @@ to hardware this stays empty and says so.
 The tab is not selected when the editor opens, and nothing about the 3D view
 is even downloaded until you choose it.
 
+#### Spoken commentary
+
+A canvas cannot be read by a screen reader. There is no markup inside it, no
+text, nothing to move through — so without this, the 3D view is the one part
+of the editor a blind student simply does not have.
+
+The commentary is built from the same numbers the picture is drawn from, not
+from the picture, which is why it can say "20 centimetres north of the line"
+rather than estimating from pixels. It works whether or not the Robot view
+tab has ever been opened.
+
+##### Everything is said from above, not from the robot
+
+The description is of the **mat**, seen from where the camera is looking —
+the same thing a sighted classmate is looking at. So:
+
+- The robot is **it**, not you. "It is on the line", never "you are on the
+  line". Speaking as though the listener were the robot puts a student inside
+  a machine they are trying to look at, and it stops making sense the moment
+  they turn to the classmate beside them, who is outside it.
+- Positions are measured **from the nearer edge** of the mat: "30 centimetres
+  from the west edge and 30 centimetres from the south edge". Small numbers,
+  and ones you could check with a ruler.
+- Directions are **compass points**, which do not change when the robot turns.
+
+Two things stay in the robot's own frame, because that is what they are: what
+the distance sensor can see, which points along the robot's nose by
+construction, and the beats that read a student's own blocks back to them
+("Left 90").
+
+##### The north arrow
+
+The mat has **an arrow printed near its north-west corner, pointing north**.
+
+It is not decoration. Without it, "the robot is pointing east" is a fact about
+nothing — there is no north on a bare mat, and nothing a student can look at,
+point at or feel to check it against. With it, every direction in the
+narration has something on the table behind it, and a blind student, a sighted
+student and a coach are all using the same one.
+
+It is drawn with the same primitive as the line, because it is the same thing
+physically: ink. **The colour sensor reads it like any other ink** — a
+marking that a real sensor would see but a simulated one would not is a quiet
+lie about the surface, and the place it would surface is a line follower
+behaving differently on the real mat. It is placed well clear of the course,
+and marked so that nothing mistakes it for a line to follow.
+
+##### What gets said, and when
+
+**On connecting**, the mat itself, once:
+
+```
+The mat is 2.4 metres from west to east and 1.1 metres from south to north.
+A north arrow is printed in the north-west corner. A black line runs 70
+centimetres east, then 58 centimetres north-east, then 50 centimetres east.
+It starts in the green square and ends in the red square. Standing on the
+mat: the end wall on the east side. The robot is 30 centimetres from the west
+edge and 30 centimetres from the south edge, pointing east. It is on the
+green square and on the line, pointing along it.
+```
+
+**On Run**, one word — because where the robot is and which way it points
+were in the description you just heard:
+
+```
+Starting.
+```
+
+If more than about fifteen seconds have passed, or the robot has been moved,
+you get the part that changed first, and then `Starting.`:
+
+```
+The robot is 90 centimetres from the west edge and 30 centimetres from the
+south edge, pointing east. Starting.
+```
+
+The mat itself is never repeated. It has not moved, and hearing it described
+before every run is what made the commentary something to sit through.
+
+`Starting.` is always said, however much of the rest is dropped. A run that
+begins in silence leaves you waiting to find out whether Run did anything.
+
+**While it runs**, two or three words a beat, **as each one begins**:
+
+```
+Forward 20 centimetres.
+Right 63.
+Forward 34 centimetres.
+Off the line, south.
+Bumped.
+Left 70.
+```
+
+**When it ends**, where it finished and what happened:
+
+```
+The robot is 1 metre from the west edge and 14 centimetres from the south
+edge, pointing east. It is 20 centimetres south-east of the line. It ran for
+6 seconds and drove 86 centimetres, turning twice. It left the line once and
+bumped into something once.
+```
+
+##### It does not repeat itself
+
+Every sentence the commentary speaks is remembered for about fifteen
+seconds. One that comes round again **unchanged** in that time is dropped
+rather than said twice, sentence by sentence — so you hear the part that
+changed and not the three sentences around it that are still true.
+
+That is one rule, not a special case per situation, because "has anything
+changed" and "would I be repeating myself" turn out to be the same question.
+It is what makes all of these work:
+
+| What you do | What you hear |
+| --- | --- |
+| Press Run four seconds after connecting | `Starting.` and nothing else. |
+| Press Run again right after a summary | `Starting.`, unless something moved. |
+| Drag the robot, then press Run | Where it is now, then `Starting.` |
+| Press Run two minutes later | All of it again — you have lost the picture. |
+| Run a program that ends where it started | Only the summary. |
+
+Three things are exempt:
+
+- **The beats during a run.** "Off the line, south" twice in one run is not a
+  repetition — it is the robot leaving the line twice, and that is the most
+  important thing you will hear all run.
+- **The run summary**, which is new every time even when it reads like the
+  last one. Two identical runs are still two runs.
+- **`Starting.`**, so pressing Run is never answered with silence.
+- **Describe the scene**, because you asked. You get all of it however
+  recently you heard it.
+
+If dropping sentences would leave one starting with "it" and nothing for that
+"it" to point at, the survivor names the robot instead.
+
+##### Why the brief holds the program back
+
+Said over a robot that is already driving, a description of where it started
+describes somewhere it has left — and it talks over the first thing that
+happens. So the program waits for it.
+
+The wait only happens when the words are actually going to be spoken. With
+speech off they go to your screen reader, whose timing the page cannot know,
+so nothing is held back. A speech engine that wedges cannot stop a program
+from running either; the brief gives up waiting after twenty seconds.
+
+##### Beats come at the start of a move, not the end
+
+A move block is announced **the moment it begins**, not when it completes.
+Narrating a move on completion means several seconds of silence and then news
+about something already finished — which is no use to somebody deciding
+whether their program is doing the right thing.
+
+Nothing has to be guessed to do this. The block already said how far to go,
+and the wheel and axle measurements turn that into millimetres and degrees, so
+what you hear is the robot's **intent**. If it then fails to carry it out —
+hits something, slips — that fires its own beat, and the end-of-run summary
+measures what actually happened.
+
+##### Why the beats are so short
+
+The robot does not stop while you listen. A beat that takes four seconds to
+say ends after the thing it describes, and the next one has already been
+missed. Everything during a run is therefore two or three words, and
+distances are given to two significant figures — "20 centimetres", never
+"19.6 centimetres", which takes longer to hear and tells you nothing more.
+
+The beats are:
+
+| When | What you hear |
+| --- | --- |
+| A move block begins | `Forward 20 centimetres.` `Back 5 centimetres.` |
+| A turn block begins | `Left 90.` `Right 45.` — said the way the block says it |
+| A curve begins | `Curve left, 30 centimetres.` |
+| A timed move begins | `Driving for 2 seconds.` |
+| Driving with no move blocks | `50 centimetres.` `1 metre.` — every half metre |
+| Crossing the line | `Off the line, south.` `On the line.` `End of the line.` |
+| Arriving somewhere | `The red square.` |
+| Hitting something | `Bumped.` |
+| The robot starts or stops | `Moving.` `Stopped.` |
+
+That last row is quieter than it looks. `Starting.` has just said the robot is
+about to move, so the first one of a run is skipped; and while move blocks are
+announcing themselves, the motors dipping to zero between two of them is not
+reported — that says something about how the blocks were joined, not about
+the robot. It is left for continuous driving, where nothing else reports it.
+
+The half-metre beats exist for line followers. A line follower drives on
+continuous motor commands and finishes no move blocks at all, so without them
+a working program would announce itself once and then run in silence — which
+sounds exactly like one that has hung.
+
+Leaving the line interrupts whatever is being said. Everything else waits its
+turn, and is dropped rather than queued if it cannot be said promptly: a beat
+that arrives late describes somewhere the robot has already left.
+
+##### The controls
+
+| Control | What it does |
+| --- | --- |
+| **Speak the commentary** | Speech on or off. With it **off**, the same sentences go to a polite live region instead, so a screen reader still reads them — off means "do not use the browser voice", not "say nothing". |
+| **Volume** | How loud the browser voice is. At **0** the commentary moves to the screen reader, for the same reason. |
+| **Describe the scene** | The whole thing again, now — the mat, the line, what is standing on it, and where the robot is among it. Use it when you have lost track. |
+| **Transcript** | Everything that was said, in writing, under the controls. |
+
+Your choices are remembered between sessions.
+
+##### Where the view is looking
+
+When the 3D view is open, the description also says where the camera is, in
+mat terms:
+
+```
+You are looking at the mat from the south-west, steeply down at it.
+```
+
+Mat terms rather than robot terms on purpose: the camera does not turn when
+the robot turns, so "you are looking at it from behind" is wrong a second
+later. When a classmate swings the view round and says "look at this", both
+students need to know which way "this" is being looked at, or they are
+talking about two different things.
+
+##### Why speech rather than a live region
+
+A polite live region *queues*. The robot moves; the announcements back up;
+the screen reader is still reading where the robot was four beats ago, and a
+student steering by it steers wrong. Speech can be **cancelled**, so each new
+announcement replaces the last: what you hear is where the robot is now.
+
+The live region is still there as the fallback, because some browsers ship a
+speech engine with no voices installed — it reports success and makes no
+sound. The editor checks for an actual voice rather than trusting the engine
+to exist.
+
+The transcript exists for the same reason the commentary does: a Deaf or
+hard-of-hearing student, a student in a room full of other people's robots,
+and a coach checking what their student was told all read the same sentences
+that were spoken.
+
 ### Python
 
 The Python your blocks make, always visible rather than behind a dialog, so it
@@ -279,6 +518,10 @@ What is deliberate:
   is several extra moves.
 - **Three announcement channels**, by urgency: status interrupts, the
   commentary is a polite log, browser speech is optional and off.
+- **The 3D view is described out loud**, from the scene rather than from the
+  picture, in the robot's own left and right — see
+  [Spoken commentary](#spoken-commentary). It is the only way that panel
+  exists at all for a student who cannot see it.
 - **Narration is rate limited.** When speech falls behind it drops messages
   and says how many, because a late description of a moving robot is worse
   than none.

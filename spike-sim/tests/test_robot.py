@@ -80,6 +80,70 @@ runloop.run(main())
     assert hub.robot.x == pytest.approx(1000 - WHEEL_CIRCUMFERENCE, abs=1.0)
 
 
+def test_reversing_is_narrated_as_reversing():
+    """Driving backwards must not narrate identically to driving forwards.
+
+    A student whose robot goes the wrong way is usually looking for a motor
+    they have mounted backwards, and the narration is the only place a blind
+    student can see it. ``travelled`` is a distance and so always positive, so
+    the direction has to be worked out and said.
+    """
+    hub = run_program(
+        """
+import runloop, motor_pair
+from hub import port
+motor_pair.pair(motor_pair.PAIR_1, port.A, port.B)
+async def main():
+    await motor_pair.move_for_degrees(motor_pair.PAIR_1, -360, 0, velocity=360)
+runloop.run(main())
+""",
+        world=bare_world(),
+        start_x=1000.0,
+    )
+    drives = [e for e in hub.log.events if e.kind == "drive"]
+    assert drives, "a move should narrate"
+    assert drives[-1].data["reversing"] is True
+    assert "backwards" in drives[-1].message
+
+
+def test_driving_forwards_is_not_called_reversing():
+    hub = run_program(
+        """
+import runloop, motor_pair
+from hub import port
+motor_pair.pair(motor_pair.PAIR_1, port.A, port.B)
+async def main():
+    await motor_pair.move_for_degrees(motor_pair.PAIR_1, 360, 0, velocity=360)
+runloop.run(main())
+""",
+        world=bare_world(),
+        start_x=1000.0,
+    )
+    drives = [e for e in hub.log.events if e.kind == "drive"]
+    assert drives[-1].data["reversing"] is False
+    assert "backwards" not in drives[-1].message
+
+
+def test_program_lifecycle_carries_a_phase():
+    """A client should be able to follow a run without matching English.
+
+    The editor speaks a summary when a program ends, and deciding *whether* it
+    ended by comparing prose would break the first time a sentence improved.
+    """
+    hub = run_program(
+        """
+import runloop
+async def main():
+    pass
+runloop.run(main())
+""",
+        world=bare_world(),
+    )
+    phases = [e.data.get("phase") for e in hub.log.events if e.kind == "program"]
+    assert "started" in phases
+    assert "finished" in phases
+
+
 def test_spin_turns_the_robot_without_moving_it():
     # Derived from the config rather than hardcoded, so changing the robot's
     # dimensions cannot quietly invalidate the test. This is the same
@@ -359,3 +423,72 @@ runloop.run(main())
     printed = [e.data["text"] for e in hub.log.events if e.kind == "console"]
     assert printed[-1] == "total 180"
     assert hub.robot.motor("A").position == pytest.approx(180.0, abs=0.001)
+
+
+def test_a_move_is_announced_before_it_happens():
+    """A blind student needs to know what is happening now, not what just did.
+
+    Narrating a move only on completion means several seconds of silence and
+    then news about the past. The block already said how far to go, so the
+    intent can be announced the moment the move begins.
+    """
+    hub = run_program(
+        """
+import runloop, motor_pair
+from hub import port
+motor_pair.pair(motor_pair.PAIR_1, port.A, port.B)
+async def main():
+    await motor_pair.move_for_degrees(motor_pair.PAIR_1, 360, 0, velocity=360)
+runloop.run(main())
+""",
+        world=bare_world(),
+    )
+    drives = [e for e in hub.log.events if e.kind == "drive"]
+    starts = [e for e in drives if e.data.get("starting")]
+
+    assert starts, "a move should announce itself as it begins"
+    assert starts[0].data["distance_mm"] == pytest.approx(WHEEL_CIRCUMFERENCE, abs=1.0)
+    assert starts[0].data["reversing"] is False
+    # and it must come first, which is the whole point
+    assert drives.index(starts[0]) == 0
+
+
+def test_a_turn_announces_the_angle_the_robot_will_turn():
+    """Not the wheel rotation the block asked for -- the turn a student sees."""
+    hub = run_program(
+        """
+import runloop, motor_pair
+from hub import port
+motor_pair.pair(motor_pair.PAIR_1, port.A, port.B)
+async def main():
+    await motor_pair.move_for_degrees(motor_pair.PAIR_1, 360, 100, velocity=360)
+runloop.run(main())
+""",
+        world=bare_world(),
+    )
+    starts = [e for e in hub.log.events if e.data.get("starting")]
+    assert starts, "a turn should announce itself"
+
+    predicted = starts[0].data["turn_degrees"]
+    actual = (hub.robot.heading - 0 + 180) % 360 - 180
+
+    assert predicted < 0, "steering +100 spins right, which lowers the heading"
+    # The announcement is a promise; the robot has to keep it.
+    assert predicted == pytest.approx(actual, abs=3.0)
+
+
+def test_reversing_is_announced_as_reversing_before_it_starts():
+    hub = run_program(
+        """
+import runloop, motor_pair
+from hub import port
+motor_pair.pair(motor_pair.PAIR_1, port.A, port.B)
+async def main():
+    await motor_pair.move_for_degrees(motor_pair.PAIR_1, -360, 0, velocity=360)
+runloop.run(main())
+""",
+        world=bare_world(),
+    )
+    starts = [e for e in hub.log.events if e.data.get("starting")]
+    assert starts[0].data["reversing"] is True
+    assert "backwards" in starts[0].message

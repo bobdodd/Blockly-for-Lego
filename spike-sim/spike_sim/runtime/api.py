@@ -335,6 +335,17 @@ def build_modules(ctx: RuntimeContext) -> dict[str, types.ModuleType]:
         turned = (robot.heading - heading0 + 180) % 360 - 180
         side = "left" if turned > 0 else "right"
 
+        # Which way along its own nose the robot actually went. `travelled` is
+        # a distance and so always positive; without this, reversing narrates
+        # identically to driving forward, and a student chasing a motor they
+        # have mounted backwards is told the one thing that would give it away
+        # is not happening.
+        along = math.cos(math.radians(heading0)) * (robot.x - x0) + math.sin(
+            math.radians(heading0)
+        ) * (robot.y - y0)
+        reversing = travelled >= 5 and along < 0
+        way = "backwards " if reversing else ""
+
         if travelled < 5 and abs(turned) >= 3:
             message = (
                 f"The robot turned {ev.say_angle(abs(turned))} to the {side}, "
@@ -342,17 +353,75 @@ def build_modules(ctx: RuntimeContext) -> dict[str, types.ModuleType]:
             )
         elif abs(turned) >= 3:
             message = (
-                f"The robot drove {ev.say_distance(travelled)} in a curve to the "
+                f"The robot drove {ev.say_distance(travelled)} {way}in a curve to the "
                 f"{side}. {robot.describe_position()}"
             )
         else:
-            message = f"The robot drove {ev.say_distance(travelled)}. {robot.describe_position()}"
+            message = (
+                f"The robot drove {ev.say_distance(travelled)} {way}".rstrip()
+                + f". {robot.describe_position()}"
+            )
 
         ctx.log(
             ev.DRIVE,
             message,
             travelled_mm=round(travelled, 1),
             turned_degrees=round(turned, 1),
+            reversing=reversing,
+            **data,
+        )
+
+    def _announce_move(degrees, steering=0):
+        """Say what a move is about to do, before it does it.
+
+        A blind student needs to know what is happening *now*. Narrating a
+        move when it completes describes something that has already finished,
+        and for a long drive that is several seconds of silence followed by
+        news about the past -- the exact failure this whole narration exists
+        to avoid.
+
+        Everything needed is known up front: the block said how far to go, and
+        the wheel and axle measurements turn that into millimetres and
+        degrees. So the announcement is of the *intent*. If the robot then
+        fails to do it -- hits something, slips -- that fires its own event,
+        and the end-of-run summary measures what actually happened.
+        """
+        steering = max(-100, min(100, steering))
+        travel = (degrees / 360.0) * math.pi * robot.config.wheel_diameter_mm
+        data = {"starting": True, "degrees": degrees, "steering": steering}
+
+        if abs(steering) == 100:
+            # One wheel forward, one back: the robot turns on the spot, and
+            # each wheel cuts an arc of the circle that passes through both.
+            turn = travel * 360.0 / (math.pi * robot.config.axle_track_mm)
+            if steering > 0:
+                turn = -turn  # +100 spins right, and right lowers the heading
+            side = "right" if turn < 0 else "left"
+            data["turn_degrees"] = round(turn, 1)
+            ctx.log(
+                ev.DRIVE,
+                f"The robot is turning {ev.say_angle(abs(turn))} to the {side}.",
+                **data,
+            )
+            return
+
+        data["distance_mm"] = round(abs(travel), 1)
+        data["reversing"] = travel < 0
+        way = " backwards" if travel < 0 else ""
+
+        if steering == 0:
+            ctx.log(
+                ev.DRIVE,
+                f"The robot is driving {ev.say_distance(abs(travel))}{way}.",
+                **data,
+            )
+            return
+
+        side = "right" if steering > 0 else "left"
+        data["curving"] = side
+        ctx.log(
+            ev.DRIVE,
+            f"The robot is curving to the {side} for {ev.say_distance(abs(travel))}{way}.",
             **data,
         )
 
@@ -360,20 +429,33 @@ def build_modules(ctx: RuntimeContext) -> dict[str, types.ModuleType]:
         left_port, right_port = _pair_ports(pair_id)
         left_v, right_v = _steering_to_velocities(steering, velocity)
         before = (robot.x, robot.y, robot.heading)
+        _announce_move(degrees, steering)
         await _move_wheels_for_degrees(left_port, right_port, left_v, right_v, degrees)
         _narrate_move(before, degrees=degrees, steering=steering)
 
     async def pair_move_tank_for_degrees(pair_id, degrees, left_velocity, right_velocity, **_kwargs):
         left_port, right_port = _pair_ports(pair_id)
         before = (robot.x, robot.y, robot.heading)
+        # Tank steering is two wheel speeds, not a steering value; derive the
+        # equivalent so the announcement reads the same as any other move.
+        faster = max(abs(left_velocity), abs(right_velocity)) or 1
+        _announce_move(degrees, round(100 * (left_velocity - right_velocity) / (2 * faster)))
         await _move_wheels_for_degrees(
             left_port, right_port, left_velocity, right_velocity, degrees
         )
         _narrate_move(before, degrees=degrees)
 
     async def pair_move_for_time(pair_id, duration, steering=0, *, velocity=360, **_kwargs):
+        seconds = duration / 1000.0
+        ctx.log(
+            ev.DRIVE,
+            f"The robot is driving for {seconds:g} seconds.",
+            starting=True,
+            seconds=seconds,
+            steering=max(-100, min(100, steering)),
+        )
         pair_move(pair_id, steering, velocity=velocity)
-        await ctx.sleep(duration / 1000.0)
+        await ctx.sleep(seconds)
         pair_stop(pair_id)
 
     motor_pair = _module(

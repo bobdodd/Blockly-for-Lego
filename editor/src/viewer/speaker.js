@@ -1,0 +1,264 @@
+/**
+ * Saying the scene out loud.
+ *
+ * The pattern is the one the audio maps on a11ybob.com use, and it is here for
+ * the same reason: **a polite live region queues.** The robot moves twenty
+ * times a second. Push commentary into a live region and the screen reader is
+ * still reading where the robot was four events ago, which is worse than
+ * silence — a student steers by it and steers wrong.
+ *
+ * `speechSynthesis` can be *cancelled*. So every announcement replaces the one
+ * before it: latest wins, and what you hear is where the robot is now.
+ *
+ * The channel picks itself:
+ *
+ *   speech engine present, audio on, volume above zero -> speechSynthesis
+ *   audio off, volume at zero, or no engine at all     -> polite live region
+ *
+ * That last fallback is not a nicety. De-Googled Android phones ship a speech
+ * engine with no voices installed, which reports as present and then says
+ * nothing, so the engine is probed for actual voices rather than trusted.
+ *
+ * Everything spoken is also mirrored to a visible transcript. Deaf and
+ * hard-of-hearing students get the commentary, and so does anyone working in a
+ * noisy club room — this is a room full of robots.
+ *
+ * What this adds to the maps' version: a **volume control**. The commentary
+ * competes with the program's own narration, with a classmate talking, and
+ * with the next bench over. Volume at zero deliberately hands the commentary
+ * back to the live region rather than going silent, so a student who turns it
+ * down is quieting the speech, not switching off their only source of
+ * information.
+ */
+
+const AUDIO_KEY = 'blockly-for-lego.commentary-audio';
+const VOLUME_KEY = 'blockly-for-lego.commentary-volume';
+
+/** How long to wait before deciding an engine that never started is dead. */
+const ENGINE_DEAD_MS = 6000;
+
+export class Speaker {
+  /**
+   * @param {object} options
+   * @param {string} options.regionId  id of the polite live region to fall back to
+   * @param {(text: string) => void} [options.caption]  visible transcript mirror
+   * @param {Storage} [options.storage]  injectable for tests
+   * @param {object} [options.window]    injectable for tests
+   */
+  constructor({ regionId, caption = null, storage, window: win } = {}) {
+    this.window = win ?? (typeof window !== 'undefined' ? window : null);
+    this.storage = storage ?? safeStorage(this.window);
+    this.regionId = regionId;
+    this.caption = caption;
+
+    this.synth = this.window && 'speechSynthesis' in this.window
+      ? this.window.speechSynthesis
+      : null;
+
+    /** Whether the engine has any voice that can actually speak. */
+    this.speechOk = false;
+    this._primed = false;
+    this._regionTimer = null;
+
+    // A speech engine with no voices cannot speak. Probe now, and again when
+    // voices arrive — on most browsers the list is populated asynchronously,
+    // so the first probe legitimately comes back empty.
+    const probe = () => {
+      if (!this.synth) return;
+      try {
+        this.speechOk = this.synth.getVoices().length > 0;
+      } catch {
+        this.speechOk = false;
+      }
+    };
+    probe();
+    this.synth?.addEventListener?.('voiceschanged', probe);
+
+    // Default on: speech is the primary channel here, and a student who wants
+    // the live region instead can say so once and have it remembered.
+    this.audioOn = this.storage.getItem(AUDIO_KEY) !== 'off';
+    this.volume = clampVolume(Number(this.storage.getItem(VOLUME_KEY) ?? 1));
+
+    // iOS unlocks the speech engine only inside a user gesture, and the first
+    // gesture here is usually pressing Run — by which time the robot is
+    // already moving. Prime on whatever gesture comes first.
+    const prime = () => this.prime();
+    this.window?.document?.addEventListener?.('pointerdown', prime, { once: true, capture: true });
+    this.window?.document?.addEventListener?.('keydown', prime, { once: true, capture: true });
+  }
+
+  /** Wake the engine with a silent utterance, inside a user gesture. */
+  prime() {
+    if (this._primed || !this.synth) return;
+    this._primed = true;
+    try {
+      const utterance = new this.window.SpeechSynthesisUtterance(' ');
+      utterance.volume = 0;
+      this.synth.speak(utterance);
+    } catch {
+      // The engine refused. The live-region path still works, which is the
+      // whole reason it exists.
+    }
+  }
+
+  /** True while the engine is actually mid-sentence. */
+  get speaking() {
+    return Boolean(this.synth?.speaking);
+  }
+
+  /** True when speech is the channel an announcement would take right now. */
+  get willSpeak() {
+    return Boolean(this.audioOn && this.volume > 0 && this.synth && this.speechOk);
+  }
+
+  setAudio(on) {
+    this.audioOn = Boolean(on);
+    this.storage.setItem(AUDIO_KEY, this.audioOn ? 'on' : 'off');
+    // Never leave half a sentence playing after the switch: the student turned
+    // it off because they wanted quiet now, not quiet after this sentence.
+    if (!this.audioOn) this.stop();
+  }
+
+  setVolume(value) {
+    const wasSpeaking = this.willSpeak;
+    this.volume = clampVolume(value);
+    this.storage.setItem(VOLUME_KEY, String(this.volume));
+    // A change only takes effect on the next utterance — `volume` is a
+    // property of an utterance, not of the engine — so cut the current one
+    // short rather than letting it play on at the old level.
+    if (wasSpeaking && this.synth) this.stop();
+  }
+
+  /**
+   * Say something. The latest announcement always wins.
+   *
+   * @param {string} text
+   * @param {object} [options]
+   * @param {boolean} [options.caption=true]  mirror to the visible transcript
+   * @param {() => void} [options.onDone]     fires when it has finished, or
+   *   when it was interrupted by a newer one, or when the engine turned out
+   *   not to work. It must always fire eventually: callers wait on it.
+   */
+  announce(text, { caption = true, onDone } = {}) {
+    if (!text) {
+      onDone?.();
+      return;
+    }
+    if (caption) this.caption?.(text);
+
+    let settled = false;
+    const finish = onDone
+      ? () => {
+        if (settled) return;
+        settled = true;
+        onDone();
+      }
+      : null;
+
+    if (this.willSpeak) {
+      this.synth.cancel();
+      const utterance = new this.window.SpeechSynthesisUtterance(text);
+      utterance.volume = this.volume;
+      if (finish) this._watchForEnd(utterance, finish);
+      this.synth.speak(utterance);
+      return;
+    }
+
+    this._toRegion(text);
+    // A screen reader gives no end signal at all, so this is an estimate of
+    // reading time and nothing more.
+    if (finish) this.window?.setTimeout(finish, Math.min(12000, 900 + text.length * 55));
+  }
+
+  /**
+   * Detect the end of an utterance.
+   *
+   * `onend` is unreliable across engines — it can fire late, early, or not at
+   * all after a cancel — so the engine's own `speaking` flag is polled: it
+   * must have been *seen* speaking, and then have stopped. Being interrupted
+   * by a newer announcement satisfies that too, which is correct; that turn is
+   * over either way.
+   */
+  _watchForEnd(utterance, finish) {
+    let sawSpeaking = false;
+    let waited = 0;
+
+    const poll = this.window.setInterval(() => {
+      waited += 250;
+      if (this.synth.speaking) sawSpeaking = true;
+
+      const finished = sawSpeaking && !this.synth.speaking;
+      const neverStarted = !sawSpeaking && waited >= ENGINE_DEAD_MS;
+      const runaway = waited >= 180000; // a rare engine bug: stuck speaking
+
+      if (finished || neverStarted || runaway) {
+        this.window.clearInterval(poll);
+        finish();
+      }
+    }, 250);
+
+    utterance.onend = () => {
+      if (sawSpeaking) {
+        this.window.clearInterval(poll);
+        finish();
+      }
+    };
+    utterance.onerror = () => {
+      this.window.clearInterval(poll);
+      finish();
+    };
+  }
+
+  /** Write to the polite live region, latest-wins. */
+  _toRegion(text) {
+    const region = this.window?.document?.getElementById(this.regionId);
+    if (!region) return;
+
+    // Clear, then set on a timer. Two reasons: setting the same text twice in
+    // a row is a no-op to a screen reader, so an unchanged message would never
+    // be re-announced; and a pending write is replaced rather than queued, so
+    // the region holds the latest text instead of a backlog.
+    if (this._regionTimer) this.window.clearTimeout(this._regionTimer);
+    region.textContent = '';
+    this._regionTimer = this.window.setTimeout(() => {
+      this._regionTimer = null;
+      region.textContent = text;
+    }, 60);
+  }
+
+  /** Stop immediately. */
+  stop() {
+    try {
+      this.synth?.cancel();
+    } catch {
+      // Some engines throw on cancel when nothing is speaking.
+    }
+  }
+}
+
+function clampVolume(value) {
+  if (!Number.isFinite(value)) return 1;
+  return Math.min(1, Math.max(0, value));
+}
+
+/**
+ * localStorage, or something that looks enough like it.
+ *
+ * Private browsing and locked-down school machines both throw on access rather
+ * than returning null, and a student losing the commentary because their
+ * preference could not be saved would be an absurd failure.
+ */
+function safeStorage(win) {
+  try {
+    const storage = win?.localStorage;
+    storage?.getItem(AUDIO_KEY);
+    if (storage) return storage;
+  } catch {
+    // fall through
+  }
+  const memory = new Map();
+  return {
+    getItem: (key) => (memory.has(key) ? memory.get(key) : null),
+    setItem: (key, value) => memory.set(key, String(value)),
+  };
+}

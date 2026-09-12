@@ -88,12 +88,23 @@ class EventLog:
 # --------------------------------------------------------------------------
 
 def say_distance(mm: float) -> str:
-    """Render a distance the way a person would say it, plural agreement included."""
+    """Render a distance the way a person would say it, plural agreement included.
+
+    Two significant figures, never more. "One point oh four metres" takes
+    noticeably longer to hear than "one metre" and tells a student nothing
+    they can act on -- and every extra syllable in a spoken narration is time
+    the robot spends moving somewhere else.
+    """
     if abs(mm) >= 1000:
-        return _with_unit(f"{mm / 1000:.2f}", "metre")
+        return _with_unit(_two_figures(mm / 1000), "metre")
     if abs(mm) >= 10:
-        return _with_unit(f"{mm / 10:.1f}", "centimetre")
+        return _with_unit(_two_figures(mm / 10), "centimetre")
     return _with_unit(f"{mm:.0f}", "millimetre")
+
+
+def _two_figures(value: float) -> str:
+    """Whole numbers from ten up, one decimal place below."""
+    return f"{value:.0f}" if abs(value) >= 10 else f"{value:.1f}"
 
 
 def _with_unit(number: str, unit: str) -> str:
@@ -107,7 +118,11 @@ def say_angle(degrees: float) -> str:
 
 
 def say_direction(degrees: float) -> str:
-    """Turn a heading into a compass-free description a student can act on."""
+    """Turn a heading into a compass point.
+
+    Meaningful only because the mat has a north arrow printed on it. On a bare
+    mat "facing east" names nothing a student can check.
+    """
     heading = degrees % 360
     points = [
         (0, "east"), (45, "north-east"), (90, "north"), (135, "north-west"),

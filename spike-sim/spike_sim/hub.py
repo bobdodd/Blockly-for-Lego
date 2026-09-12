@@ -283,6 +283,7 @@ class HubSimulator:
             ev.PROGRAM,
             f"The program in slot {slot} started running.",
             slot=slot,
+            phase="started",
         )
         self._emit(wire.program_flow_notification(stop=False))
         self._program_task = asyncio.create_task(self._execute(source.decode("utf8")))
@@ -319,7 +320,7 @@ class HubSimulator:
             if pending:
                 await asyncio.gather(*pending)
         except asyncio.CancelledError:
-            self.log.emit(ev.PROGRAM, "The program was stopped.")
+            self.log.emit(ev.PROGRAM, "The program was stopped.", phase="stopped")
             outcome = "cancelled"
             raise
         except NotImplementedError as error:
@@ -345,9 +346,13 @@ class HubSimulator:
             self.robot.stop_all_motors()
             self._running_slot = None
             if outcome == "finished":
-                self.log.emit(ev.PROGRAM, "The program finished.")
+                self.log.emit(ev.PROGRAM, "The program finished.", phase="finished")
             elif outcome == "error":
-                self.log.emit(ev.PROGRAM, "The program stopped early because of that error.")
+                self.log.emit(
+                    ev.PROGRAM,
+                    "The program stopped early because of that error.",
+                    phase="error",
+                )
             self._emit(wire.program_flow_notification(stop=True))
 
     def _program_print(self, *args, sep=" ", end="\n", **_kwargs) -> None:

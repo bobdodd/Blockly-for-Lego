@@ -12,8 +12,11 @@
  * class has both in front of them and the two stay tied together.
  */
 
+import { Commentary } from './commentary.js';
+import { mountCommentaryControls } from './commentary-controls.js';
 import { SimulatorTransport } from '../transport/websocket.js';
 import { RobotView } from './robot-view.js';
+import { Speaker } from './speaker.js';
 import robotDescription from './driving-base.json' with { type: 'json' };
 
 const element = (id) => document.getElementById(id);
@@ -26,6 +29,11 @@ const ui = {
   follow: element('follow-robot'),
   reset: element('reset-view'),
   pose: element('pose'),
+  commentaryOn: element('commentary-on'),
+  commentaryVolume: element('commentary-volume'),
+  commentaryVolumeValue: element('commentary-volume-value'),
+  describeScene: element('describe-scene'),
+  commentaryTranscript: element('commentary-transcript'),
 };
 
 const view = new RobotView(ui.canvas, robotDescription, {
@@ -33,6 +41,27 @@ const view = new RobotView(ui.canvas, robotDescription, {
   onPose: (text) => { ui.pose.textContent = text; },
   onFocus: (label) => { ui.focusLabel.textContent = label ? `Showing: ${label}` : ''; },
 });
+
+// The spoken description of the 3D view. The canvas is the one part of this
+// page a screen reader cannot read at all, so this is not an enhancement of
+// the view — for a blind student it *is* the view.
+const speaker = new Speaker({ regionId: 'commentary-region' });
+const commentary = new Commentary({ view, speaker });
+
+speaker.caption = mountCommentaryControls({
+  toggle: ui.commentaryOn,
+  volume: ui.commentaryVolume,
+  volumeValue: ui.commentaryVolumeValue,
+  describe: ui.describeScene,
+  transcript: ui.commentaryTranscript,
+}, { speaker, commentary });
+
+// This page watches a run it did not start, so the brief is triggered by the
+// simulator's own "started" event rather than by a Run button. There is
+// nothing to hold back — the program is already going — so the description is
+// spoken alongside the first beats rather than before them.
+const startedElsewhere = (payload) => payload?.type === 'event'
+  && payload.kind === 'program' && payload.data?.phase === 'started';
 
 const MAX_NARRATION = 120;
 
@@ -57,11 +86,16 @@ async function connect() {
 
   transport.onNarration = (payload) => {
     view.handleMessage(payload);
+    if (startedElsewhere(payload)) commentary.beginRun();
+    commentary.handleMessage(payload);
     if (payload.type === 'event') addNarration(payload);
   };
   transport.onClose = () => {
     ui.status.textContent = 'The simulator disconnected. Start it again and reload this page.';
     view.clear();
+    // A run cut off by the socket closing never gets its "finished" event.
+    commentary.endRun({ stopped: true });
+    commentary.stop();
   };
 
   ui.status.textContent = `Connecting to the simulator at ${base}…`;
@@ -79,4 +113,5 @@ ui.follow.addEventListener('change', (event) => { view.follow = event.target.che
 ui.reset.addEventListener('click', () => view.resetView());
 
 view.start();
+commentary.start();
 connect();

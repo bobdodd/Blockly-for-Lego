@@ -79,6 +79,83 @@ A few rules specific to this codebase:
   least as visible. A keyboard user who cannot see where focus is cannot use
   the editor at all.
 
+- **Describe the scene, never the picture.** Anything that says what the 3D
+  view shows takes its facts from the telemetry and the mat, not from the
+  rendered canvas. The exact numbers are already known twenty times a second;
+  reading them back off pixels would mean estimating values we never lost,
+  and would let the description drift from what the simulator actually did.
+  `src/viewer/scene-description.js` is pure functions over plain data for
+  exactly this reason — no three.js, no DOM, all of it testable.
+
+- **Prefer cancellable speech to a live region for anything that changes
+  fast.** A polite live region queues: by the time a queued sentence is read,
+  the robot has moved and the sentence is wrong. `speechSynthesis` can be
+  cancelled, so the latest announcement replaces the last. Keep the live
+  region as the fallback — some browsers ship a speech engine with no voices,
+  which reports success and makes no sound, so check for an actual voice
+  rather than for the engine. See `src/viewer/speaker.js`.
+
+- **Anything spoken is also written down.** Every announcement is mirrored to
+  a visible transcript. Deaf and hard-of-hearing students need it, a noisy
+  club room needs it, and it is the only way a coach can quote what a student
+  was told.
+
+- **Describe from the mat, not from the robot.** The robot is "it", not
+  "you"; positions are given from the mat's nearer edges; directions are
+  compass points. Speaking as though the listener were the robot puts a
+  student inside a machine they are trying to look at, and it breaks down the
+  moment they talk to the classmate beside them, who is outside it — two
+  students discussing one robot need one frame, and it has to be the mat. The
+  compass only works because the mat has a north arrow printed on it; if you
+  build a mat without one, do not write narration that leans on compass
+  directions. Robot-relative wording is right in exactly two places: what the
+  distance sensor sees, and beats that read a student's own blocks back to
+  them.
+
+- **Announce a behaviour as it starts, not when it finishes.** A student
+  listening needs to know what is happening now. Narrating a move on
+  completion is several seconds of silence followed by news about the past,
+  which is the failure this narration exists to prevent. The intent is always
+  known up front — the call said how far to go — so say that, and let the
+  events for bumping, leaving the line and the end-of-run summary report
+  anything that did not go to plan.
+
+- **Match the register to the moment.** A student who *asks* what is going on
+  has stopped to listen, and should get the full description. A student
+  watching their program run has not, and needs two or three words a beat —
+  the robot does not pause while a sentence is read, so a long one ends after
+  the thing it describes. Distances anywhere spoken get two significant
+  figures: "20 centimetres", never "19.6 centimetres", which is longer to hear
+  and says nothing more.
+
+- **Narrate from `data`, never from `message`.** An event's prose is written
+  to be read and will be rewritten whenever a better sentence turns up; its
+  `data` is the contract. If something a client needs is not in `data`, add it
+  there rather than parsing the English — that is why `phase`, `reversing` and
+  `bumped` exist.
+
+- **Do not say what you have just said.** Composed descriptions go through
+  `RecentlySaid`, which drops any sentence repeated unchanged inside about
+  twenty-five seconds. Keyed on the sentence itself, deliberately: "has
+  anything changed" and "would I be repeating myself" are the same question,
+  so one rule covers pressing Run after connecting, pressing Run after a
+  summary, and every case nobody has thought of yet. If you add a new
+  announcement, give it facts with a `kind` and let it through the same
+  filter, rather than writing a fresh special case. Two things opt out: the
+  beats during a run, because the same beat twice means it happened twice; and
+  anything the student explicitly asked for.
+
+- **Watch the antecedents when facts can be dropped.** Most of these sentences
+  call the robot "it", which only works because the sentence before named it.
+  When filtering removes that one, whatever ends up first has to say what it
+  is talking about — `joinFacts` does this, so compose through it.
+
+- **Stale is worse than missing.** When a description cannot be delivered
+  promptly, drop it rather than queue it — and say so if the count matters.
+  This is the same rule at three levels: the simulator's rate-limited
+  narration, the speaker's cancel-then-speak, and the commentary dropping
+  routine progress reports while something is still being said.
+
 ## Dependencies
 
 The simulator has none, deliberately — a robotics club should be able to run it

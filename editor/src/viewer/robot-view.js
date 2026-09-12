@@ -33,6 +33,7 @@ export class RobotView {
   #running = false;
   #loading = null;
   #frame = null;
+  #world = null;
 
   /**
    * @param {HTMLCanvasElement} canvas
@@ -99,6 +100,32 @@ export class RobotView {
   }
 
   /**
+   * The scene as plain data, for describing it out loud.
+   *
+   * The description comes from here rather than from the picture because the
+   * picture is the lossy copy: the mat, the pose and the camera are all known
+   * exactly, and reading them back off the rendered pixels would mean
+   * estimating numbers we never lost.
+   *
+   * The camera is included so a blind student and the classmate who just
+   * swung the view round are talking about the same thing.
+   *
+   * @returns {{world: object, robot: object, camera: object}|null}
+   */
+  scene() {
+    const robot = this.#telemetry.latest;
+    if (!this.#world || !robot) return null;
+
+    const { x, y, z } = this.#view.camera.position;
+    const target = this.#view.controls.target;
+    return {
+      world: this.#world,
+      robot,
+      camera: { position: [x, y, z], target: [target.x, target.y, target.z] },
+    };
+  }
+
+  /**
    * Feed one simulator message: `hello`, `snapshot` or `event`.
    * Anything else is ignored, so callers can pass everything through.
    */
@@ -109,6 +136,7 @@ export class RobotView {
       // the pose goes in first, so the camera has somewhere to point before
       // it decides how to frame the scene
       this.#telemetry.push(payload.robot, performance.now());
+      this.#world = payload.world;
       await this.#buildWorld(payload.world);
       return;
     }

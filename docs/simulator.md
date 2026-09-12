@@ -284,7 +284,8 @@ python3 -m spike_sim --world examples/practice-mat.json
   "background": 10,
   "walls": true,
   "lines": [
-    {"points": [[300, 300], [900, 300], [1400, 600]], "width_mm": 20, "color": 0}
+    {"points": [[300, 300], [900, 300], [1400, 600]], "width_mm": 20, "color": 0},
+    {"points": [[260, 840], [260, 1040]], "width_mm": 16, "color": 0, "followable": false}
   ],
   "patches": [
     {"x": 1850, "y": 520, "width": 160, "height": 160, "color": 9}
@@ -301,11 +302,41 @@ python3 -m spike_sim --world examples/practice-mat.json
 | `background` | LEGO colour id of the mat itself; 10 is white |
 | `walls` | whether the mat edge blocks the robot and is visible to the distance sensor |
 | `lines` | polylines with a width; what a line follower follows |
+| `lines[].followable` | `false` marks ink that is *not* a course — the north arrow. Default `true`. |
 | `patches` | rectangles of flat colour, painted over lines |
 | `obstacles` | axis-aligned boxes the robot collides with and can range on |
 
 Colour ids are LEGO's: 0 black, 1 magenta, 2 purple, 3 blue, 4 azure,
 5 turquoise, 6 green, 7 yellow, 8 orange, 9 red, 10 white.
+
+### The north arrow
+
+The default mat has an arrow printed near its north-west corner, pointing
+north. `north_arrow()` in `world.py` builds it, and `default_world()` includes
+it.
+
+It exists so that a compass direction means something. The narration says
+"pointing east" and "20 centimetres north of the line" constantly, and on a
+bare mat those name nothing a student could look at, point at or feel to
+check. With an arrow on the table, they do — and the blind student, the
+sighted student and the coach are all using the same reference.
+
+Three things about how it is built are deliberate:
+
+- **It is made of `LinePath`s**, because that is what it physically is: ink.
+  It needed no new geometry, no new rendering and no new sensing.
+- **The colour sensor reads it**, exactly as it reads any other ink. A
+  marking that a real sensor would see but a simulated one would not is a
+  quiet lie about the surface, and it would surface as a line follower
+  behaving differently on the real mat. It is placed well clear of the course
+  so nothing should ever drive over it — and `test_world.py` checks that.
+- **`followable: false`** keeps it out of everything that reasons about *the
+  line*. Without it, a robot parked on the arrow would be told it was on the
+  line, and `lines[0]` would no longer be the course. Anything selecting the
+  course must filter on this flag rather than taking the first line.
+
+A mat without an arrow still works; the description simply leaves that
+sentence out, and every compass word in it goes back to being unanchored.
 
 ### How sensing works
 
@@ -454,6 +485,65 @@ cannot tell you any of this; it is the simulator's added value.
 ```json
 {"type": "event", "kind": "drive", "time": 1.5, "message": "The robot drove 25 centimetres. …", "data": { … }}
 ```
+
+#### `data` is the part to build on
+
+`message` is written to be **read**: it is a sentence, and it will be improved
+whenever a better sentence is found. A client that decides what to do by
+matching against it breaks the first time that happens. `data` is the stable
+half, and every field a client needs is there.
+
+The ones worth knowing:
+
+| Kind | `data` | Meaning |
+| --- | --- | --- |
+| `program` | `{"phase": "started"}` | A program began. Also `"finished"`, `"stopped"` (by the student) and `"error"`. |
+| `drive` | `{"starting": true, "distance_mm": 250.0, "reversing": false}` | A move is **about to begin**. Also `turn_degrees` for a spin, `curving` for a curve, `seconds` for a timed move. |
+| `drive` | `{"travelled_mm": 250.0, "turned_degrees": 0.0, "reversing": false}` | A move **finished**. |
+| `drive` | `{"left": 200, "right": 500, "steering": -300, "velocity": 500}` | The wheels were **set going**. No distance: nothing has finished yet. |
+| `drive` | `{"bumped": true, "x": 1200.0, "y": 600.0}` | It hit something. |
+| `motor` | `{"port": "A", "degrees": 90}` | One motor finished turning. |
+| `sensor` | `{"port": "C", "color": 0, "reflection": 6, "on_edge": true}` | A sensor reading changed. |
+
+Two of those need care, because both have caught us out:
+
+- **A `drive` event is not always a move.** A line follower sets the wheels
+  going on every correction — dozens a second — and each one is a `drive`
+  event with no `travelled_mm` at all. Only an event that *carries* a distance
+  is a finished move. The editor's commentary once treated the steering
+  corrections as moves and silenced itself for entire runs.
+- **`travelled_mm` is a distance, so it is never negative.** `reversing` says
+  which way the robot actually went along its own nose. Without it, driving
+  backwards narrates exactly like driving forwards — and a student hunting a
+  motor they have mounted backwards is being denied the one fact that would
+  give it away.
+
+#### Moves announce themselves before they happen
+
+Every move emits **two** events: one with `starting: true` as it begins, and
+one describing what happened when it ends.
+
+The starting event is the one a live narration should speak. Narrating a move
+only on completion means several seconds of silence and then news about
+something already finished, which is no use to somebody deciding whether their
+program is doing the right thing. Nothing has to be guessed: the call said how
+far to go, and `wheel_diameter_mm` and `axle_track_mm` turn that into the
+distance or the turn the student will see.
+
+| Field | On |
+| --- | --- |
+| `distance_mm` | a straight or curving move; always positive, with `reversing` for the sign |
+| `turn_degrees` | a spin on the spot; signed, positive is left (counter-clockwise) |
+| `curving` | `"left"` or `"right"` when the move is an arc |
+| `seconds` | a move measured in time rather than rotation |
+
+`turn_degrees` is the angle **the robot** will turn, not the wheel rotation
+the call asked for — that is the number a student can compare against their
+block. `test_robot.py` checks the robot actually keeps that promise.
+
+The finishing event is what to count, not what to say: it carries what really
+happened, which is how the editor's end-of-run summary knows a move was cut
+short.
 
 ### Commands
 

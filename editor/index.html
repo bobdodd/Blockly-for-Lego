@@ -147,6 +147,37 @@
               </button>
             </div>
             <p id="focus-label" class="focus-label" role="status" aria-live="polite"></p>
+
+            <div class="commentary" role="group" aria-labelledby="commentary-heading">
+              <h3 id="commentary-heading" class="commentary-heading">Spoken commentary</h3>
+              <p class="hint">
+                Describes where the robot is and what changes, in the robot's own left
+                and right. Turn the speech off and it goes to your screen reader
+                instead.
+              </p>
+
+              <div class="commentary-row">
+                <label class="commentary-toggle">
+                  <input type="checkbox" id="commentary-on" checked />
+                  Speak the commentary
+                </label>
+
+                <label for="commentary-volume">Volume</label>
+                <input type="range" id="commentary-volume" min="0" max="100" step="10" value="100" />
+                <output id="commentary-volume-value" for="commentary-volume">100%</output>
+
+                <button type="button" id="describe-scene" class="secondary">Describe the scene</button>
+              </div>
+
+              <!--
+                Where the speaker puts the words when speech is off, or when the browser
+                has an engine but no voices. The transcript below is deliberately NOT a
+                live region: two of them saying the same thing is worse than one.
+              -->
+              <p id="commentary-region" class="visually-hidden" role="status" aria-live="polite"></p>
+
+              <ul id="commentary-transcript" class="commentary-transcript" aria-label="What has been said"></ul>
+            </div>
           </div>
 
           <div id="panel-python" role="tabpanel" aria-labelledby="tab-python"

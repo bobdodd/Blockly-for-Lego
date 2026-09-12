@@ -275,3 +275,71 @@ button[aria-disabled="true"] {
   opacity: 0.55;
   cursor: progress;
 }
+
+/* --------------------------------------------------------------------------
+   Spoken commentary
+   --------------------------------------------------------------------------
+   The controls that decide whether a student hears anything, and the visible
+   transcript of what was said.
+
+   The transcript is not a courtesy. A Deaf student, a student in a room full
+   of other people's robots, and a coach checking what their student was told
+   all read the same sentences the speech engine spoke. It is the picture's
+   caption, and it is the only part of the 3D view that can be quoted.
+   -------------------------------------------------------------------------- */
+
+.commentary {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+}
+
+.commentary-heading {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+}
+
+.commentary-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.9rem;
+}
+
+.commentary-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Wide enough to be draggable with a shaky hand, and it still keyboards. */
+#commentary-volume { min-width: 9rem; }
+
+#commentary-volume-value {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 3ch;
+}
+
+.commentary-transcript {
+  margin: 0.6rem 0 0;
+  padding: 0.4rem 0.6rem;
+  max-height: 8rem;
+  overflow-y: auto;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--page);
+  font-size: 0.92rem;
+}
+
+.commentary-transcript:empty { display: none; }
+
+.commentary-entry {
+  padding: 0.15rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.commentary-entry:last-child { border-bottom: 0; }

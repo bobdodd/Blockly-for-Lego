@@ -76,6 +76,14 @@ class LinePath:
     points: list[tuple[float, float]]
     width_mm: float = 20.0
     color: int = BLACK
+    followable: bool = True
+    """Whether this is a line to follow, or just ink on the mat.
+
+    The north arrow is drawn with the same primitive, because it is the same
+    thing physically: ink, which the colour sensor reads exactly as it reads
+    any other ink. But nothing should ever tell a student they are "on the
+    line" when what they are over is the arrow.
+    """
 
     def distance_to(self, x: float, y: float) -> float:
         """Shortest distance from a point to the centreline."""
@@ -135,6 +143,33 @@ class World:
     obstacles: list[Obstacle] = field(default_factory=list)
     walls: bool = True
     """Treat the mat edge as a wall the distance sensor can see."""
+
+    # -- describing it ------------------------------------------------------
+
+    def describe_point(self, x: float, y: float) -> str:
+        """Where a point is, as someone looking down at the mat would say it.
+
+        Measured from the *nearer* edge on each axis, so the numbers stay
+        small and mean something you could check with a ruler. "Two metres
+        across the mat" is a number a student has to hold in their head;
+        "30 centimetres from the east edge" is a place.
+
+        Edges are named by the compass, which is only meaningful because the
+        mat has a north arrow printed on it -- see :func:`north_arrow`.
+        """
+        from . import events as ev  # local: events imports nothing from here
+
+        if x <= self.width_mm / 2:
+            across = f"{ev.say_distance(x)} from the west edge"
+        else:
+            across = f"{ev.say_distance(self.width_mm - x)} from the east edge"
+
+        if y <= self.height_mm / 2:
+            along = f"{ev.say_distance(y)} from the south edge"
+        else:
+            along = f"{ev.say_distance(self.height_mm - y)} from the north edge"
+
+        return f"{across} and {along}"
 
     # -- surface sampling ---------------------------------------------------
 
@@ -263,6 +298,7 @@ class World:
                     points=[tuple(p) for p in line["points"]],
                     width_mm=line.get("width_mm", 20.0),
                     color=line.get("color", BLACK),
+                    followable=line.get("followable", True),
                 )
                 for line in data.get("lines", [])
             ],
@@ -281,7 +317,12 @@ class World:
             "height_mm": self.height_mm,
             "background": self.background,
             "lines": [
-                {"points": [list(p) for p in l.points], "width_mm": l.width_mm, "color": l.color}
+                {
+                    "points": [list(p) for p in l.points],
+                    "width_mm": l.width_mm,
+                    "color": l.color,
+                    "followable": l.followable,
+                }
                 for l in self.lines
             ],
             "patches": [vars(p) for p in self.patches],
@@ -290,10 +331,37 @@ class World:
         }
 
 
+def north_arrow(x: float = 260.0, y: float = 840.0, length: float = 200.0) -> list[LinePath]:
+    """An arrow printed on the mat, pointing north.
+
+    Without it, "the robot is facing east" is a fact about nothing: there is
+    no north on a bare mat, so a compass bearing cannot be checked against
+    anything a student can see or feel. With it, every direction in the
+    narration has something on the table to point at -- and a blind student, a
+    sighted student and a coach are all using the same one.
+
+    Drawn with LinePath because that is what it physically is: ink. The colour
+    sensor reads it like any other ink, which is the honest behaviour. It is
+    marked ``followable=False`` so nothing mistakes it for the line, and it is
+    placed in a corner well clear of the course.
+    """
+    head = length * 0.3
+    return [
+        LinePath(points=[(x, y), (x, y + length)], width_mm=16.0, followable=False),
+        LinePath(
+            points=[(x - head * 0.7, y + length - head), (x, y + length),
+                    (x + head * 0.7, y + length - head)],
+            width_mm=16.0,
+            followable=False,
+        ),
+    ]
+
+
 def default_world() -> World:
     """A practice mat: one long black line with a gentle bend, and a wall to stop at."""
     return World(
         lines=[
+            *north_arrow(),
             LinePath(
                 # Starts inside the green square and finishes inside the red
                 # one, so both ends of the line are visibly attached to

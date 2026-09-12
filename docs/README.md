@@ -66,5 +66,8 @@ than returning a plausible default, so a gap fails in simulation instead of on
 a robot.
 
 **One source of truth.** The wire codec is LEGO's own, vendored unmodified.
-The 3D view has no physics of its own. Nothing gets to disagree with anything
-else about what the robot is doing.
+The 3D view has no physics of its own, and the description of that view is
+built from the same numbers the picture is drawn from rather than from the
+picture. Nothing gets to disagree with anything else about what the robot is
+doing — a sighted student watching the screen and a blind student listening
+have to be looking at the same robot.

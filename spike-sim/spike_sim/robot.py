@@ -291,6 +291,7 @@ class Robot:
                     "The robot bumped into something and stopped moving.",
                     x=round(self.x, 1),
                     y=round(self.y, 1),
+                    bumped=True,
                 )
             # rotation in place is still allowed while pinned against a wall
             self.heading = math.degrees(heading_rad + turn) % 360
@@ -400,9 +401,17 @@ class Robot:
     # -- reporting ----------------------------------------------------------
 
     def describe_position(self) -> str:
+        """Where the robot is, as someone looking down at the mat would say it.
+
+        Third person and mat-relative on purpose. Addressing the student as
+        though they *were* the robot ("you are on the line") puts them inside
+        a machine they are trying to look at, and it stops making sense the
+        moment they talk to the classmate beside them about what is on the
+        screen. Both of them are looking down at the same mat.
+        """
         return (
-            f"The robot is {ev.say_distance(self.x)} across and "
-            f"{ev.say_distance(self.y)} up the mat, facing {ev.say_direction(self.heading)}."
+            f"The robot is {self.world.describe_point(self.x, self.y)}, "
+            f"pointing {ev.say_direction(self.heading)}."
         )
 
     def snapshot(self) -> dict:

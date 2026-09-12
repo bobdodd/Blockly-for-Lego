@@ -20,6 +20,10 @@
 import 'blockly/blocks';
 
 import { Announcer, describeSensors } from './announcer.js';
+import { Commentary } from './viewer/commentary.js';
+import { mountCommentaryControls } from './viewer/commentary-controls.js';
+import { SceneSource } from './viewer/scene-source.js';
+import { Speaker } from './viewer/speaker.js';
 import { createTabs } from './tabs.js';
 import { matchShortcut, shortcutLabel } from './shortcuts.js';
 import { builtInSimulatorNote, isLocalOrigin } from './environment.js';
@@ -64,6 +68,11 @@ const ui = {
   followRobot: element('follow-robot'),
   resetView: element('reset-view'),
   popOut: element('pop-out'),
+  commentaryOn: element('commentary-on'),
+  commentaryVolume: element('commentary-volume'),
+  commentaryVolumeValue: element('commentary-volume-value'),
+  describeScene: element('describe-scene'),
+  commentaryTranscript: element('commentary-transcript'),
   programName: element('program-name'),
   saveState: element('save-state'),
   newProgram: element('new-program'),
@@ -81,6 +90,11 @@ let client = null;
 let latestTelemetry = [];
 let robotView = null;
 let robotViewLoading = null;
+
+/** Says the 3D view out loud. See src/viewer/commentary.js. */
+const speaker = new Speaker({ regionId: 'commentary-region' });
+const sceneSource = new SceneSource();
+let commentary = null;
 
 /**
  * The simulator describes the mat once, in its `hello`, right after
@@ -271,12 +285,22 @@ async function connect(transport, description, { quiet = false } = {}) {
       // the robot view draws from the same messages; it opens no socket of
       // its own, so the picture can only ever show what the hub reported
       robotView?.handleMessage(payload);
+      // and the commentary speaks from them, whether or not the 3D view has
+      // ever been opened — a student who never looks at the picture still
+      // needs to hear what the robot did
+      sceneSource.handleMessage(payload);
+      commentary?.handleMessage(payload);
     };
   }
   transport.onClose = () => {
     announcer.status(`Disconnected from ${description}.`);
     setConnected(false);
     lastWorldMessage = null;
+    // A run interrupted by the socket closing never gets its "finished"
+    // event, so without this the commentary waits for a debrief that is
+    // never coming and stays silent through the next run.
+    commentary?.endRun({ stopped: true });
+    sceneSource.clear();
     robotView?.clear();
   };
 
@@ -385,10 +409,17 @@ async function run() {
   }
   for (const warning of warnings) announcer.narrate(warning, 'warning');
 
+  // Describe the starting state *before* the program goes, and wait for it to
+  // finish. Said over a robot that is already driving, it describes somewhere
+  // the robot has left and talks over the first thing that happens. This
+  // resolves at once when nothing is going to be spoken.
+  await commentary?.beginRun();
+
   announcer.status('Sending your program to the robot.');
   try {
     await client.run(code);
   } catch (error) {
+    commentary?.endRun({ error: error.message });
     announcer.status(error.message);
   }
 }
@@ -435,6 +466,28 @@ function ensureRobotView() {
 }
 
 function wireRobotView() {
+  // The commentary asks the view for the scene rather than being handed it.
+  // The 3D view is a lazy import, so being handed one would mean these
+  // controls could not be wired until three.js had finished downloading —
+  // leaving the audio controls visible in the panel but dead, which is worse
+  // than not having them. This way they work the moment the tab opens.
+  commentary = new Commentary({
+    // The 3D view when it exists, because it can also say where the camera is
+    // looking; the plain scene otherwise. The commentary must not be the one
+    // feature you have to download three.js to hear.
+    view: { scene: () => robotView?.scene() ?? sceneSource.scene() },
+    speaker,
+  });
+  commentary.start();
+
+  speaker.caption = mountCommentaryControls({
+    toggle: ui.commentaryOn,
+    volume: ui.commentaryVolume,
+    volumeValue: ui.commentaryVolumeValue,
+    describe: ui.describeScene,
+    transcript: ui.commentaryTranscript,
+  }, { speaker, commentary });
+
   createTabs(ui.tablist, {
     initial: 'tab-python',
     onChange: async (id) => {
@@ -442,7 +495,9 @@ function wireRobotView() {
         const view = await ensureRobotView();
         view.start();
       } else {
-        // a hidden canvas should not be costing anyone a frame budget
+        // a hidden canvas should not be costing anyone a frame budget. The
+        // commentary keeps running: it is audio, and which tab is showing has
+        // nothing to do with whether a student needs to hear the robot.
         robotView?.stop();
       }
     },
