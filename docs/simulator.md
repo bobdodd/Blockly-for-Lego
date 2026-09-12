@@ -172,6 +172,62 @@ them fails here rather than on hardware.
 
 ## The robot
 
+### The catalogue
+
+Five builds of the same chassis — same hub, same motors, same nine pieces.
+Only the two measurements that turn motor degrees into millimetres differ.
+
+```bash
+python3 -m spike_sim --robots               # list them
+python3 -m spike_sim --robot small-wheels   # serve one
+```
+
+| Build | Wheels | Apart | For |
+| --- | --- | --- | --- |
+| `narrow` | 56mm | 144mm | Turns in the smallest circle. The tightest track that can be built. |
+| `standard` | 56mm | 160mm | The one the club builds. Everything here was written against it. |
+| `wide` | 56mm | 192mm | Steadier in a straight line, wider to turn. |
+| `small-wheels` | 43.2mm | 160mm | Slower, finer control over distance. |
+| `big-wheels` | 62.4mm | 160mm | Faster, coarser control over distance. |
+
+That is the whole catalogue on purpose. Those two numbers are the ones a
+student's program is doing arithmetic with, so changing them changes what
+their blocks mean. The same program — identical blocks, identical motor
+degrees — measured on each:
+
+```
+narrow        drove  175.9mm forward, then turned  -70.0 degrees
+standard      drove  175.9mm forward, then turned  -63.0 degrees
+wide          drove  175.9mm forward, then turned  -52.5 degrees
+small-wheels  drove  135.7mm forward, then turned  -48.6 degrees
+big-wheels    drove  196.0mm forward, then turned  -70.2 degrees
+```
+
+A club with one robot cannot show that at all. A simulator can show it for
+nothing, and `test_robots.py` measures it rather than asserting it.
+
+**Nothing under 144mm is offered, because nothing under 144mm can be built.**
+Two large angular motors facing outwards need 60mm of body each plus a 12mm
+shaft. A 112mm track was described here once and was physically impossible —
+exactly the sort of thing a simulator will pretend about for months.
+
+#### The numbers reach three places
+
+The simulator's physics, the 3D model the view draws, and the constants baked
+into the Python a student's blocks generate. They agreed by hand when there
+was one robot; a catalogue makes that a bug waiting to happen, so all three
+read from `spike_sim/robots/*.json` and a test checks it.
+
+The 3D view follows the **simulator**, not the editor's menu: the two
+measurements travel in the `hello` payload, so a simulator started elsewhere
+with `--robot wide` is still drawn with its wheels in the right place. Widening
+a base moves the motors outward rather than stretching them, because that is
+what adding beams does. A smaller wheel is drawn as a scaled version of the
+large one rather than the narrower part it really is — a stand-in, and the
+half it gets right is the diameter, which is the half that decides how far a
+rotation goes.
+
+
 A two-motor differential drive. Default port layout:
 
 | Port | Device | Detail |

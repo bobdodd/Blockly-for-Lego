@@ -30,6 +30,25 @@ export const robotConfig = {
   rightPort: 'B',
 };
 
+/**
+ * Build programs for a different robot from now on.
+ *
+ * The student's own program does this arithmetic, in constants it can read on
+ * screen. If they disagree with what the simulator is running, the robot does
+ * something other than what the program plainly says it will — and the
+ * program is right there, saying otherwise.
+ *
+ * @param {{wheelDiameterMm?: number, axleTrackMm?: number}} chassis
+ */
+export function useRobot(chassis = {}) {
+  if (Number(chassis.wheelDiameterMm) > 0) {
+    robotConfig.wheelDiameterMm = Number(chassis.wheelDiameterMm);
+  }
+  if (Number(chassis.axleTrackMm) > 0) {
+    robotConfig.axleTrackMm = Number(chassis.axleTrackMm);
+  }
+}
+
 /** Per-generation state, reset by {@link generateProgram}. */
 let usesSpeedSetting = false;
 let hubImports = new Set();

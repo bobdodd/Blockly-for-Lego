@@ -34,13 +34,13 @@ import base64, sys
 sys.path.insert(0, "/simulator")
 
 from spike_sim.browser import BrowserHub
-from spike_sim import mats
+from spike_sim import mats, robots
 
 def _catalogue():
     import json
-    return json.dumps(mats.catalogue())
+    return json.dumps({"mats": mats.catalogue(), "robots": robots.catalogue()})
 
-def _make(on_frame_js, on_message_js, speed, snapshot_interval, mat):
+def _make(on_frame_js, on_message_js, speed, snapshot_interval, mat, robot):
     def on_frame(frame):
         # base64 rather than a buffer: see the note in simulator-worker.js
         on_frame_js(base64.b64encode(frame).decode("ascii"))
@@ -51,6 +51,7 @@ def _make(on_frame_js, on_message_js, speed, snapshot_interval, mat):
         speed=speed,
         snapshot_interval=snapshot_interval,
         mat=mat or None,
+        robot=robot or None,
     )
 
     def receive_b64(payload):
@@ -70,7 +71,7 @@ let receive = null;
  * from scratch. Python is the expensive part and the mat is the cheap one, so
  * the mat is what gets rebuilt.
  */
-let settings = { speed: 1, snapshotInterval: 0.05 };
+let settings = { speed: 1, snapshotInterval: 0.05, robot: '' };
 
 const post = (message) => self.postMessage(message);
 const report = (stage, detail) => post({ type: 'progress', stage, detail });
@@ -78,7 +79,7 @@ const report = (stage, detail) => post({ type: 'progress', stage, detail });
 // --------------------------------------------------------------------------
 
 async function start({
-  indexURL = DEFAULT_INDEX_URL, speed = 1, snapshotInterval = 0.05, mat = '',
+  indexURL = DEFAULT_INDEX_URL, speed = 1, snapshotInterval = 0.05, mat = '', robot = '',
 }) {
   report('loading', 'Downloading Python. This happens once.');
 
@@ -95,8 +96,8 @@ async function start({
   report('starting', 'Starting the robot.');
   await pyodide.runPythonAsync(BOOTSTRAP);
 
-  settings = { speed, snapshotInterval };
-  buildHub(mat);
+  settings = { speed, snapshotInterval, robot };
+  buildHub(mat, robot);
 
   // The catalogue travels with the simulator rather than being duplicated in
   // the editor: one list, and it cannot drift from the mats that exist.
@@ -109,7 +110,7 @@ async function start({
 }
 
 /** Build a hub on the mat named, replacing any there is. */
-function buildHub(mat) {
+function buildHub(mat, robot = settings.robot) {
   const make = pyodide.globals.get('_make');
   const created = make(
     (payload) => post({ type: 'frame', data: payload }),
@@ -117,6 +118,7 @@ function buildHub(mat) {
     settings.speed,
     settings.snapshotInterval,
     mat ?? '',
+    robot ?? '',
   );
 
   hub = created.get(0);
@@ -138,6 +140,22 @@ async function changeMat(name) {
   buildHub(name);
   await hub.start();
   post({ type: 'mat-ready', mat: name });
+}
+
+/**
+ * Build the robot differently, on the mat already laid out.
+ *
+ * Same reasoning as a mat change: Python is the expensive part, and a
+ * different wheel size is two numbers.
+ */
+async function changeRobot(name, mat) {
+  if (!pyodide) throw new Error('The simulator is not running yet.');
+
+  settings = { ...settings, robot: name };
+  await stop();
+  buildHub(mat, name);
+  await hub.start();
+  post({ type: 'robot-ready', robot: name });
 }
 
 /** Unpack the bundled package into Pyodide's filesystem. */
@@ -189,6 +207,10 @@ self.onmessage = async (event) => {
 
       case 'mat':
         await changeMat(payload.name);
+        break;
+
+      case 'robot':
+        await changeRobot(payload.name, payload.mat);
         break;
 
       case 'stop':

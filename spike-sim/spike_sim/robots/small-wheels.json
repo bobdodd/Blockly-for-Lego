@@ -1,0 +1,9 @@
+{
+  "name": "small-wheels",
+  "title": "Small wheels",
+  "teaches": "43mm wheels: slower, and finer control over how far it goes.",
+  "order": 4,
+  "wheelDiameterMm": 43.2,
+  "axleTrackMm": 160.0,
+  "note": "The smaller wheel in the SPIKE Prime set. A wheel rotation covers 13.6cm instead of 17.6cm, so the same program drives shorter."
+}

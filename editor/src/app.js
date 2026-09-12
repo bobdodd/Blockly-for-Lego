@@ -23,6 +23,7 @@ import { Announcer, describeSensors } from './announcer.js';
 import { Commentary } from './viewer/commentary.js';
 import { mountCommentaryControls } from './viewer/commentary-controls.js';
 import { MATS } from './generated/mat-catalogue.js';
+import { ROBOTS } from './generated/robot-catalogue.js';
 import { SceneSource } from './viewer/scene-source.js';
 import { Speaker } from './viewer/speaker.js';
 import { createTabs } from './tabs.js';
@@ -40,7 +41,7 @@ import {
 import { Blockly } from './blockly.js';
 import { defineSpikeBlocks } from './blocks/definitions.js';
 import { STARTER_PROGRAM, toolbox } from './blocks/toolbox.js';
-import { generateProgram, robotConfig } from './generators/python.js';
+import { generateProgram, robotConfig, useRobot } from './generators/python.js';
 import {
   BluetoothTransport,
   explainFailure as explainBluetoothFailure,
@@ -56,6 +57,7 @@ const element = (id) => document.getElementById(id);
 const ui = {
   connectSimulator: element('connect-simulator'),
   mat: element('mat'),
+  robot: element('robot'),
   connectHub: element('connect-hub'),
   run: element('run'),
   stop: element('stop'),
@@ -132,6 +134,8 @@ let builtInTransport = null;
 
 const MAT_KEY = 'blockly-for-lego.mat';
 const DEFAULT_MAT = 'practice';
+const ROBOT_KEY = 'blockly-for-lego.robot';
+const DEFAULT_ROBOT = 'standard';
 
 /**
  * Which mat the built-in simulator should lay out.
@@ -140,6 +144,17 @@ const DEFAULT_MAT = 'practice';
  * through it over several evenings, and starting each one back on the
  * practice mat would undo that.
  */
+/** Which build of the chassis the simulator should make. */
+function chosenRobot() {
+  try {
+    const saved = localStorage.getItem(ROBOT_KEY);
+    if (saved && ROBOTS.some((entry) => entry.name === saved)) return saved;
+  } catch {
+    // private browsing, or a locked-down machine
+  }
+  return DEFAULT_ROBOT;
+}
+
 /** A mat's readable name, for saying out loud. */
 function matTitle(name) {
   return MATS.find((entry) => entry.name === name)?.title ?? name;
@@ -452,7 +467,10 @@ async function startSimulator() {
     return;
   }
 
-  const transport = new InBrowserSimulatorTransport({ mat: chosenMat() });
+  const transport = new InBrowserSimulatorTransport({
+    mat: chosenMat(),
+    robot: chosenRobot(),
+  });
   simulatorIsBuiltIn = true;
   builtInTransport = transport;
   // The first connection downloads about five megabytes of Python. Saying so
@@ -518,6 +536,67 @@ function wireMatChoice() {
       announcer.status(`The mat would not change: ${error.message}`);
     }
   });
+}
+
+/**
+ * Fill in the robot menu and act on a change.
+ *
+ * The two measurements reach three places — the simulator's physics, the 3D
+ * view, and the constants baked into the student's own program — so all three
+ * are told. The view is told by the simulator rather than from here, in its
+ * hello, so it draws whatever is actually running.
+ */
+function wireRobotChoice() {
+  if (!ui.robot) return;
+
+  for (const entry of ROBOTS) {
+    const option = document.createElement('option');
+    option.value = entry.name;
+    option.textContent = `${entry.title} — ${entry.wheelDiameterMm}mm wheels, `
+      + `${entry.axleTrackMm}mm apart`;
+    option.title = entry.teaches;
+    ui.robot.append(option);
+  }
+  ui.robot.value = chosenRobot();
+  applyRobot(chosenRobot());
+
+  ui.robot.addEventListener('change', async () => {
+    const entry = ROBOTS.find((robot) => robot.name === ui.robot.value) ?? ROBOTS[0];
+    try {
+      localStorage.setItem(ROBOT_KEY, entry.name);
+    } catch {
+      // the choice still applies to this session
+    }
+    applyRobot(entry.name);
+
+    if (connectionKind !== 'simulator' || !simulatorIsBuiltIn) {
+      announcer.status(
+        `${entry.title}. ${entry.teaches} `
+          + (connectionKind === 'simulator'
+            ? `Restart the simulator with --robot ${entry.name} to use it.`
+            : 'Connect to the simulator to use it.'),
+      );
+      return;
+    }
+
+    announcer.status(`Building the ${entry.title.toLowerCase()}. ${entry.teaches}`);
+    try {
+      await builtInTransport.setRobot(entry.name);
+    } catch (error) {
+      announcer.status(`The robot would not change: ${error.message}`);
+    }
+  });
+}
+
+/** Tell the code generator which robot its programs are for. */
+function applyRobot(name) {
+  const entry = ROBOTS.find((robot) => robot.name === name);
+  if (entry) useRobot(entry);
+  // The constants are baked into the generated program, so the Python on
+  // screen is out of date the moment the robot changes. Guarded because this
+  // also runs while the page is still wiring itself up, before there are any
+  // blocks to generate from.
+  if (workspace) refreshPython();
 }
 
 async function disconnect() {
@@ -931,6 +1010,7 @@ async function connectHub() {
 
 function wireControls() {
   wireMatChoice();
+  wireRobotChoice();
   ui.connectSimulator.addEventListener('click', connectSimulator);
 
   ui.connectHub.addEventListener('click', () => {

@@ -1,0 +1,9 @@
+{
+  "name": "standard",
+  "title": "Standard base",
+  "teaches": "The one the club builds: 56mm wheels, 160mm apart.",
+  "order": 2,
+  "wheelDiameterMm": 56.0,
+  "axleTrackMm": 160.0,
+  "note": "The measurements every example and every mat was written against."
+}

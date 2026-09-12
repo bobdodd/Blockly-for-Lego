@@ -258,7 +258,9 @@ export async function loadRobot(description, partsPath = 'ldraw/') {
     // millimetres, and scaling that too spreads the robot out by 2.5x while
     // leaving every part the right size — which reads as a viewport bug and
     // is not one. See frames.js.
-    model.scale.setScalar(LDU_MM);
+    // LDU_MM converts the part's own units; piece.scale is the build talking
+    // — a smaller wheel on the same chassis. See chassis.js.
+    model.scale.setScalar(LDU_MM * (piece.scale ?? 1));
 
     const pivot = new THREE.Group();
     pivot.name = piece.id;

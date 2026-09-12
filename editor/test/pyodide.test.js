@@ -80,6 +80,7 @@ describe('the simulator under Pyodide', () => {
       20,      // speed
       0.01,    // snapshot interval
       '',      // mat: empty means the built-in practice mat
+      '',      // robot: empty means the standard build
     );
     hub = created.get(0);
     receive = created.get(1);
@@ -155,6 +156,7 @@ mat = mats.load("the-square")
       20,
       1,
       'the-square',
+      '',
     );
     const named = created.get(0);
     created.destroy();
@@ -180,7 +182,9 @@ mat = mats.load("the-square")
     const make = pyodide.globals.get('_make');
 
     const build = async (mat) => {
-      const created = make(() => {}, (payload) => seen.push(JSON.parse(payload)), 20, 1, mat);
+      const created = make(
+        () => {}, (payload) => seen.push(JSON.parse(payload)), 20, 1, mat, '',
+      );
       const built = created.get(0);
       created.destroy();
       await built.start();
@@ -200,6 +204,38 @@ mat = mats.load("the-square")
     assert.equal(hello.world.lines.filter((l) => l.followable).length, 0, 'and no line');
 
     await second.stop();
+  });
+
+  it('builds the robot it was asked for, and says which', async () => {
+    // The two measurements travel with hello so a viewer draws the robot that
+    // is running rather than the one it was written against.
+    const seen = [];
+    const make = pyodide.globals.get('_make');
+    const created = make(
+      () => {}, (payload) => seen.push(JSON.parse(payload)), 20, 1, '', 'small-wheels',
+    );
+    const built = created.get(0);
+    created.destroy();
+    make.destroy();
+
+    await built.start();
+    const hello = seen.find((message) => message.type === 'hello');
+    assert.ok(hello?.chassis, 'hello did not say which robot this is');
+    assert.equal(hello.chassis.wheelDiameterMm, 43.2);
+    assert.equal(hello.chassis.axleTrackMm, 160);
+
+    await built.stop();
+  });
+
+  it('carries the robot catalogue too', async () => {
+    const listed = await pyodide.runPythonAsync(`
+from spike_sim import robots
+[entry["name"] for entry in robots.catalogue()]
+`);
+    const names = listed.toJs();
+    listed.destroy();
+    assert.ok(names.includes('standard'));
+    assert.equal(names[0], 'narrow', 'narrowest first');
   });
 
   it('says hello with the mat and the robot', () => {

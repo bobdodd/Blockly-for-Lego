@@ -21,6 +21,7 @@ from .hub import HubSimulator
 from .robot import Robot, RobotConfig
 from .server import SimulatorServer
 from . import mats
+from . import robots
 from .world import World, default_world
 
 KIND_PREFIX = {
@@ -56,6 +57,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--mats", action="store_true", help="list the mats in the catalogue and exit"
     )
     parser.add_argument(
+        "--robot",
+        metavar="NAME",
+        help="a build from the catalogue: " + ", ".join(robots.names()),
+    )
+    parser.add_argument(
+        "--robots", action="store_true", help="list the robot builds and exit"
+    )
+    parser.add_argument(
         "--snapshot-interval", type=float, default=0.05,
         help="seconds between robot telemetry snapshots for viewers (default 0.05)",
     )
@@ -83,10 +92,21 @@ def make_hub(args) -> HubSimulator:
         world = mats.load(args.mat)
     else:
         world = default_world()
+    # A named build first, then any measurement given explicitly on top of it:
+    # --robot picks a chassis, --wheel-diameter adjusts one you have measured.
+    chosen = robots.load(args.robot) if args.robot else RobotConfig()
     config = RobotConfig(
         noise=args.noise,
-        wheel_diameter_mm=args.wheel_diameter,
-        axle_track_mm=args.axle_track,
+        wheel_diameter_mm=(
+            args.wheel_diameter
+            if args.wheel_diameter != RobotConfig().wheel_diameter_mm
+            else chosen.wheel_diameter_mm
+        ),
+        axle_track_mm=(
+            args.axle_track
+            if args.axle_track != RobotConfig().axle_track_mm
+            else chosen.axle_track_mm
+        ),
     )
     robot = Robot(config=config, world=world)
     return HubSimulator(robot, speed=args.speed)
@@ -183,6 +203,20 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.mats:
         return list_mats()
+
+    if args.robots:
+        for entry in robots.catalogue():
+            print(
+                f"{entry['name']:<14} {entry['title']:<16} "
+                f"{entry['wheelDiameterMm']:>5.1f}mm wheels, "
+                f"{entry['axleTrackMm']:>5.1f}mm apart   {entry['teaches']}"
+            )
+        return 0
+
+    if args.robot and args.robot not in robots.names():
+        print(f"There is no robot called {args.robot!r}.")
+        print(f"Try one of: {', '.join(robots.names())}")
+        return 2
 
     if args.mat and args.mat not in mats.names():
         # Checked here rather than where the mat is built, because by then it

@@ -587,6 +587,17 @@ student can debug a line follower here at all.
 
 ## Connecting
 
+**Robot** chooses which build of the chassis the simulator makes — five
+variations on the same nine pieces, differing only in how far apart the wheels
+are and how big they are. See [the catalogue](simulator.md#the-catalogue-1).
+
+Those two numbers are what turn motor degrees into millimetres, so changing
+them changes what your blocks mean: the same program drives shorter on small
+wheels and turns less on a wide base. Changing it rebuilds the robot without
+disturbing the mat, updates the 3D view, **and** updates the constants in the
+Python panel — a program that computed for one robot while another was running
+would do something other than what it plainly says.
+
 **Mat** chooses what the simulator lays out. Eight of them, ordered from an
 empty floor to a colour-sorting course — see
 [the catalogue](simulator.md#the-catalogue) for what each is for. The choice

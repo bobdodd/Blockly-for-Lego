@@ -1,0 +1,9 @@
+{
+  "name": "big-wheels",
+  "title": "Big wheels",
+  "teaches": "62mm wheels: faster, and coarser control over how far it goes.",
+  "order": 5,
+  "wheelDiameterMm": 62.4,
+  "axleTrackMm": 160.0,
+  "note": "A common Technic wheel. A rotation covers 19.6cm, so the same program overshoots a target tuned on the standard base."
+}

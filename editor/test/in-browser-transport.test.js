@@ -57,12 +57,14 @@ describe('options given to the transport', () => {
   });
 
   it('keeps every option it is given', () => {
-    const transport = new InBrowserSimulatorTransport({
-      speed: 5, snapshotInterval: 0.02, indexURL: 'https://cdn.test/', mat: 'the-loop',
-    });
-    assert.deepEqual(transport.options, {
-      speed: 5, snapshotInterval: 0.02, indexURL: 'https://cdn.test/', mat: 'the-loop',
-    });
+    const given = {
+      speed: 5,
+      snapshotInterval: 0.02,
+      indexURL: 'https://cdn.test/',
+      mat: 'the-loop',
+      robot: 'wide',
+    };
+    assert.deepEqual(new InBrowserSimulatorTransport(given).options, given);
   });
 
   it('still has sensible values when given nothing', () => {
@@ -70,6 +72,7 @@ describe('options given to the transport', () => {
     assert.equal(transport.options.speed, 1);
     assert.equal(transport.options.snapshotInterval, 0.05);
     assert.equal(transport.options.mat, '', 'empty means the simulator chooses');
+    assert.equal(transport.options.robot, '');
   });
 });
 
@@ -193,5 +196,59 @@ describe('changing the mat without starting over', () => {
     const transport = new InBrowserSimulatorTransport();
     assert.equal(await transport.setMat('the-loop'), 'the-loop');
     assert.equal(transport.options.mat, 'the-loop', 'and uses it when it starts');
+  });
+});
+
+
+describe('changing the robot', () => {
+  it('asks the worker to rebuild it, keeping the mat it is on', async () => {
+    const browser = stubBrowser();
+    try {
+      const transport = new InBrowserSimulatorTransport({ mat: 'zigzag' });
+      const running = transport.connect();
+      browser.reply({ type: 'ready', catalogue: {} });
+      await running;
+      browser.posted.length = 0;
+
+      transport.setRobot('small-wheels');
+      const asked = browser.posted.find((message) => message.type === 'robot');
+      assert.ok(asked, 'the worker was never asked');
+      assert.equal(asked.name, 'small-wheels');
+      assert.equal(asked.mat, 'zigzag', 'changing the robot must not change the mat');
+    } finally {
+      browser.restore();
+    }
+  });
+
+  it('waits for the worker to say it is built', async () => {
+    const browser = stubBrowser();
+    try {
+      const transport = new InBrowserSimulatorTransport();
+      const running = transport.connect();
+      browser.reply({ type: 'ready', catalogue: {} });
+      await running;
+
+      const changing = transport.setRobot('narrow');
+      browser.reply({ type: 'robot-ready', robot: 'narrow' });
+      assert.equal(await changing, 'narrow');
+    } finally {
+      browser.restore();
+    }
+  });
+
+  it('reports a build that will not load, rather than hanging', async () => {
+    const browser = stubBrowser();
+    try {
+      const transport = new InBrowserSimulatorTransport();
+      const running = transport.connect();
+      browser.reply({ type: 'ready', catalogue: {} });
+      await running;
+
+      const changing = transport.setRobot('nope');
+      browser.reply({ type: 'error', message: 'There is no robot called that.' });
+      await assert.rejects(changing, /no robot called/);
+    } finally {
+      browser.restore();
+    }
   });
 });

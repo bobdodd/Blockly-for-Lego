@@ -251,3 +251,43 @@ describe('the mat catalogue reaches the editor', () => {
     assert.match(app, /option\.title = entry\.teaches/);
   });
 });
+
+describe('the robot catalogue reaches the editor', () => {
+  const app = read('src/app.js');
+  const markup = read('index.html');
+  const build = read('scripts/build.js');
+  const view = read('src/viewer/robot-view.js');
+
+  it('is generated from the builds themselves', () => {
+    assert.match(build, /function bundleRobotCatalogue/);
+    assert.match(app, /from '\.\/generated\/robot-catalogue\.js'/);
+  });
+
+  it('has somewhere to pick one', () => {
+    assert.ok(markup.includes('id="robot"'));
+    assert.match(markup, /for="robot"/, 'the picker needs a label');
+  });
+
+  it('tells the code generator, because the program bakes the numbers in', () => {
+    // A student's blocks do this arithmetic in their own program, in constants
+    // they can read. If those disagree with the simulator, the robot does
+    // something other than what the program plainly says it will.
+    assert.match(app, /useRobot\(entry\)/);
+    assert.match(app, /if \(workspace\) refreshPython\(\)/);
+  });
+
+  it('draws whatever the simulator reports, not whatever the menu says', () => {
+    // The view follows the hello payload rather than this module, so a
+    // simulator started elsewhere with --robot wide is still drawn correctly.
+    assert.match(view, /payload\.chassis/);
+    assert.match(view, /sameChassis\(payload\.chassis, this\.#chassis\)/);
+  });
+
+  it('remembers the choice', () => {
+    assert.match(app, /localStorage\.setItem\(ROBOT_KEY/);
+  });
+
+  it('changes the robot without loading Python again', () => {
+    assert.match(app, /await builtInTransport\.setRobot\(entry\.name\)/);
+  });
+});

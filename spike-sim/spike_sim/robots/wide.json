@@ -1,0 +1,9 @@
+{
+  "name": "wide",
+  "title": "Wide base",
+  "teaches": "Wheels far apart: steadier in a straight line, wider to turn.",
+  "order": 3,
+  "wheelDiameterMm": 56.0,
+  "axleTrackMm": 192.0,
+  "note": "Two studs wider each side than the standard base."
+}

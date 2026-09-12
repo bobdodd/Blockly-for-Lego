@@ -17,11 +17,22 @@ from . import events as ev
 
 
 def hello_payload(robot) -> dict:
-    """Sent once, when something connects: the mat, and where the robot is."""
+    """Sent once, when something connects: the mat, the robot, and its build.
+
+    The two measurements travel with it so a viewer draws the robot that is
+    actually running rather than the one it was written against. A picture
+    with the wheels in the wrong place, beside a narration taken from the real
+    numbers, puts a sighted student and a blind student in front of two
+    different robots.
+    """
     return {
         "type": "hello",
         "world": robot.world.to_dict(),
         "robot": robot.snapshot(),
+        "chassis": {
+            "wheelDiameterMm": robot.config.wheel_diameter_mm,
+            "axleTrackMm": robot.config.axle_track_mm,
+        },
     }
 
 

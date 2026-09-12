@@ -30,6 +30,7 @@ from typing import Callable
 
 from . import events as ev
 from . import mats
+from . import robots
 from .hub import HubSimulator
 from .robot import Robot, RobotConfig
 from .telemetry import event_payload, hello_payload, snapshot_payload
@@ -42,6 +43,7 @@ class BrowserHub:
     :param on_frame: called with each outgoing protocol frame, as ``bytes``
     :param on_message: called with each JSON payload, as a ``str``
     :param mat: a name from :mod:`spike_sim.mats`, when no ``world`` is given
+    :param robot: a name from :mod:`spike_sim.robots`, when no ``config`` is given
 
     Both are handed across the JavaScript boundary, so they take plain types:
     JSON is serialized here rather than relying on an object converter.
@@ -57,9 +59,12 @@ class BrowserHub:
         world: World | None = None,
         config: RobotConfig | None = None,
         mat: str | None = None,
+        robot: str | None = None,
     ):
         if world is None and mat:
             world = mats.load(mat)
+        if config is None and robot:
+            config = robots.load(robot)
         self._on_frame = on_frame
         self._on_message = on_message
         self.snapshot_interval = snapshot_interval

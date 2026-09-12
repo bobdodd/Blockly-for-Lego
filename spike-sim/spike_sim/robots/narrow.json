@@ -1,0 +1,9 @@
+{
+  "name": "narrow",
+  "title": "Narrow base",
+  "teaches": "Wheels as close together as they will go: turns in the smallest circle.",
+  "order": 1,
+  "wheelDiameterMm": 56.0,
+  "axleTrackMm": 144.0,
+  "note": "The tightest track that can be built at all. Two large angular motors facing outwards need 60mm of body each plus a 12mm shaft, so nothing below 144mm can actually be built."
+}

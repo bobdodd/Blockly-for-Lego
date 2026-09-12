@@ -75,6 +75,20 @@ A few rules specific to this codebase:
   accessibility tree, so a screen reader announces content the tab says is
   not showing, and `aria-selected` becomes a lie. `test/stylesheet.test.js`
   guards it.
+- **Wheel diameter and axle track reach three places.** The simulator's
+  physics, the 3D model, and the constants baked into the Python a student's
+  blocks generate. They agreed by hand when there was one robot. Now they all
+  read from `spike_sim/robots/*.json`, and `test_robots.py` checks it — if you
+  add a measurement that matters, add it there rather than typing it out
+  again. The 3D view takes them from the `hello` payload rather than from the
+  editor's menu, so a simulator started elsewhere is still drawn correctly.
+
+- **Only offer robots somebody could build.** A 112mm axle track was described
+  here once and was physically impossible: two large angular motors facing
+  outwards need 60mm of body each plus a 12mm shaft. A simulator will pretend
+  about that indefinitely, and a club will find out with a bag of parts and an
+  afternoon gone. `SMALLEST_TRACK_MM` is the floor and it is tested.
+
 - **Whoever sets the busy state clears it.** `connectSimulator` puts the page
   into its working state and clears it in a `finally`. Anything that calls
   `startSimulator` directly skips that, and the page sits on "Starting the

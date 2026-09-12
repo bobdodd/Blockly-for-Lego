@@ -15,6 +15,7 @@
 import * as THREE from 'three';
 
 import { buildMat, createHighlight, createScene, loadRobot } from './scene.js';
+import { reshape, sameChassis } from './chassis.js';
 import { focusFor, labelFor, resolveFocus } from './narration-focus.js';
 import { TelemetryBuffer } from './telemetry.js';
 
@@ -34,6 +35,7 @@ export class RobotView {
   #loading = null;
   #frame = null;
   #world = null;
+  #chassis = null;
 
   /**
    * @param {HTMLCanvasElement} canvas
@@ -137,6 +139,14 @@ export class RobotView {
       // it decides how to frame the scene
       this.#telemetry.push(payload.robot, performance.now());
       this.#world = payload.world;
+
+      // The simulator says which build it is running. Drawing the one this
+      // was written against instead would put a sighted student and a blind
+      // student in front of two different robots.
+      if (payload.chassis && !sameChassis(payload.chassis, this.#chassis)) {
+        this.#chassis = payload.chassis;
+        this.#discardRobot();
+      }
       await this.#buildWorld(payload.world);
       return;
     }
@@ -166,13 +176,23 @@ export class RobotView {
     await this.#ensureRobot();
   }
 
+  /** Throw the model away so the next world rebuilds it at new measurements. */
+  #discardRobot() {
+    if (this.#robot) this.#view.scene.remove(this.#robot.root);
+    this.#robot = null;
+    this.#loading = null;
+  }
+
   #ensureRobot() {
     if (this.#robot) return Promise.resolve();
     // one load, however many worlds arrive
     this.#loading ??= (async () => {
       this.onStatus('Loading the robot…');
       try {
-        this.#robot = await loadRobot(this.description, this.partsPath);
+        this.#robot = await loadRobot(
+          reshape(this.description, this.#chassis ?? {}),
+          this.partsPath,
+        );
         this.#view.scene.add(this.#robot.root);
         this.onStatus(`Watching ${this.description.name}.`);
       } catch (error) {

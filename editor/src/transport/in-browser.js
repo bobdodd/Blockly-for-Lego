@@ -41,18 +41,19 @@ export class InBrowserSimulatorTransport {
   #worker = null;
   #ready = null;
   #matChange = null;
+  #robotChange = null;
 
   /**
    * @param {{speed?: number, snapshotInterval?: number, indexURL?: string,
    *          mat?: string}} options
    */
-  constructor({ speed = 1, snapshotInterval = 0.05, indexURL, mat = '' } = {}) {
+  constructor({ speed = 1, snapshotInterval = 0.05, indexURL, mat = '', robot = '' } = {}) {
     // Listed one by one on purpose — a `...rest` here would take anything and
     // hide a typo — which means every new option has to be added in three
     // places, and `mat` was added at both ends and not in the middle. It went
     // in from the editor, came out of the worker, and was dropped here in
     // between, so every mat was the default one and nothing said otherwise.
-    this.options = { speed, snapshotInterval, indexURL, mat };
+    this.options = { speed, snapshotInterval, indexURL, mat, robot };
   }
 
   connect() {
@@ -81,6 +82,11 @@ export class InBrowserSimulatorTransport {
             this.#matChange = null;
             break;
 
+          case 'robot-ready':
+            this.#robotChange?.resolve(data.robot);
+            this.#robotChange = null;
+            break;
+
           case 'ready':
             // The mats the simulator actually has, so the editor's menu can
             // never offer one that is not there.
@@ -106,6 +112,8 @@ export class InBrowserSimulatorTransport {
             // simulator, which the editor reports without tearing down.
             this.#matChange?.reject(new Error(data.message));
             this.#matChange = null;
+            this.#robotChange?.reject(new Error(data.message));
+            this.#robotChange = null;
             reject(new Error(data.message));
             this.onProgress({ stage: 'error', detail: data.message });
             break;
@@ -120,6 +128,7 @@ export class InBrowserSimulatorTransport {
         speed: this.options.speed,
         snapshotInterval: this.options.snapshotInterval,
         mat: this.options.mat ?? '',
+        robot: this.options.robot ?? '',
         ...(this.options.indexURL ? { indexURL: this.options.indexURL } : {}),
       });
     });
@@ -145,6 +154,17 @@ export class InBrowserSimulatorTransport {
     return new Promise((resolve, reject) => {
       this.#matChange = { resolve, reject };
       this.#worker.postMessage({ type: 'mat', name });
+    });
+  }
+
+  /** Rebuild the robot to a different set of measurements, on the same mat. */
+  setRobot(name) {
+    this.options.robot = name;
+    if (!this.#worker) return Promise.resolve(name);
+
+    return new Promise((resolve, reject) => {
+      this.#robotChange = { resolve, reject };
+      this.#worker.postMessage({ type: 'robot', name, mat: this.options.mat ?? '' });
     });
   }
 
