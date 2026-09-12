@@ -17,6 +17,47 @@ export function isSupported() {
   return typeof navigator !== 'undefined' && 'bluetooth' in navigator;
 }
 
+/**
+ * Turn a Web Bluetooth failure into something a student can act on.
+ *
+ * The browser's own wording is written for whoever wrote the page, not for
+ * whoever is holding the robot: "User cancelled the requestDevice() chooser."
+ * names a function nobody in the room has heard of, and reads as a fault when
+ * it is just somebody pressing Cancel.
+ *
+ * Returns null for anything not specific to Bluetooth, so the caller can fall
+ * back to the original message rather than paper over something unexpected.
+ *
+ * @param {Error} error
+ * @returns {string|null}
+ */
+export function explainFailure(error) {
+  const name = error?.name ?? '';
+  const message = error?.message ?? '';
+
+  // Closing the chooser is a decision, not a failure, and should not sound
+  // like one.
+  if (/cancell?ed/i.test(message)) return 'No hub was chosen.';
+
+  if (name === 'NotFoundError') {
+    return 'No SPIKE Prime hub was found. Turn the hub on, hold its Bluetooth '
+      + 'button until the light flashes, and try again.';
+  }
+
+  if (name === 'SecurityError' || name === 'NotAllowedError') {
+    return 'The browser was not allowed to use Bluetooth. Check that this site, '
+      + 'and the browser itself, are permitted to use Bluetooth in your system '
+      + 'settings, then try again.';
+  }
+
+  if (name === 'NetworkError') {
+    return 'The hub was found but would not connect. Turn it off and on again, '
+      + 'and make sure nothing else is already connected to it.';
+  }
+
+  return null;
+}
+
 export class BluetoothTransport {
   name = 'a SPIKE Prime hub';
   onData = () => {};

@@ -517,7 +517,28 @@ it first — see [Getting started](getting-started.md#run-the-editor).
 
 **Connect to a hub** opens the browser's Bluetooth dialog and talks to real
 hardware. Identical blocks, identical Python, identical bytes; the only thing
-that changes is the pipe. Chrome or Edge on a desktop operating system only.
+that changes is the pipe.
+
+**It needs Chrome or Edge.** Web Bluetooth does not exist in Safari or
+Firefox at all, on any platform — there is nothing to enable and no flag to
+set. On a desktop operating system, Chrome or Edge is the requirement, not a
+recommendation.
+
+If the button cannot do anything, it says so in writing under the toolbar
+rather than only to a screen reader. What you might see:
+
+| | What to do |
+| --- | --- |
+| "This browser cannot connect to a hub over Bluetooth." | Use Chrome or Edge, or connect to the simulator. |
+| "No hub was chosen." | You closed the chooser. Press the button again. |
+| "No SPIKE Prime hub was found." | Turn the hub on and hold its Bluetooth button until the light flashes. |
+| "The browser was not allowed to use Bluetooth." | The operating system is refusing the browser, not the page. On macOS: System Settings → Privacy & Security → Bluetooth. |
+| "The hub was found but would not connect." | Something else is probably already paired with it — the official LEGO app, or another laptop. |
+
+Every one of those is written where you can read it **and** announced to a
+screen reader. It was previously only the second: the explanation existed,
+went to a visually hidden region, and the button looked dead to anyone who
+could see it.
 
 To point the editor at a simulator on another port or machine:
 

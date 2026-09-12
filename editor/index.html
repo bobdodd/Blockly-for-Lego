@@ -77,6 +77,17 @@
     </p>
 
     <!--
+      Why a connection did not happen, in writing.
+
+      The status region above is visually hidden, so every explanation about
+      connecting used to reach a screen reader and nobody else: pressing
+      "Connect to a hub" in a browser without Web Bluetooth looked exactly
+      like a dead button. Deliberately NOT a live region — the status region
+      has already said it, and two would say it twice.
+    -->
+    <p id="connect-note" class="connect-note" hidden></p>
+
+    <!--
       Shown only when this copy is served from the web. Browsers refuse a
       connection from a public page to a program on your own machine, so the
       simulator and the robot view need the project running locally.

@@ -75,6 +75,14 @@ A few rules specific to this codebase:
   accessibility tree, so a screen reader announces content the tab says is
   not showing, and `aria-selected` becomes a lie. `test/stylesheet.test.js`
   guards it.
+- **Never answer only through the status region.** It is `visually-hidden`,
+  so anything said only there is said only to a screen reader. A button whose
+  entire response is a hidden announcement is indistinguishable, to everyone
+  else, from a button with no code behind it — that is exactly how "Connect to
+  a hub" came to look broken. A `title` tooltip does not count as the visible
+  half: it needs a mouse. And never `return` silently from a control a person
+  just pressed; say why. `test/connect-feedback.test.js` guards both.
+
 - **Taking a control away means taking it out of the accessibility tree too.**
   Not just `display: none` on the button. A tab that has vanished visually but
   is still reachable with an arrow key, or still announced as a tab, is a

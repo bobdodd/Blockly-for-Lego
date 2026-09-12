@@ -343,3 +343,26 @@ button[aria-disabled="true"] {
 }
 
 .commentary-entry:last-child { border-bottom: 0; }
+
+/* --------------------------------------------------------------------------
+   Why a connection did not happen
+   --------------------------------------------------------------------------
+   Pressing a connect button must always produce something a person can SEE.
+   Every explanation used to go only to the visually-hidden status region, so
+   "Connect to a hub" on a browser without Web Bluetooth looked like a button
+   with nothing behind it. A `title` tooltip was the only visible fallback,
+   and a tooltip needs a mouse: no keyboard, no touchscreen, no help.
+   -------------------------------------------------------------------------- */
+
+.connect-note {
+  margin: 0 0 0.75rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--focus);
+  border-radius: 4px;
+  background: var(--warning-bg);
+  color: var(--warning-ink);
+  max-width: 70ch;
+}
+
+.connect-note a { color: inherit; }

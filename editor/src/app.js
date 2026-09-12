@@ -40,7 +40,11 @@ import { Blockly } from './blockly.js';
 import { defineSpikeBlocks } from './blocks/definitions.js';
 import { STARTER_PROGRAM, toolbox } from './blocks/toolbox.js';
 import { generateProgram, robotConfig } from './generators/python.js';
-import { BluetoothTransport, isSupported as bluetoothSupported } from './transport/bluetooth.js';
+import {
+  BluetoothTransport,
+  explainFailure as explainBluetoothFailure,
+  isSupported as bluetoothSupported,
+} from './transport/bluetooth.js';
 import { HubClient } from './transport/hub-client.js';
 import { SimulatorTransport } from './transport/websocket.js';
 
@@ -69,6 +73,7 @@ const ui = {
   resetView: element('reset-view'),
   popOut: element('pop-out'),
   logSection: element('log-section'),
+  connectNote: element('connect-note'),
   commentaryOn: element('commentary-on'),
   commentaryVolume: element('commentary-volume'),
   commentaryVolumeValue: element('commentary-volume-value'),
@@ -264,6 +269,21 @@ function setBusy(label) {
 
 const isBusy = () => document.body.classList.contains('is-busy');
 
+/**
+ * Answer a press that arrives while a connection is already being made.
+ *
+ * This used to be a bare `return`. A button that does nothing and says
+ * nothing is indistinguishable from a button with no code behind it, which is
+ * exactly the confusion that sent us looking here in the first place.
+ */
+function explainBusy() {
+  explainConnection(
+    `${ui.busyLabel?.textContent || 'A connection is already being made'}. `
+      + 'Wait for that to finish, or reload the page to start again.',
+  );
+  return false;
+}
+
 // --------------------------------------------------------------------------
 // connection
 // --------------------------------------------------------------------------
@@ -320,10 +340,11 @@ async function connect(transport, description, { quiet = false } = {}) {
   try {
     await hub.connect();
   } catch (error) {
-    if (!quiet) announcer.status(error.message);
+    if (!quiet) explainConnection(describeConnectionFailure(error, description));
     return false;
   }
 
+  clearConnectionNote();
   client = hub;
   // A transport that can narrate is the simulator; a real hub has no such
   // channel. That is the same test used to decide whether to listen for
@@ -349,7 +370,7 @@ async function connect(transport, description, { quiet = false } = {}) {
  * student comparing notes with a classmate should be able to tell.
  */
 async function connectSimulator() {
-  if (isBusy()) return; // already starting one
+  if (isBusy()) return explainBusy();
 
   setBusy('Looking for a simulator…');
   try {
@@ -389,6 +410,42 @@ async function disconnect() {
   await client?.disconnect().catch(() => undefined);
   client = null;
   setConnected(false);
+}
+
+/**
+ * Say why a connection did not happen — out loud *and* on the screen.
+ *
+ * The status region is visually hidden, so anything said only through it is
+ * said only to a screen reader. That is how "Connect to a hub" came to look
+ * like a button with nothing behind it: the explanation was always there,
+ * and never visible. Any answer to pressing a connect button goes through
+ * here.
+ */
+function explainConnection(message) {
+  announcer.status(message);
+  if (!ui.connectNote) return;
+  ui.connectNote.textContent = message;
+  ui.connectNote.hidden = false;
+}
+
+/**
+ * Why a connection failed, in words a student can act on.
+ *
+ * Bluetooth's own exceptions get translated; anything else keeps its message,
+ * because inventing friendlier wording for a failure nobody anticipated hides
+ * the one clue there is.
+ */
+function describeConnectionFailure(error, description) {
+  const explained = explainBluetoothFailure(error);
+  if (explained) return explained;
+  return error?.message || `Could not connect to ${description}.`;
+}
+
+/** Clear it once the thing it was explaining no longer applies. */
+function clearConnectionNote() {
+  if (!ui.connectNote) return;
+  ui.connectNote.textContent = '';
+  ui.connectNote.hidden = true;
 }
 
 function setConnected(connected, kind = null) {
@@ -738,7 +795,7 @@ function wireProgramControls() {
 }
 
 async function connectHub() {
-  if (isBusy()) return;
+  if (isBusy()) return explainBusy();
   setBusy('Connecting to the hub…');
   try {
     await connect(new BluetoothTransport(), 'a SPIKE Prime hub');
@@ -752,9 +809,9 @@ function wireControls() {
 
   ui.connectHub.addEventListener('click', () => {
     if (!bluetoothSupported()) {
-      announcer.status(
-        'This browser cannot connect to a hub over Bluetooth. Use Chrome or Edge ' +
-          'on Windows, macOS, Linux or ChromeOS, or connect to the simulator instead.',
+      explainConnection(
+        'This browser cannot connect to a hub over Bluetooth. Use Chrome or Edge '
+          + 'on Windows, macOS, Linux or ChromeOS, or connect to the simulator instead.',
       );
       return;
     }
