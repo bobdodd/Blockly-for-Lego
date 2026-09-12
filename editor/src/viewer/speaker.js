@@ -192,7 +192,11 @@ export class Speaker {
         + 'Press "Test the voice".';
     }
     if (this.lastError) return `The browser reported "${this.lastError}".`;
-    return 'It accepted the speech and never started.';
+    if (this.synth?.paused) {
+      return 'The browser has speech paused. Press "Test the voice" to wake it.';
+    }
+    return 'It accepted the speech and never started, without saying why. '
+      + 'There is a report in the browser console.';
   }
 
   setAudio(on) {
@@ -309,6 +313,17 @@ export class Speaker {
       };
 
       if (finish) this._watchForEnd(utterance, finish);
+
+      // A paused engine accepts an utterance, queues it, and never starts it:
+      // no sound, no `start`, no `error`. Nothing in this code pauses it, but
+      // Chrome and anything else sharing the engine can, and once it happens
+      // every later announcement disappears in the same silent way. Resuming
+      // costs nothing when it is already running.
+      try {
+        this.synth.resume();
+      } catch {
+        // Some engines throw on resume when nothing is paused.
+      }
       this.synth.speak(utterance);
 
       this.window.setTimeout(() => {
@@ -340,8 +355,50 @@ export class Speaker {
     this.lastError = null;
     this._failures = 0;
     this.onChannelChange?.(this.channel);
+
     this.prime();
-    this.announce('The browser voice is working.');
+    // Priming cancels the utterance it just queued, and Chrome drops a
+    // `speak()` issued in the same tick as a `cancel()` — so testing the voice
+    // was itself guaranteed to be silent on the one browser it existed to
+    // diagnose.
+    this.window.setTimeout(() => {
+      this.announce('The browser voice is working.');
+      // And again once it has had a moment: what the engine *did* with the
+      // utterance is the interesting half, and it is not knowable yet.
+      this.window.setTimeout(() => this.diagnose('after'), SPEECH_START_MS);
+    }, 0);
+    return this.diagnose('before');
+  }
+
+  /**
+   * Everything worth knowing about the engine, in one object.
+   *
+   * For pasting into a bug report. Guessing at a browser from a description of
+   * silence has cost several rounds of this already; these are the facts that
+   * would have settled it.
+   */
+  diagnose(when = 'now') {
+    let voices = -1;
+    try {
+      voices = this.synth?.getVoices().length ?? -1;
+    } catch {
+      voices = -1;
+    }
+
+    const report = {
+      engine: Boolean(this.synth),
+      voices,
+      speaking: this.synth?.speaking ?? null,
+      pending: this.synth?.pending ?? null,
+      paused: this.synth?.paused ?? null,
+      audioOn: this.audioOn,
+      volume: this.volume,
+      channel: this.channel,
+      lastError: this.lastError,
+      failures: this._failures,
+    };
+    this.window?.console?.log?.(`Blockly for Lego — speech (${when}):`, report);
+    return report;
   }
 
   /**

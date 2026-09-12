@@ -37,7 +37,8 @@ function fakeSynth({ works = true, voices = 1 } = {}) {
       utterance.onstart?.();
     },
     cancel() { this.cancels += 1; this.speaking = false; },
-    resume() { this.resumes += 1; },
+    resume() { this.resumes += 1; this.paused = false; },
+    paused: false,
     addEventListener(type, fn) { (this.listeners[type] ??= []).push(fn); },
     fire(type) { for (const fn of this.listeners[type] ?? []) fn(); },
   };
@@ -491,5 +492,67 @@ describe('saying what the browser said', () => {
     win.flush();
     assert.equal(speaker.channel, 'voice');
     assert.match(synth.spoken.at(-1).text, /working/);
+  });
+});
+
+
+describe('an engine that has been paused', () => {
+  /** Paused: it takes the utterance, queues it, and never starts it. */
+  function pausedSynth() {
+    const synth = fakeSynth();
+    synth.paused = true;
+    synth.speak = function speak(utterance) {
+      this.spoken.push(utterance);
+      if (this.paused) return;          // silently queued, forever
+      this.speaking = true;
+      utterance.onstart?.();
+    };
+    return synth;
+  }
+
+  it('wakes it rather than reporting silence', () => {
+    // No sound, no start, no error — the one failure mode that leaves nothing
+    // in the console at all, and the one the fallback could not see.
+    const win = fakeWindow({ synth: pausedSynth() });
+    const speaker = speakerIn(win);
+    speaker.announce('anything');
+
+    assert.ok(win.speechSynthesis.resumes > 0, 'it should have been resumed');
+    assert.equal(win.speechSynthesis.speaking, true, 'and then actually spoken');
+  });
+
+  it('survives an engine that throws on resume', () => {
+    const synth = pausedSynth();
+    synth.resume = () => { throw new Error('engine quirk'); };
+    const speaker = speakerIn(fakeWindow({ synth }));
+    assert.doesNotThrow(() => speaker.announce('anything'));
+  });
+});
+
+describe('testing the voice', () => {
+  it('does not speak in the same tick as priming cancelled something', () => {
+    // Chrome drops that speak(), so the button built to diagnose a mute
+    // Chrome was itself guaranteed to be mute on Chrome.
+    const win = fakeWindow();
+    const speaker = speakerIn(win);
+    speaker.test();
+
+    win.flush();
+    assert.match(
+      win.speechSynthesis.spoken.at(-1).text,
+      /working/,
+      'the test sentence has to actually reach the engine',
+    );
+  });
+
+  it('reports what it found, for pasting into a bug report', () => {
+    const win = fakeWindow();
+    const speaker = speakerIn(win);
+    const report = speaker.test();
+
+    for (const key of ['engine', 'voices', 'speaking', 'pending', 'paused',
+      'audioOn', 'volume', 'channel', 'lastError']) {
+      assert.ok(key in report, `the report should include ${key}`);
+    }
   });
 });
