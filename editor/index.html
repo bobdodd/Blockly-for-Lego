@@ -173,36 +173,50 @@
                 instead.
               </p>
 
+              <!--
+                Each label travels with its own control. They were siblings in one
+                wrapping row, so a narrow panel could wrap between a label and the
+                thing it labelled and leave "Speed" sitting beside the volume slider.
+              -->
               <div class="commentary-row">
                 <label class="commentary-toggle">
                   <input type="checkbox" id="commentary-on" checked />
                   Speak the commentary
                 </label>
 
-                <label for="commentary-voice">Voice</label>
-                <select id="commentary-voice">
-                  <option value="">Chosen for you</option>
-                </select>
+                <div class="commentary-field">
+                  <label for="commentary-voice">Voice</label>
+                  <select id="commentary-voice">
+                    <option value="">Chosen for you</option>
+                  </select>
+                </div>
 
-                <label for="commentary-rate">Speed</label>
-                <!--
-                  A native range: the keyboard, the screen reader and the touch
-                  target all come for free. What does not come for free is what it
-                  announces — "2.5" on its own means nothing — so aria-valuetext is
-                  written on every change. The step is coarse enough that arrow keys
-                  reach the ends without becoming a chore.
-                -->
-                <input type="range" id="commentary-rate"
-                       min="0.5" max="5" step="0.25" value="1"
-                       aria-valuetext="normal speed" />
-                <output id="commentary-rate-value" for="commentary-rate">normal</output>
+                <div class="commentary-field">
+                  <label for="commentary-rate">Speed</label>
+                  <!--
+                    A native range: the keyboard, the screen reader and the touch target
+                    all come for free. What does not come for free is what it announces —
+                    "2.5" on its own means nothing — so aria-valuetext is written on every
+                    change. The step is coarse enough that arrow keys reach the ends
+                    without becoming a chore.
+                  -->
+                  <input type="range" id="commentary-rate"
+                         min="0.5" max="5" step="0.25" value="1"
+                         aria-valuetext="normal speed" />
+                  <output id="commentary-rate-value" for="commentary-rate">normal speed</output>
+                </div>
 
-                <label for="commentary-volume">Volume</label>
-                <input type="range" id="commentary-volume" min="0" max="100" step="10" value="100" />
-                <output id="commentary-volume-value" for="commentary-volume">100%</output>
+                <div class="commentary-field">
+                  <label for="commentary-volume">Volume</label>
+                  <input type="range" id="commentary-volume" min="0" max="100" step="10" value="100"
+                         aria-valuetext="100%" />
+                  <output id="commentary-volume-value" for="commentary-volume">100%</output>
+                </div>
 
-                <button type="button" id="describe-scene" class="secondary">Describe the scene</button>
-                <button type="button" id="test-voice" class="secondary">Test the voice</button>
+                <div class="commentary-actions">
+                  <button type="button" id="describe-scene" class="secondary">Describe the scene</button>
+                  <button type="button" id="test-voice" class="secondary">Test the voice</button>
+                </div>
               </div>
 
               <!--

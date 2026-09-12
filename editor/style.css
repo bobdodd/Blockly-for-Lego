@@ -305,22 +305,50 @@ button[aria-disabled="true"] {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem 0.9rem;
+  gap: 0.6rem 1.2rem;
+}
+
+/*
+   One field is one flex item, so wrapping can only ever happen *between*
+   fields. When they were all siblings, a narrow panel wrapped wherever it
+   liked and left "Speed" sitting beside the volume slider.
+
+   `flex: 1 1 15rem` lets them sit in a row when there is room and take a line
+   each when there is not, which in the editor's side panel is most of the
+   time.
+ */
+.commentary-field {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 1 1 15rem;
+}
+
+.commentary-field input[type="range"] { flex: 1; min-width: 6rem; }
+.commentary-field label { white-space: nowrap; }
+
+.commentary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  flex: 1 1 100%;
 }
 
 .commentary-toggle {
   display: flex;
   align-items: center;
   gap: 0.4rem;
+  flex: 1 1 100%;
 }
 
-/* Wide enough to be draggable with a shaky hand, and it still keyboards. */
-#commentary-volume { min-width: 9rem; }
-
-#commentary-volume-value {
+/* The read-outs. Wide enough that the row does not shuffle as the text
+   changes between "normal speed" and "2.5 times normal speed". */
+#commentary-volume-value,
+#commentary-rate-value {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
-  min-width: 3ch;
+  flex: 0 0 auto;
+  min-width: 11ch;
 }
 
 .commentary-transcript {
@@ -389,10 +417,3 @@ button[aria-disabled="true"] {
    away with the row. */
 #commentary-voice { max-width: 18rem; }
 
-/* The speed slider. Same width as the volume one so the row reads as a pair. */
-#commentary-rate { min-width: 9rem; }
-
-#commentary-rate-value {
-  color: var(--muted);
-  min-width: 9ch;
-}

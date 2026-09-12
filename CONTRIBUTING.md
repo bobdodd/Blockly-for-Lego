@@ -83,6 +83,14 @@ A few rules specific to this codebase:
   again. The 3D view takes them from the `hello` payload rather than from the
   editor's menu, so a simulator started elsewhere is still drawn correctly.
 
+- **A label must share a parent with its control.** In a wrapping flex row,
+  every child is an independent item, so a narrow panel wraps wherever it
+  likes — and the commentary panel ended up showing "Speed" beside the volume
+  slider, giving the wrong name to every control read down the page. Group
+  each label with its control in a `.commentary-field` and let *that* be the
+  flex item, so a wrap can only ever happen between groups.
+  `app-wiring.test.js` checks the parents, which is the part Node can see.
+
 - **A range input is accessible; its value is not.** `<input type="range">`
   brings the keyboard, the screen reader and the touch target with it, and
   reports a raw number that usually means nothing on its own — "2.5" is not a

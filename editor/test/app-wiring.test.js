@@ -515,3 +515,66 @@ describe('setting the speech speed', () => {
     assert.match(app, /onRate: \(value\) => \{ announcer\.rate = value; \}/);
   });
 });
+
+describe('labels stay with the controls they label', () => {
+  /**
+   * The defect: every label and control in the commentary row was a sibling
+   * of every other, in a wrapping flex container. So a narrow panel wrapped
+   * wherever it liked and put "Speed" at the end of the voice row, beside a
+   * slider it had nothing to do with. Reading down the panel gave you the
+   * wrong name for every control.
+   *
+   * Node has no layout, so this checks the thing that made the layout
+   * possible: a label and the control it points at have to share a parent, so
+   * that wrapping can only happen between groups and never inside one.
+   */
+  const pages = ['index.html', 'viewer.html'].map((name) => [name, read(name)]);
+
+  /** The innermost element opened before `at` and not yet closed. */
+  const parentOf = (markup, at) => {
+    const before = markup.slice(0, at);
+    const opens = [...before.matchAll(/<(\w+)(\s[^>]*?)?>/g)]
+      .filter((m) => !m[0].endsWith('/>') && !['input', 'br', 'img'].includes(m[1]));
+    const closes = [...before.matchAll(/<\/(\w+)>/g)];
+
+    const stack = [];
+    const events = [...opens.map((m) => ({ at: m.index, open: m[1] })),
+      ...closes.map((m) => ({ at: m.index, close: m[1] }))].sort((a, b) => a.at - b.at);
+    for (const event of events) {
+      if (event.open) stack.push({ tag: event.open, at: event.at });
+      else stack.pop();
+    }
+    return stack.at(-1) ?? null;
+  };
+
+  for (const [name, markup] of pages) {
+    it(`keeps each label beside its control in ${name}`, () => {
+      const labels = [...markup.matchAll(/<label for="([^"]+)"/g)];
+      assert.ok(labels.length >= 3, 'expected several labelled controls');
+
+      for (const label of labels) {
+        const id = label[1];
+        const control = markup.indexOf(`id="${id}"`);
+        assert.ok(control > 0, `${id} has a label and no control`);
+
+        const labelParent = parentOf(markup, label.index);
+        const controlParent = parentOf(markup, control);
+        assert.equal(
+          labelParent?.at,
+          controlParent?.at,
+          `${id}: its label is in a different element, so a wrap can separate them`,
+        );
+      }
+    });
+  }
+
+  it('groups them into fields rather than one flat row', () => {
+    const css = read('style.css');
+    for (const [name, markup] of pages) {
+      assert.match(markup, /class="commentary-field"/, `${name} has no field groups`);
+    }
+    assert.match(css, /\.commentary-field \{/);
+    // A field must be a flex *item* of the row, or grouping achieves nothing.
+    assert.match(css, /\.commentary-field \{[^}]*flex:/);
+  });
+});
