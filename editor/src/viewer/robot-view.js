@@ -14,7 +14,7 @@
 
 import * as THREE from 'three';
 
-import { buildMat, createHighlight, createScene, loadRobot } from './scene.js';
+import { buildMat, createHighlight, createScene, driveWithKeyboard, loadRobot } from './scene.js';
 import { reshape, sameChassis } from './chassis.js';
 import { focusFor, labelFor, resolveFocus } from './narration-focus.js';
 import { TelemetryBuffer } from './telemetry.js';
@@ -36,6 +36,7 @@ export class RobotView {
   #frame = null;
   #world = null;
   #chassis = null;
+  #releaseKeys = null;
 
   /**
    * @param {HTMLCanvasElement} canvas
@@ -55,6 +56,19 @@ export class RobotView {
     this.#view = createScene(canvas);
     this.#highlight = createHighlight();
     this.#view.scene.add(this.#highlight.object);
+
+    // Everything the mouse can do to the camera, a keyboard can do too. Home
+    // is the "Reset the view" button, so the two agree about where back is.
+    this.#releaseKeys = driveWithKeyboard(canvas, this.#view.controls, {
+      onHome: () => this.resetView(),
+    });
+  }
+
+  /** Let go of the canvas. For a view that is being thrown away. */
+  dispose() {
+    this.stop();
+    this.#releaseKeys?.();
+    this.#releaseKeys = null;
   }
 
   /** Begin drawing. Idempotent, so a tab can call it every time it is shown. */

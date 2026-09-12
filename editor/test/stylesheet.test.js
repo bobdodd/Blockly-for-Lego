@@ -138,3 +138,29 @@ describe('focus is always visible', () => {
     );
   });
 });
+
+describe('more contrast when the system asks for it', () => {
+  const css = read('style.css');
+
+  it('is offered at all', () => {
+    // A student who has turned this on at the OS level has said that AA, which
+    // the default palette is built to, is not enough for them.
+    assert.match(css, /@media \(prefers-contrast: more\)/);
+  });
+
+  it('comes last, or it silently does nothing', () => {
+    // What went wrong: written near the top, `border-width: 2px` lost to
+    // `button { border: 1px solid }` further down — same specificity, later
+    // rule wins. The block still changed two colours, so it looked like it
+    // worked and the borders never moved.
+    const stripped = strip(css);
+    const block = stripped.indexOf('@media (prefers-contrast: more)');
+    const lastButtonRule = stripped.lastIndexOf('button {');
+
+    assert.ok(block > 0 && lastButtonRule > 0, 'both should be present');
+    assert.ok(
+      block > lastButtonRule,
+      'the high-contrast block must come after the rules it overrides',
+    );
+  });
+});

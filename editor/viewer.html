@@ -15,23 +15,43 @@
       </p>
     </header>
 
-    <main class="viewer-layout">
-      <section class="scene-panel" aria-labelledby="scene-heading">
+    <!--
+      The picture is the main content, so <main> is the scene panel itself.
+      It used to wrap both panels, which put the <aside> inside it — and a
+      complementary landmark nested in another landmark is not "aside from"
+      anything. The grid that lays the two side by side is not semantic, so
+      it is a plain wrapper.
+    -->
+    <div class="viewer-layout">
+      <main class="scene-panel" aria-labelledby="scene-heading">
         <h2 id="scene-heading" class="visually-hidden">The robot on its mat</h2>
 
         <!--
           A canvas cannot be read by a screen reader. The description beside it
           is not a fallback bolted on: it is the same sentence the student
           hears, and it is what the picture is a picture of.
+
+          The camera can be dragged, turned and zoomed with a mouse, which made
+          it the one part of this window a keyboard could not reach — exactly
+          backwards for who this is built for. So the canvas takes focus, the
+          same four arrows do the same job, and the keys are written down
+          beside it rather than left to be discovered.
         -->
         <canvas
           id="scene"
           class="scene"
           role="img"
-          aria-describedby="pose"
+          tabindex="0"
+          aria-label="The robot on its mat"
+          aria-describedby="pose scene-keys"
         ></canvas>
 
         <p id="pose" class="pose">Waiting for the robot…</p>
+        <p id="scene-keys" class="hint">
+          With the picture focused: the arrow keys turn the camera, Shift with
+          an arrow slides it, plus and minus zoom, and Home puts it back on the
+          robot.
+        </p>
 
         <!--
           This window has no blocks of its own. These ask the editor to run the
@@ -62,7 +82,7 @@
           annotates, not in the panel of words.
         -->
         <p id="focus-label" class="focus-label" role="status" aria-live="polite"></p>
-      </section>
+      </main>
 
       <aside class="commentary-panel" aria-labelledby="commentary-heading">
         <h2 id="commentary-heading">Spoken commentary</h2>
@@ -134,7 +154,7 @@
 
         <ul id="commentary-transcript" class="commentary-transcript" aria-label="What has been said"></ul>
       </aside>
-    </main>
+    </div>
 
     <script type="module" src="dist/viewer.js"></script>
   </body>

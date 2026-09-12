@@ -10,24 +10,77 @@
   <body>
     <a class="skip-link" href="#workspace-heading">Skip to the blocks</a>
 
-    <header class="app-header">
-      <h1>Blockly for Lego</h1>
-      <p id="connection-summary" class="connection-summary">Not connected to a hub.</p>
-    </header>
-
     <!--
-      Status is assertive: it changes what the student can do next, so it
-      should interrupt. The narration log below is polite.
+      Everything above the workspace lives in the banner.
+
+      Not tidiness: a paragraph that is a direct child of <body> belongs to no
+      landmark, and a screen reader user moving by landmark never lands on it.
+      The status region, the progress caption and both connection notes were
+      all out here, which meant the explanations this editor works hardest to
+      give were the ones hardest to find.
     -->
-    <p id="status" class="visually-hidden" role="status" aria-live="assertive"></p>
+    <header class="app-header">
+      <div class="app-title">
+        <h1>Blockly for Lego</h1>
+        <p id="connection-summary" class="connection-summary">Not connected to a hub.</p>
+      </div>
+
+      <!--
+        Status is assertive: it changes what the student can do next, so it
+        should interrupt. The narration log below is polite.
+      -->
+      <p id="status" class="visually-hidden" role="status" aria-live="assertive"></p>
+
+      <!--
+        The visible half of "something is happening". The status region above
+        announces the stage, so this panel is deliberately NOT a live region:
+        it would say the same thing twice. It exists for the people the status
+        region does nothing for.
+      -->
+      <p id="busy" class="busy" hidden>
+        <progress id="busy-progress" aria-labelledby="busy-label"></progress>
+        <span id="busy-label"></span>
+      </p>
+
+      <!--
+        Why a connection did not happen, in writing.
+
+        The status region above is visually hidden, so every explanation about
+        connecting used to reach a screen reader and nobody else: pressing
+        "Connect to a hub" in a browser without Web Bluetooth looked exactly
+        like a dead button. Deliberately NOT a live region — the status region
+        has already said it, and two would say it twice.
+      -->
+      <p id="connect-note" class="connect-note" hidden></p>
+
+      <!--
+        Shown only when this copy is served from the web. Browsers refuse a
+        connection from a public page to a program on your own machine, so the
+        simulator and the robot view need the project running locally.
+      -->
+      <p id="hosted-note" class="hosted-note" hidden>
+        <strong>Running from the web.</strong> The simulator runs inside this
+        browser, because a website is not allowed to reach a program on your own
+        computer. The first time you connect it downloads Python, which takes a
+        moment; after that it starts straight away. Connecting to a real SPIKE
+        Prime hub over Bluetooth works here too &mdash;
+        <a href="https://github.com/bobdodd/Blockly-for-Lego">the project is on GitHub</a>.
+      </p>
+    </header>
 
     <!--
       Two toolbars rather than one long row: what you do to your program and
       what you do to the robot are different jobs, and a screen reader user
       moving by landmark should be able to reach one without hearing the
       other.
+
+      A named <section> is a region landmark, so that still holds. <nav> was
+      wrong and said so out loud: a navigation landmark promises a set of
+      links to somewhere else, and the first thing every checker asks of one
+      is which item is the current page. These go nowhere. They are the
+      controls for what is already on the screen.
     -->
-    <nav class="toolbar" aria-label="Program">
+    <section class="toolbar" aria-label="Program">
       <label class="program-name" for="program-name">Program name</label>
       <input
         type="text"
@@ -45,14 +98,15 @@
         Save <span class="shortcut" aria-hidden="true">Ctrl+S</span>
       </button>
       <button type="button" id="save-as-program" class="secondary">Save as…</button>
-    </nav>
+      <p id="save-note" class="choice-note" hidden></p>
+    </section>
 
-    <nav class="toolbar" aria-label="Robot controls">
+    <section class="toolbar" aria-label="Robot controls">
       <label class="mat-choice" for="robot">Robot</label>
-      <select id="robot"></select>
+      <select id="robot" aria-describedby="robot-note"></select>
 
       <label class="mat-choice" for="mat">Mat</label>
-      <select id="mat"></select>
+      <select id="mat" aria-describedby="mat-note"></select>
 
       <button id="connect-simulator" type="button">
         Connect to simulator
@@ -69,54 +123,46 @@
       <button id="read-sensors" type="button" disabled>
         Read the sensors aloud
       </button>
-    </nav>
+
+      <!--
+        What each build and each mat is for, in writing.
+
+        This was a `title` on every <option>, which is a tooltip: it needs a
+        mouse hovering over a menu that is already open, screen readers are
+        not obliged to read it, and a touchscreen has no way to ask for it at
+        all. The whole point of the catalogue is that a student can tell which
+        mat is worth opening next, so the answer is on the page.
+      -->
+      <p id="robot-note" class="choice-note"></p>
+      <p id="mat-note" class="choice-note"></p>
+    </section>
 
     <!--
-      The visible half of "something is happening". The status region above
-      announces the stage, so this panel is deliberately NOT a live region:
-      it would say the same thing twice. It exists for the people the status
-      region does nothing for.
+      The blocks are the main content, so <main> is the workspace itself.
+
+      It used to wrap both panels, which put the <aside> inside it. A
+      complementary landmark nested in another landmark is not "aside from"
+      anything: ARIA says it must be a top-level region, and a screen reader
+      listing landmarks showed a complementary buried in the main content. The
+      grid that lays the two side by side is not semantic, so it is a plain
+      wrapper now.
     -->
-    <p id="busy" class="busy" hidden>
-      <progress id="busy-progress" aria-labelledby="busy-label"></progress>
-      <span id="busy-label"></span>
-    </p>
-
-    <!--
-      Why a connection did not happen, in writing.
-
-      The status region above is visually hidden, so every explanation about
-      connecting used to reach a screen reader and nobody else: pressing
-      "Connect to a hub" in a browser without Web Bluetooth looked exactly
-      like a dead button. Deliberately NOT a live region — the status region
-      has already said it, and two would say it twice.
-    -->
-    <p id="connect-note" class="connect-note" hidden></p>
-
-    <!--
-      Shown only when this copy is served from the web. Browsers refuse a
-      connection from a public page to a program on your own machine, so the
-      simulator and the robot view need the project running locally.
-    -->
-    <p id="hosted-note" class="hosted-note" hidden>
-      <strong>Running from the web.</strong> The simulator runs inside this
-      browser, because a website is not allowed to reach a program on your own
-      computer. The first time you connect it downloads Python, which takes a
-      moment; after that it starts straight away. Connecting to a real SPIKE
-      Prime hub over Bluetooth works here too &mdash;
-      <a href="https://github.com/bobdodd/Blockly-for-Lego">the project is on GitHub</a>.
-    </p>
-
-    <main class="layout">
-      <section class="workspace-panel" aria-labelledby="workspace-heading">
-        <h2 id="workspace-heading">Your program</h2>
+    <div class="layout">
+      <main class="workspace-panel" aria-labelledby="workspace-heading">
+        <!--
+          tabindex="-1" so the skip link can actually put focus here. Without
+          it the browser scrolls to the heading and leaves focus on <body>:
+          the next Tab goes back to the top of the page, which is the one
+          thing a skip link exists to prevent.
+        -->
+        <h2 id="workspace-heading" tabindex="-1">Your program</h2>
         <p class="hint">
           Press Tab to move into the blocks, then use the arrow keys to move
           around. Press T to open the block menu, and Escape to leave it.
         </p>
         <div id="blockly" class="blockly-host"></div>
         <p id="warnings" class="warnings" role="status" aria-live="polite"></p>
-      </section>
+      </main>
 
       <aside class="side-panel">
         <!--
@@ -150,8 +196,33 @@
               so this stays empty when you are connected to one.
             </p>
 
-            <canvas id="scene" class="scene" role="img" aria-describedby="pose"></canvas>
+            <!--
+              The picture, and the keys that drive it.
+
+              The camera can be dragged, turned and zoomed with a mouse, which
+              made it the one part of this editor a keyboard could not reach —
+              exactly backwards for who this is built for. A magnifier user with
+              no usable mouse could see the robot and not turn it round. So the
+              canvas takes focus and the same four arrows do the same job, and the
+              keys are written down beside it rather than left to be discovered.
+
+              role="img" with a name and a description: the picture is a picture,
+              and the sentence under it is what it is a picture of.
+            -->
+            <canvas
+              id="scene"
+              class="scene"
+              role="img"
+              tabindex="0"
+              aria-label="The robot on its mat"
+              aria-describedby="pose scene-keys"
+            ></canvas>
             <p id="pose" class="pose">Connect to the simulator to see the robot.</p>
+            <p id="scene-keys" class="hint">
+              With the picture focused: the arrow keys turn the camera, Shift
+              with an arrow slides it, plus and minus zoom, and Home puts it
+              back on the robot.
+            </p>
 
             <div class="scene-controls">
               <label>
@@ -242,6 +313,13 @@
             <p class="hint">
               This is ordinary SPIKE Python. It runs on a real hub unchanged.
             </p>
+            <!--
+              A visible label, not a hidden one. The textarea had no accessible
+              name at all: a screen reader announced "edit text, read only" and
+              voice control had nothing to say to reach it. The tab above is
+              called Python, but a tab does not name what is inside it.
+            -->
+            <label for="python" class="field-label">The Python your blocks make</label>
             <textarea
               id="python"
               class="python"
@@ -272,8 +350,7 @@
           <button id="clear-log" type="button" class="secondary">Clear this list</button>
         </section>
       </aside>
-
-    </main>
+    </div>
 
     <script type="module" src="dist/app.js"></script>
   </body>

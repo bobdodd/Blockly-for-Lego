@@ -117,6 +117,71 @@ export function createScene(canvas) {
   };
 }
 
+/**
+ * Drive the camera from the keyboard.
+ *
+ * OrbitControls is a mouse widget: press, drag, wheel. That made the one part
+ * of this project with a picture in it the one part a keyboard could not
+ * reach — which, for a project whose whole point is that a blind or
+ * partially sighted student can do everything a sighted one can, is the wrong
+ * thing to have missed. A student using a magnifier can see the robot
+ * perfectly well and may have no usable mouse at all; "turn it round and look
+ * from the other side" should not depend on a drag.
+ *
+ * The keys do what the mouse does, one press at a time, and they are written
+ * on the page beside the picture rather than left to be found: arrows turn,
+ * Shift and an arrow slides, plus and minus zoom, Home starts over.
+ *
+ * Bound to the canvas rather than the document, so the arrow keys still
+ * scroll the page everywhere else and still move between blocks in the
+ * workspace next door.
+ *
+ * @param {HTMLElement} canvas
+ * @param {import('three/addons/controls/OrbitControls.js').OrbitControls} controls
+ * @param {{onHome?: () => void}} [options]
+ * @returns {() => void} removes the listener
+ */
+export function driveWithKeyboard(canvas, controls, { onHome } = {}) {
+  // About four degrees a press: fine enough to line a shot up, coarse enough
+  // that a quarter turn is a held key rather than a chore.
+  const TURN = 0.07;
+  const SLIDE = 40; // pixels, the same units OrbitControls pans in
+  const ZOOM = 0.85;
+
+  const onKeyDown = (event) => {
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+
+    const sliding = event.shiftKey;
+    switch (event.key) {
+      case 'ArrowLeft':
+        if (sliding) controls.pan(SLIDE, 0); else controls.rotateLeft(-TURN);
+        break;
+      case 'ArrowRight':
+        if (sliding) controls.pan(-SLIDE, 0); else controls.rotateLeft(TURN);
+        break;
+      case 'ArrowUp':
+        if (sliding) controls.pan(0, SLIDE); else controls.rotateUp(TURN);
+        break;
+      case 'ArrowDown':
+        if (sliding) controls.pan(0, -SLIDE); else controls.rotateUp(-TURN);
+        break;
+      case '+': case '=': controls.dollyIn(ZOOM); break;
+      case '-': case '_': controls.dollyOut(ZOOM); break;
+      case 'Home':
+        if (!onHome) return;
+        onHome();
+        break;
+      default:
+        return;
+    }
+    // Only for a key this actually used: anything else is still the page's.
+    event.preventDefault();
+  };
+
+  canvas.addEventListener('keydown', onKeyDown);
+  return () => canvas.removeEventListener('keydown', onKeyDown);
+}
+
 // --------------------------------------------------------------------------
 // the mat
 // --------------------------------------------------------------------------

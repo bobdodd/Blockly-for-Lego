@@ -146,10 +146,18 @@ export function mountCommentaryControls(elements, parts) {
     // Only the working case is unremarkable; the rest are the answer to
     // "why can I not hear anything".
     channel.classList.toggle('is-fallback', speaker.channel !== 'voice');
-    // Only actionable when there is something to do about it.
+    // Only actionable when there is something to do about it. The attribute
+    // is removed rather than set to -1: a line of explanatory text is not a
+    // focus target waiting to be scripted, and tabindex="-1" on it is a
+    // promise to move focus there that nothing in this page keeps.
     const claimable = speaker.channel === 'elsewhere';
-    channel.tabIndex = claimable ? 0 : -1;
-    channel.role = claimable ? 'button' : null;
+    if (claimable) {
+      channel.tabIndex = 0;
+      channel.role = 'button';
+    } else {
+      channel.removeAttribute('tabindex');
+      channel.role = null;
+    }
   }
   speaker.onChannelChange = showChannel;
   showChannel();

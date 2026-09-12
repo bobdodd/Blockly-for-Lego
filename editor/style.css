@@ -87,8 +87,12 @@ body {
   top: 0.5rem;
 }
 
-.app-header {
-  padding: 0.75rem 1rem 0;
+.app-header { padding: 0.75rem 1rem 0; }
+
+/* The title row. The banner around it is a plain block, because it also
+   carries the progress caption and the connection notes, and those are
+   paragraphs that want their own lines. */
+.app-title {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -102,6 +106,38 @@ body {
   flex-wrap: wrap;
   gap: 0.5rem;
   padding: 0.75rem 1rem;
+}
+
+/*
+ * Nothing you have to hit is smaller than 24 by 24 (WCAG 2.5.8).
+ *
+ * A browser's default checkbox is about 13px square and a range track about
+ * 16px tall. That is a small target for anybody and a hard one for a student
+ * whose hands do not do exactly what they are told — which, in a room full of
+ * students with a print disability, is a fair few of them. The controls are
+ * sized here rather than left to the browser, and the checkboxes look better
+ * for it.
+ */
+input[type="checkbox"],
+input[type="radio"] {
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  margin: 0;
+}
+
+input[type="range"] {
+  block-size: 1.5rem;
+}
+
+select {
+  font: inherit;
+  min-block-size: 1.75rem;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--panel);
+  color: var(--ink);
+  max-width: 100%;
 }
 
 button {
@@ -122,10 +158,14 @@ button[disabled] {
   opacity: 0.55;
   cursor: not-allowed;
 }
+/* The keyboard hint on a button. It used to be 0.8em, which on a 16px button
+   is 12.8px — small enough to be the smallest text on the page and the only
+   thing on it below a comfortable reading size. It is told apart from the
+   label by weight and spacing instead. */
 .shortcut {
-  font-size: 0.8em;
+  font-weight: 400;
   opacity: 0.85;
-  margin-left: 0.35rem;
+  margin-left: 0.45rem;
 }
 
 .layout {
@@ -203,6 +243,26 @@ h2 { font-size: 1.05rem; margin: 0 0 0.35rem; }
   resize: vertical;
 }
 
+/*
+ * A visible answer where a `title` tooltip used to be: what a mat teaches,
+ * what a build is for, why Save behaves oddly in this browser. A tooltip
+ * needs a mouse and a hover, so it said nothing to a keyboard, a touchscreen
+ * or a screen reader. These take a whole line of the toolbar to themselves.
+ */
+.choice-note {
+  flex: 1 1 100%;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+/* A label above the control it names, rather than beside it. */
+.field-label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+
 /* --- the program toolbar ------------------------------------------------ */
 
 .program-name { font-weight: 600; }
@@ -231,7 +291,7 @@ h2 { font-size: 1.05rem; margin: 0 0 0.35rem; }
 /* Shown only when the editor is served from the web, where a browser will not
    let the page reach a simulator running on the reader's own machine. */
 .hosted-note {
-  margin: 0 1rem 0.75rem;
+  margin: 0.75rem 0 0;
   padding: 0.65rem 0.9rem;
   background: var(--warning-bg);
   color: var(--warning-ink);
@@ -260,7 +320,7 @@ h2 { font-size: 1.05rem; margin: 0 0 0.35rem; }
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  margin: 0 1rem 0.75rem;
+  margin: 0.75rem 0 0;
   color: var(--muted);
 }
 
@@ -383,7 +443,7 @@ button[aria-disabled="true"] {
    -------------------------------------------------------------------------- */
 
 .connect-note {
-  margin: 0 0 0.75rem;
+  margin: 0.75rem 0 0;
   padding: 0.6rem 0.8rem;
   border: 1px solid var(--line);
   border-left: 4px solid var(--focus);
@@ -417,3 +477,42 @@ button[aria-disabled="true"] {
    away with the row. */
 #commentary-voice { max-width: 18rem; }
 
+/* --------------------------------------------------------------------------
+   More contrast, when the system asks for it
+   --------------------------------------------------------------------------
+   Last in the file on purpose: these override element rules defined above,
+   and at equal specificity the later rule wins. Written higher up, the
+   border widths lost to `button { border: 1px solid }` and the whole block
+   did nothing but change two colours.
+   -------------------------------------------------------------------------- */
+
+/*
+ * When the operating system is asked for more contrast, give it.
+ *
+ * The palette above is chosen to pass AA everywhere, which is a floor, not an
+ * answer: a student who has turned this on at the system level has told us
+ * that AA is not enough for them. Borders go darker and thicker, muted text
+ * stops being muted, and the focus ring grows — the three things that are
+ * deliberately quiet in the default theme and are the first to disappear.
+ */
+@media (prefers-contrast: more) {
+  :root {
+    --muted: #24303a;
+    --line: #12171c;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --muted: #f2f7fa;
+      --line: #e8eef2;
+    }
+  }
+
+  button, select, input, textarea, .log, .commentary, .commentary-transcript {
+    border-width: 2px;
+  }
+
+  :focus-visible {
+    outline-width: 4px;
+  }
+}

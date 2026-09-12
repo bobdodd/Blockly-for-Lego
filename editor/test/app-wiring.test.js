@@ -248,7 +248,14 @@ describe('the mat catalogue reaches the editor', () => {
   });
 
   it('says what a mat is for, not just its name', () => {
-    assert.match(app, /option\.title = entry\.teaches/);
+    // It used to say it in a `title` on each <option>, which is a tooltip:
+    // it needs a mouse resting on an open menu, so a keyboard, a touchscreen
+    // and a screen reader were all told nothing. The description is on the
+    // page and the menu points at it.
+    assert.ok(!/option\.title =/.test(app), 'a tooltip is not somewhere to put this');
+    assert.match(app, /describeChoice\(ui\.matNote/);
+    assert.match(markup, /<select id="mat" aria-describedby="mat-note">/);
+    assert.match(markup, /id="mat-note"/);
   });
 });
 
@@ -368,7 +375,13 @@ describe('the robot view in its own window', () => {
 
   it('keeps the highlight label beside the picture it annotates', () => {
     const markup = read('viewer.html');
-    const scene = markup.slice(markup.indexOf('class="scene-panel"'), markup.indexOf('</section>'));
+    // Bounded by the panel's own closing tag. It used to stop at the first
+    // </section>, and when the panel stopped being a <section> the slice ran
+    // to the end of the file: the assertion still passed and had stopped
+    // asking anything.
+    const start = markup.indexOf('class="scene-panel"');
+    const scene = markup.slice(start, markup.indexOf('</main>', start));
+    assert.ok(start > 0 && scene.length > 0, 'the scene panel should be findable');
     assert.ok(scene.includes('id="focus-label"'), 'it annotates the view, not the words');
   });
 
@@ -464,7 +477,15 @@ describe('two windows, one voice', () => {
 
   it('lets a keyboard move the voice, not only a mouse', () => {
     assert.match(controls, /event\.key !== 'Enter' && event\.key !== ' '/);
-    assert.match(controls, /channel\.tabIndex = claimable \? 0 : -1/);
+    assert.match(controls, /channel\.tabIndex = 0;/);
+    assert.match(controls, /channel\.role = 'button';/);
+  });
+
+  it('and stops pretending to be a control when there is nothing to do', () => {
+    // The line is explanatory text most of the time. It used to keep
+    // tabindex="-1" in that state, which is a promise that something will
+    // move focus there — and nothing here ever does.
+    assert.match(controls, /channel\.removeAttribute\('tabindex'\)/);
   });
 });
 

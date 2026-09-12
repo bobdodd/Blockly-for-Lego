@@ -59,7 +59,9 @@ const element = (id) => document.getElementById(id);
 const ui = {
   connectSimulator: element('connect-simulator'),
   mat: element('mat'),
+  matNote: element('mat-note'),
   robot: element('robot'),
+  robotNote: element('robot-note'),
   connectHub: element('connect-hub'),
   run: element('run'),
   stop: element('stop'),
@@ -96,6 +98,7 @@ const ui = {
   openProgram: element('open-program'),
   saveProgram: element('save-program'),
   saveAsProgram: element('save-as-program'),
+  saveNote: element('save-note'),
   busy: element('busy'),
   busyLabel: element('busy-label'),
 };
@@ -529,6 +532,12 @@ async function startSimulator() {
     setBusy(detail ?? stage);
   };
 
+  // On a hosted copy this is the first anyone *hears* of why the simulator is
+  // in the browser rather than on their own machine. The note at the top of
+  // the page says the same thing and has been sitting there unread since it
+  // loaded; this arrives at the moment it explains something.
+  if (!isLocalOrigin()) announcer.status(builtInSimulatorNote());
+
   await connect(transport, 'the built-in simulator');
 }
 
@@ -546,15 +555,14 @@ function wireMatChoice() {
     const option = document.createElement('option');
     option.value = entry.name;
     option.textContent = entry.title;
-    // The whole point of the catalogue is that a student can tell which mat
-    // is worth opening next, so what it is for travels with the name.
-    option.title = entry.teaches;
     ui.mat.append(option);
   }
   ui.mat.value = chosenMat();
+  describeChoice(ui.matNote, MATS.find((mat) => mat.name === ui.mat.value));
 
   ui.mat.addEventListener('change', async () => {
     const entry = MATS.find((mat) => mat.name === ui.mat.value) ?? MATS[0];
+    describeChoice(ui.matNote, entry);
     try {
       localStorage.setItem(MAT_KEY, ui.mat.value);
     } catch {
@@ -586,6 +594,23 @@ function wireMatChoice() {
 }
 
 /**
+ * Say what the chosen mat or build is for, on the page.
+ *
+ * This was a `title` on every <option>, which is a tooltip, which needs a
+ * mouse resting on an open menu. It told a keyboard nothing, a touchscreen
+ * nothing, and a screen reader whatever it felt like — while being the only
+ * place the catalogue explained itself. The description is referenced by
+ * aria-describedby from the menu, so choosing an option reads it out.
+ *
+ * @param {HTMLElement|null} note
+ * @param {{teaches?: string}} [entry]
+ */
+function describeChoice(note, entry) {
+  if (!note) return;
+  note.textContent = entry?.teaches ?? '';
+}
+
+/**
  * Fill in the robot menu and act on a change.
  *
  * The two measurements reach three places — the simulator's physics, the 3D
@@ -601,14 +626,15 @@ function wireRobotChoice() {
     option.value = entry.name;
     option.textContent = `${entry.title} — ${entry.wheelDiameterMm}mm wheels, `
       + `${entry.axleTrackMm}mm apart`;
-    option.title = entry.teaches;
     ui.robot.append(option);
   }
   ui.robot.value = chosenRobot();
   applyRobot(chosenRobot());
+  describeChoice(ui.robotNote, ROBOTS.find((robot) => robot.name === ui.robot.value));
 
   ui.robot.addEventListener('change', async () => {
     const entry = ROBOTS.find((robot) => robot.name === ui.robot.value) ?? ROBOTS[0];
+    describeChoice(ui.robotNote, entry);
     try {
       localStorage.setItem(ROBOT_KEY, entry.name);
     } catch {
@@ -1048,8 +1074,14 @@ function wireProgramControls() {
   ui.saveAsProgram.addEventListener('click', () => saveProgram({ prompt: true }));
 
   if (!files.canPickFiles()) {
-    ui.saveProgram.title =
-      'This browser downloads the file instead of asking where to put it.';
+    // On the page, not in a tooltip: "Save" behaving differently from the
+    // Save every other program has is worth knowing before you press it, and
+    // a hover tells you only after you have found it with a mouse.
+    if (ui.saveNote) {
+      ui.saveNote.textContent =
+        'This browser downloads the file instead of asking where to put it.';
+      ui.saveNote.hidden = false;
+    }
     ui.saveAsProgram.hidden = true;
   }
 }
@@ -1146,15 +1178,12 @@ function start() {
   wireControls();
   wireRobotView();
 
-  if (!bluetoothSupported()) {
-    ui.connectHub.title =
-      'This browser cannot talk to a hub over Bluetooth. Use Chrome or Edge.';
-  }
-
   if (!isLocalOrigin()) {
     // Said on arrival rather than when the first connection seems to hang.
+    // The note says what the tooltip on the button used to say, and says it
+    // to everyone; builtInSimulatorNote is the same words for the status
+    // region when a connection is actually attempted.
     element('hosted-note').hidden = false;
-    ui.connectSimulator.title = builtInSimulatorNote();
   }
   announcer.status(
     'Ready. Connect to the simulator to try your program without a robot.',
