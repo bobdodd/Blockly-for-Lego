@@ -34,10 +34,29 @@ Two toolbars rather than one long row, because what you do to your *program*
 and what you do to the *robot* are different jobs — and someone moving through
 the page by landmark should be able to reach one without hearing the other.
 
-The right-hand panel holds two things you look at one at a time, behind tabs,
-and one thing that is always visible. **What the robot is doing** is never
-hidden behind a tab: it is the primary output for a student who cannot see
-the other two.
+### The right-hand panel changes with what you are connected to
+
+The two connections are not interchangeable to look at, so each one shows the
+panel that has something in it and takes the other away.
+
+| Connected to | Robot view | What the robot is doing |
+| --- | --- | --- |
+| **the simulator** | shown — the mat, the robot, and the spoken commentary | taken away |
+| **a real hub** | taken away | shown |
+| **nothing** | shown | shown |
+
+A real hub **cannot report where it is**. Connected to one, the 3D view would
+be an empty mat and a note explaining why, and a tab leading to it is a tab
+leading nowhere — so it is removed, properly: out of the accessibility tree
+and out of the arrow-key cycle, not merely made invisible. If it was the tab
+you were on, the Python tab takes over and focus goes with it.
+
+With the simulator, the robot view already tells the whole story — the mat,
+the robot on it, and the running spoken commentary — so the separate list is
+the same thing told twice, and it goes.
+
+Nothing is destroyed. The list keeps filling while it is hidden, so
+disconnecting brings it back with everything that happened still in it.
 
 ---
 
@@ -216,12 +235,12 @@ The simulated robot on its mat, in 3D, built from real LEGO parts. **Keep the
 camera on the robot** follows it as it drives; **Reset the view** puts the
 camera back if you have lost it.
 
+**This tab is not there while a real hub is connected.** A hub does not report
+where it is, so there would be nothing to draw.
+
 **Open in its own window** is the one for teaching: put the robot on a
 projector or second screen and leave the editor full size on the student's
 laptop.
-
-It needs the simulator. A real hub does not report where it is, so connected
-to hardware this stays empty and says so.
 
 The tab is not selected when the editor opens, and nothing about the 3D view
 is even downloaded until you choose it.
@@ -474,11 +493,15 @@ into LEGO's own app.
 
 ### What the robot is doing
 
-The running commentary. Every line is written to be spoken.
+The running commentary, in writing. Every line is written to be spoken.
+
+**Shown with a real hub, and when nothing is connected.** With the simulator
+it is taken away — see [above](#the-right-hand-panel-changes-with-what-you-are-connected-to)
+— because the robot view's spoken commentary is already telling that story.
 
 | Option | What it does |
 | --- | --- |
-| **Read aloud with the browser voice** | Speaks each line using the browser's own speech. **Off by default**, because a screen reader user would otherwise hear everything twice. |
+| **Read aloud with the browser voice** | Speaks each line using the browser's own speech. **Off by default**, because a screen reader user would otherwise hear everything twice. Switched off automatically while the simulator is connected: the spoken commentary is the voice then, and two of them share one speech engine and cut each other off. |
 | **Only announce printed messages and errors** | Quietens everything except your program's own `print` output and errors. Useful when a robot is doing a lot. |
 
 **Read the sensors aloud**, in the robot toolbar, describes what every sensor

@@ -45,6 +45,53 @@ describe('the tabs are wired last', () => {
   });
 });
 
+describe('each connection shows only the panel that has something in it', () => {
+  const app = read('src/app.js');
+  const markup = read('index.html');
+
+  it('takes the narration list away while the simulator is connected', () => {
+    // The robot view carries the whole story there — the mat, the robot on
+    // it, and the spoken commentary — so the list is the same thing twice.
+    assert.match(app, /const listHidden = connectionKind === 'simulator'/);
+    assert.match(app, /ui\.logSection\.hidden = listHidden/);
+    assert.ok(markup.includes('id="log-section"'), 'the section needs an id to hide');
+  });
+
+  it('takes the robot view away while a hub is connected', () => {
+    // A real hub reports no position, so the 3D view would be an empty mat
+    // and a note explaining why.
+    assert.match(app, /setAvailable\('tab-robot', connectionKind !== 'hub'\)/);
+  });
+
+  it('tells the two apart by whether the transport can narrate', () => {
+    // The same test that decides whether to listen for narration at all, so
+    // the two can never disagree about what is connected.
+    assert.match(app, /transport\.onNarration !== undefined \? 'simulator' : 'hub'/);
+  });
+
+  it('puts both back when nothing is connected', () => {
+    // A student should be able to read the last run's narration and look at
+    // where the robot finished.
+    assert.match(app, /connectionKind = connected \? kind : null/);
+  });
+
+  it('leaves one voice running, not two', () => {
+    // The narration list has its own browser voice, and the commentary
+    // cancels whatever is speaking before every announcement. Both running
+    // means both cut each other off — and the list's switch is inside the
+    // panel that just went away, so a student could not turn it off.
+    assert.match(app, /if \(listHidden\) announcer\.speechEnabled = false/);
+    assert.match(app, /else if \(ui\.speech\) announcer\.speechEnabled = ui\.speech\.checked/);
+  });
+
+  it('applies the layout once the tablist exists', () => {
+    // setConnected can run before the tabs are built; the layout has to be
+    // caught up when they are, or a reconnect is the first thing that fixes it.
+    const wiring = app.slice(app.indexOf('function wireRobotView'));
+    assert.match(wiring.slice(0, wiring.indexOf('ui.followRobot')), /applyConnectionLayout\(\)/);
+  });
+});
+
 describe('the commentary controls', () => {
   const app = read('src/app.js');
   const main = read('src/viewer/main.js');

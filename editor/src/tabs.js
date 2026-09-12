@@ -15,6 +15,11 @@
  *  - **Selection follows focus**, which is the recommended behaviour when
  *    showing a panel is cheap. The one cost here is the 3D view, so the
  *    caller is told about every change and can start and stop it.
+ *  - **A tab can be taken away**, for a panel that has nothing to show — the
+ *    robot view on real hardware, which reports no position. Taking it away
+ *    means taking it out of the arrow-key cycle and out of the accessibility
+ *    tree too, not just hiding the button: a tab a screen reader announces
+ *    and a mouse cannot see is worse than either.
  */
 
 /**
@@ -26,12 +31,19 @@ export function createTabs(tablist, { onChange = () => {}, initial } = {}) {
   const tabs = [...tablist.querySelectorAll('[role="tab"]')];
   if (tabs.length === 0) throw new Error('A tablist needs at least one tab.');
 
-  const panelFor = (tab) => document.getElementById(tab.getAttribute('aria-controls'));
+  // The tablist's own document rather than the global one, so a tablist in a
+  // popped-out window finds its panels in that window and not in this one.
+  const documentOf = () => tablist.ownerDocument ?? globalThis.document;
+  const panelFor = (tab) => documentOf().getElementById(tab.getAttribute('aria-controls'));
+
+  const unavailable = new Set();
+  const available = () => tabs.filter((tab) => !unavailable.has(tab));
   let selected = null;
 
   function select(tab, { focus = false } = {}) {
-    if (!tab || tab === selected) {
-      if (focus) tab?.focus();
+    if (!tab || unavailable.has(tab)) return;
+    if (tab === selected) {
+      if (focus) tab.focus();
       return;
     }
     const previous = selected;
@@ -42,7 +54,8 @@ export function createTabs(tablist, { onChange = () => {}, initial } = {}) {
       // roving tabindex: one stop for the whole tablist
       candidate.tabIndex = isSelected ? 0 : -1;
       const panel = panelFor(candidate);
-      if (panel) panel.hidden = !isSelected;
+      // An unavailable panel stays hidden however the selection moves.
+      if (panel) panel.hidden = !isSelected || unavailable.has(candidate);
     }
 
     selected = tab;
@@ -51,19 +64,20 @@ export function createTabs(tablist, { onChange = () => {}, initial } = {}) {
   }
 
   tablist.addEventListener('keydown', (event) => {
-    const index = tabs.indexOf(document.activeElement);
+    const reachable = available();
+    const index = reachable.indexOf(documentOf().activeElement);
     if (index < 0) return;
 
     const move = {
-      ArrowRight: (index + 1) % tabs.length,
-      ArrowLeft: (index - 1 + tabs.length) % tabs.length,
+      ArrowRight: (index + 1) % reachable.length,
+      ArrowLeft: (index - 1 + reachable.length) % reachable.length,
       Home: 0,
-      End: tabs.length - 1,
+      End: reachable.length - 1,
     }[event.key];
 
     if (move === undefined) return;
     event.preventDefault();
-    select(tabs[move], { focus: true });
+    select(reachable[move], { focus: true });
   });
 
   for (const tab of tabs) {
@@ -76,8 +90,48 @@ export function createTabs(tablist, { onChange = () => {}, initial } = {}) {
     get selected() {
       return selected?.id ?? null;
     },
+
     select(id) {
       select(tabs.find((tab) => tab.id === id));
+    },
+
+    /**
+     * Show or take away one tab.
+     *
+     * Taking away the selected tab moves to the first one left, and moves
+     * focus with it when the vanishing tab had it — a focused element that
+     * disappears drops focus to the body, which loses a keyboard user their
+     * place entirely.
+     */
+    setAvailable(id, isAvailable) {
+      const tab = tabs.find((candidate) => candidate.id === id);
+      if (!tab) return;
+      if (unavailable.has(tab) === !isAvailable) return;
+
+      const hadFocus = documentOf().activeElement === tab;
+
+      if (isAvailable) {
+        unavailable.delete(tab);
+        tab.hidden = false;
+      } else {
+        unavailable.add(tab);
+        tab.hidden = true;
+        tab.tabIndex = -1;
+        const panel = panelFor(tab);
+        if (panel) panel.hidden = true;
+      }
+
+      if (!isAvailable && selected === tab) {
+        selected = null;
+        const next = available()[0];
+        if (next) select(next, { focus: hadFocus });
+      }
+    },
+
+    /** Whether a tab is currently offered. */
+    isAvailable(id) {
+      const tab = tabs.find((candidate) => candidate.id === id);
+      return Boolean(tab) && !unavailable.has(tab);
     },
   };
 }

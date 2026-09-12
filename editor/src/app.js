@@ -68,6 +68,7 @@ const ui = {
   followRobot: element('follow-robot'),
   resetView: element('reset-view'),
   popOut: element('pop-out'),
+  logSection: element('log-section'),
   commentaryOn: element('commentary-on'),
   commentaryVolume: element('commentary-volume'),
   commentaryVolumeValue: element('commentary-volume-value'),
@@ -90,6 +91,18 @@ let client = null;
 let latestTelemetry = [];
 let robotView = null;
 let robotViewLoading = null;
+let tabs = null;
+
+/**
+ * What is on the other end: 'simulator', 'hub', or null.
+ *
+ * The two are not interchangeable to look at. A simulated robot has a mat, a
+ * position and a running narration; a real one has none of those and cannot
+ * be made to report them. So each connection shows the panel that has
+ * something in it and takes away the one that does not, rather than leaving
+ * a student to work out which half of the screen is dead.
+ */
+let connectionKind = null;
 
 /** Says the 3D view out loud. See src/viewer/commentary.js. */
 const speaker = new Speaker({ regionId: 'commentary-region' });
@@ -312,7 +325,10 @@ async function connect(transport, description, { quiet = false } = {}) {
   }
 
   client = hub;
-  setConnected(true);
+  // A transport that can narrate is the simulator; a real hub has no such
+  // channel. That is the same test used to decide whether to listen for
+  // narration at all, so the two can never disagree about what is connected.
+  setConnected(true, transport.onNarration !== undefined ? 'simulator' : 'hub');
   ui.summary.textContent = `Connected to ${hub.name}.`;
   announcer.status(
     `Connected to ${hub.name}. Press ${shortcutLabel('run')} to run your program.`,
@@ -375,14 +391,47 @@ async function disconnect() {
   setConnected(false);
 }
 
-function setConnected(connected) {
+function setConnected(connected, kind = null) {
   ui.run.disabled = !connected;
   ui.readSensors.disabled = !connected;
+  connectionKind = connected ? kind : null;
+  applyConnectionLayout();
   if (!connected) {
     ui.stop.disabled = true;
     ui.summary.textContent = 'Not connected to a hub.';
     latestTelemetry = [];
   }
+}
+
+/**
+ * Show the panels that have something in them, and only those.
+ *
+ * With the **simulator**, the robot view carries everything: the mat, the
+ * robot on it, and the spoken commentary describing what it does. The
+ * separate narration list is the same story told twice.
+ *
+ * With a **hub**, there is no robot view to carry it — a real hub reports no
+ * position, so the 3D view would be an empty mat and a note explaining why.
+ * The narration list is all there is, so that is what is shown.
+ *
+ * Disconnected, both are available: the student can read the last run's
+ * narration and look at where the robot finished.
+ */
+function applyConnectionLayout() {
+  const listHidden = connectionKind === 'simulator';
+  if (ui.logSection) ui.logSection.hidden = listHidden;
+  tabs?.setAvailable('tab-robot', connectionKind !== 'hub');
+
+  // Two voices, one speech engine. The commentary cancels whatever is being
+  // spoken before each announcement — that is what keeps it level with the
+  // robot — so leaving the narration list's own voice running would have the
+  // two cutting each other off mid-sentence. Its switch is inside the panel
+  // that just went away, too, so a student could not turn it off.
+  //
+  // Entries still accumulate in the hidden list, so nothing is lost: it is
+  // all there to read when the simulator disconnects.
+  if (listHidden) announcer.speechEnabled = false;
+  else if (ui.speech) announcer.speechEnabled = ui.speech.checked;
 }
 
 function setRunning(running) {
@@ -488,7 +537,7 @@ function wireRobotView() {
     transcript: ui.commentaryTranscript,
   }, { speaker, commentary });
 
-  createTabs(ui.tablist, {
+  tabs = createTabs(ui.tablist, {
     initial: 'tab-python',
     onChange: async (id) => {
       if (id === 'tab-robot') {
@@ -502,6 +551,9 @@ function wireRobotView() {
       }
     },
   });
+  // The tablist exists now, so the layout can be applied for whatever is
+  // already connected — which at start-up is nothing.
+  applyConnectionLayout();
 
   ui.followRobot.addEventListener('change', (event) => {
     if (robotView) robotView.follow = event.target.checked;
