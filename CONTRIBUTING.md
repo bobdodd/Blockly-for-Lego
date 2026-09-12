@@ -103,6 +103,14 @@ A few rules specific to this codebase:
   `src/viewer/scene-description.js` is pure functions over plain data for
   exactly this reason — no three.js, no DOM, all of it testable.
 
+- **Test the browser, do not predict it.** Whether speech works is settled by
+  trying it and waiting for `onstart`, never by inspecting `getVoices()` or
+  sniffing a user agent. Safari fills the voice list synchronously and Chrome
+  does not, so the predicting version read one engine as working and the other
+  as broken before either had been asked to say a word — Chrome was mute for a
+  whole release because of it. The same rule caught the de-Googled-Android
+  case that the guess was written for in the first place.
+
 - **Prefer cancellable speech to a live region for anything that changes
   fast.** A polite live region queues: by the time a queued sentence is read,
   the robot has moved and the sentence is wrong. `speechSynthesis` can be

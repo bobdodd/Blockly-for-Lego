@@ -37,6 +37,25 @@ const VOLUME_KEY = 'blockly-for-lego.commentary-volume';
 /** How long to wait before deciding an engine that never started is dead. */
 const ENGINE_DEAD_MS = 6000;
 
+/**
+ * How long to give the engine to actually start making a sound.
+ *
+ * Chrome reports no voices until it feels like it, and a de-Googled Android
+ * has an engine with no voices at all. Up front those look identical; the
+ * moment you try to speak they do not. So this waits to be told rather than
+ * guessing, and only then falls back.
+ */
+const SPEECH_START_MS = 700;
+
+/**
+ * How often to nudge a long utterance along.
+ *
+ * Chrome stops speaking after about fifteen seconds and reports no error. The
+ * description of the mat runs well past that, so without this it would trail
+ * off mid-sentence.
+ */
+const KEEPALIVE_MS = 10000;
+
 export class Speaker {
   /**
    * @param {object} options
@@ -55,24 +74,30 @@ export class Speaker {
       ? this.window.speechSynthesis
       : null;
 
-    /** Whether the engine has any voice that can actually speak. */
-    this.speechOk = false;
+    /**
+     * Set only once an attempt to speak has demonstrably produced nothing.
+     *
+     * Never assumed up front. Judging the engine by whether `getVoices()` has
+     * filled in yet is how Chrome came to be silent while Safari was fine:
+     * Safari populates that list synchronously and Chrome does not, so the
+     * same code read one as working and the other as broken before either had
+     * been asked to say a word.
+     */
+    this.speechBroken = false;
+    this.onChannelChange = null;
     this._primed = false;
     this._regionTimer = null;
+    this._keepAlive = null;
+    /** Rising count, so a superseded utterance never speaks late. */
+    this._token = 0;
 
-    // A speech engine with no voices cannot speak. Probe now, and again when
-    // voices arrive — on most browsers the list is populated asynchronously,
-    // so the first probe legitimately comes back empty.
-    const probe = () => {
-      if (!this.synth) return;
-      try {
-        this.speechOk = this.synth.getVoices().length > 0;
-      } catch {
-        this.speechOk = false;
-      }
-    };
-    probe();
-    this.synth?.addEventListener?.('voiceschanged', probe);
+    // Voices arriving is good news — an engine that once looked broken may
+    // not be — so it clears the flag. It is never used to set it.
+    this.synth?.addEventListener?.('voiceschanged', () => {
+      if (!this.speechBroken) return;
+      this.speechBroken = false;
+      this.onChannelChange?.(this.channel);
+    });
 
     // Default on: speech is the primary channel here, and a student who wants
     // the live region instead can say so once and have it remembered.
@@ -108,12 +133,28 @@ export class Speaker {
 
   /** True when speech is the channel an announcement would take right now. */
   get willSpeak() {
-    return Boolean(this.audioOn && this.volume > 0 && this.synth && this.speechOk);
+    return Boolean(this.audioOn && this.volume > 0 && this.synth && !this.speechBroken);
+  }
+
+  /**
+   * Which channel is carrying the words, for showing on the page.
+   *
+   * Worth showing. "It is silent" and "it is going to your screen reader" are
+   * the same experience for anyone not running one, and without this the
+   * difference is invisible from the outside — which is how a browser-specific
+   * fault stayed hidden.
+   */
+  get channel() {
+    if (!this.audioOn) return 'off';
+    if (this.volume === 0) return 'muted';
+    if (!this.synth) return 'no-engine';
+    return this.speechBroken ? 'no-voice' : 'voice';
   }
 
   setAudio(on) {
     this.audioOn = Boolean(on);
     this.storage.setItem(AUDIO_KEY, this.audioOn ? 'on' : 'off');
+    this.onChannelChange?.(this.channel);
     // Never leave half a sentence playing after the switch: the student turned
     // it off because they wanted quiet now, not quiet after this sentence.
     if (!this.audioOn) this.stop();
@@ -123,6 +164,7 @@ export class Speaker {
     const wasSpeaking = this.willSpeak;
     this.volume = clampVolume(value);
     this.storage.setItem(VOLUME_KEY, String(this.volume));
+    this.onChannelChange?.(this.channel);
     // A change only takes effect on the next utterance — `volume` is a
     // property of an utterance, not of the engine — so cut the current one
     // short rather than letting it play on at the old level.
@@ -156,11 +198,7 @@ export class Speaker {
       : null;
 
     if (this.willSpeak) {
-      this.synth.cancel();
-      const utterance = new this.window.SpeechSynthesisUtterance(text);
-      utterance.volume = this.volume;
-      if (finish) this._watchForEnd(utterance, finish);
-      this.synth.speak(utterance);
+      this._speak(text, finish);
       return;
     }
 
@@ -168,6 +206,88 @@ export class Speaker {
     // A screen reader gives no end signal at all, so this is an estimate of
     // reading time and nothing more.
     if (finish) this.window?.setTimeout(finish, Math.min(12000, 900 + text.length * 55));
+  }
+
+  /**
+   * Speak, and notice if nothing comes out.
+   *
+   * Two things here are working around Chrome specifically, and neither shows
+   * up in Safari:
+   *
+   *  - **`speak()` in the same tick as `cancel()` is silently dropped.** So a
+   *    cancel hands over to the next macrotask before speaking. Every
+   *    announcement still replaces the one before it; it just does it a tick
+   *    later.
+   *  - **Nothing may happen at all**, with no error, when the engine has not
+   *    finished waking up. `onstart` is the only honest signal, so a short
+   *    watchdog waits for it and falls back to the live region if it never
+   *    comes.
+   */
+  _speak(text, finish) {
+    const token = ++this._token;
+
+    const start = () => {
+      // A newer announcement arrived while this one was waiting its tick.
+      if (token !== this._token) return;
+
+      const utterance = new this.window.SpeechSynthesisUtterance(text);
+      utterance.volume = this.volume;
+
+      let started = false;
+      utterance.onstart = () => {
+        started = true;
+        this._startKeepAlive();
+      };
+      if (finish) this._watchForEnd(utterance, finish);
+      this.synth.speak(utterance);
+
+      this.window.setTimeout(() => {
+        if (started || token !== this._token) return;
+        if (this.synth.speaking || this.synth.pending) return;
+
+        // It was asked, and it did nothing. Now we know.
+        this.speechBroken = true;
+        this.onChannelChange?.(this.channel);
+        this._toRegion(text);
+        finish?.();
+      }, SPEECH_START_MS);
+    };
+
+    if (this.synth.speaking || this.synth.pending) {
+      this.synth.cancel();
+      this.window.setTimeout(start, 0);
+    } else {
+      start();
+    }
+  }
+
+  /**
+   * Keep a long utterance going.
+   *
+   * Chrome stops after about fifteen seconds, silently. The description of
+   * the mat runs longer than that, so it would trail off mid-sentence with
+   * nothing to show for it. `resume()` on speech that is already playing is a
+   * no-op everywhere else.
+   */
+  _startKeepAlive() {
+    this._stopKeepAlive();
+    this._keepAlive = this.window.setInterval(() => {
+      if (!this.synth?.speaking) {
+        this._stopKeepAlive();
+        return;
+      }
+      try {
+        this.synth.resume();
+      } catch {
+        // Some engines throw on resume when nothing is paused.
+      }
+    }, KEEPALIVE_MS);
+  }
+
+  _stopKeepAlive() {
+    if (this._keepAlive === null) return;
+    this.window.clearInterval(this._keepAlive);
+    this._keepAlive = null;
   }
 
   /**
@@ -228,6 +348,8 @@ export class Speaker {
 
   /** Stop immediately. */
   stop() {
+    this._token += 1;
+    this._stopKeepAlive();
     try {
       this.synth?.cancel();
     } catch {

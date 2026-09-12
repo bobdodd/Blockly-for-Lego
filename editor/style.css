@@ -366,3 +366,21 @@ button[aria-disabled="true"] {
 }
 
 .connect-note a { color: inherit; }
+
+/* Which channel the commentary is actually using. Normally unremarkable; when
+   it is anything but the browser voice, it is the answer to "why can I not
+   hear anything", so it is marked as something to read. */
+.commentary-channel {
+  margin: 0.5rem 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.commentary-channel:empty { display: none; }
+
+.commentary-channel.is-fallback {
+  padding: 0.4rem 0.6rem;
+  border-left: 4px solid var(--focus);
+  background: var(--warning-bg);
+  color: var(--warning-ink);
+}

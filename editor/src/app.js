@@ -79,6 +79,7 @@ const ui = {
   commentaryVolumeValue: element('commentary-volume-value'),
   describeScene: element('describe-scene'),
   commentaryTranscript: element('commentary-transcript'),
+  commentaryChannel: element('commentary-channel'),
   programName: element('program-name'),
   saveState: element('save-state'),
   newProgram: element('new-program'),
@@ -592,6 +593,7 @@ function wireRobotView() {
     volumeValue: ui.commentaryVolumeValue,
     describe: ui.describeScene,
     transcript: ui.commentaryTranscript,
+    channel: ui.commentaryChannel,
   }, { speaker, commentary });
 
   tabs = createTabs(ui.tablist, {

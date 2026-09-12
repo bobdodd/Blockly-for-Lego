@@ -13,22 +13,40 @@ import { describe, it } from 'node:test';
 
 import { Speaker } from '../src/viewer/speaker.js';
 
-/** A speech engine that records instead of speaking. */
-function fakeSynth({ voices = 1 } = {}) {
+/**
+ * A speech engine that records instead of speaking.
+ *
+ * `works: false` is the engine that accepts an utterance, reports success and
+ * makes no sound — a de-Googled Android, or Chrome before it has finished
+ * waking up. It is the case that cannot be told from a working one without
+ * asking.
+ */
+function fakeSynth({ works = true, voices = 1 } = {}) {
   return {
     spoken: [],
     cancels: 0,
+    resumes: 0,
     speaking: false,
+    pending: false,
+    listeners: {},
     getVoices: () => Array.from({ length: voices }, (_, i) => ({ name: `voice ${i}` })),
-    speak(utterance) { this.spoken.push(utterance); },
-    cancel() { this.cancels += 1; },
-    addEventListener() {},
+    speak(utterance) {
+      this.spoken.push(utterance);
+      if (!works) return;              // accepted, and nothing comes out
+      this.speaking = true;
+      utterance.onstart?.();
+    },
+    cancel() { this.cancels += 1; this.speaking = false; },
+    resume() { this.resumes += 1; },
+    addEventListener(type, fn) { (this.listeners[type] ??= []).push(fn); },
+    fire(type) { for (const fn of this.listeners[type] ?? []) fn(); },
   };
 }
 
 function fakeWindow({ synth = fakeSynth(), region = true } = {}) {
   const element = { textContent: '' };
   const timers = [];
+  const intervals = [];
   const win = {
     speechSynthesis: synth,
     SpeechSynthesisUtterance: class { constructor(text) { this.text = text; } },
@@ -38,11 +56,21 @@ function fakeWindow({ synth = fakeSynth(), region = true } = {}) {
     },
     setTimeout: (fn, ms) => { timers.push({ fn, ms }); return timers.length; },
     clearTimeout: () => {},
-    setInterval: () => 1,
-    clearInterval: () => {},
+    setInterval: (fn, ms) => { intervals.push({ fn, ms }); return intervals.length; },
+    clearInterval: (id) => { if (intervals[id - 1]) intervals[id - 1].fn = () => {}; },
+    /** Fire every repeating timer once. */
+    tick() { for (const timer of [...intervals]) timer.fn(); },
     region: element,
-    /** Run every pending timer, as the browser eventually would. */
-    flush() { const due = timers.splice(0); due.forEach((t) => t.fn()); },
+    /**
+     * Run every pending timer, and any they schedule, as time passing would.
+     * One generation is not enough: falling back to the live region is itself
+     * a timer set from inside a timer.
+     */
+    flush() {
+      for (let pass = 0; pass < 10 && timers.length; pass++) {
+        for (const timer of timers.splice(0)) timer.fn();
+      }
+    },
   };
   if (!synth) delete win.speechSynthesis;
   return win;
@@ -70,17 +98,41 @@ describe('picking a channel', () => {
     assert.equal(win.speechSynthesis.spoken[0].text, 'The robot is on the line.');
   });
 
-  it('falls back to the live region when the engine has no voices', () => {
-    // Seen on de-Googled Android: speechSynthesis exists, reports success, and
-    // makes no sound. Trusting its presence would silently lose the student
-    // the entire description.
+  it('tries the engine before judging it, however empty its voice list', () => {
+    // Judging it by getVoices() is exactly how Chrome came to be silent while
+    // Safari was fine: Safari fills that list synchronously and Chrome does
+    // not, so identical code read one engine as working and the other as
+    // broken before either had been asked to say a word.
     const win = fakeWindow({ synth: fakeSynth({ voices: 0 }) });
     const speaker = speakerIn(win);
     speaker.announce('Off the line.');
 
-    assert.equal(win.speechSynthesis.spoken.length, 0);
+    assert.equal(win.speechSynthesis.spoken.length, 1, 'it should have been asked');
+    assert.equal(speaker.channel, 'voice');
+  });
+
+  it('falls back to the live region once the engine has demonstrably done nothing', () => {
+    // Accepted the utterance, reported success, made no sound. Only trying
+    // tells them apart, so only trying is allowed to decide.
+    const win = fakeWindow({ synth: fakeSynth({ works: false }) });
+    const speaker = speakerIn(win);
+    speaker.announce('Off the line.');
+
     win.flush();
     assert.equal(win.region.textContent, 'Off the line.');
+    assert.equal(speaker.channel, 'no-voice');
+    assert.equal(speaker.willSpeak, false, 'and it stops trying');
+  });
+
+  it('goes back to speaking when voices turn up later', () => {
+    const win = fakeWindow({ synth: fakeSynth({ works: false }) });
+    const speaker = speakerIn(win);
+    speaker.announce('first');
+    win.flush();
+    assert.equal(speaker.channel, 'no-voice');
+
+    win.speechSynthesis.fire('voiceschanged');
+    assert.equal(speaker.channel, 'voice', 'an engine that wakes up is not broken');
   });
 
   it('falls back to the live region when there is no engine at all', () => {
@@ -112,10 +164,42 @@ describe('the latest announcement wins', () => {
     const win = fakeWindow();
     const speaker = speakerIn(win);
     speaker.announce('first');
-    speaker.announce('second');
+    assert.equal(win.speechSynthesis.speaking, true);
 
-    assert.equal(win.speechSynthesis.cancels, 2);
+    speaker.announce('second');
+    assert.equal(win.speechSynthesis.cancels, 1);
+    win.flush();
     assert.equal(win.speechSynthesis.spoken.at(-1).text, 'second');
+  });
+
+  it('does not speak in the same tick as the cancel', () => {
+    // Chrome drops a speak() that follows cancel() in one tick, silently.
+    const win = fakeWindow();
+    const speaker = speakerIn(win);
+    speaker.announce('first');
+    const before = win.speechSynthesis.spoken.length;
+
+    speaker.announce('second');
+    assert.equal(win.speechSynthesis.spoken.length, before, 'it has to wait a tick');
+    win.flush();
+    assert.equal(win.speechSynthesis.spoken.length, before + 1);
+  });
+
+  it('never lets a superseded announcement speak late', () => {
+    // Two arriving in quick succession both wait a tick; only the newer one
+    // may still be true by the time the tick comes round.
+    const win = fakeWindow();
+    const speaker = speakerIn(win);
+    speaker.announce('first');
+    speaker.announce('stale');
+    speaker.announce('fresh');
+    win.flush();
+
+    assert.equal(win.speechSynthesis.spoken.at(-1).text, 'fresh');
+    assert.ok(
+      !win.speechSynthesis.spoken.some((u) => u.text === 'stale'),
+      'the superseded one must never reach the engine',
+    );
   });
 
   it('replaces a pending live-region write rather than queueing it', () => {
@@ -236,5 +320,70 @@ describe('the visible mirror', () => {
       'the robot is on the green square',
       'the robot is on the green square',
     ]);
+  });
+});
+
+
+describe('keeping a long description going', () => {
+  it('nudges the engine, because Chrome stops after about fifteen seconds', () => {
+    // Silently, and with no error. The description of the mat runs longer
+    // than that, so without this it trails off mid-sentence.
+    const win = fakeWindow();
+    const speaker = speakerIn(win);
+    speaker.announce('a description of the mat that runs on for some time');
+
+    win.tick();
+    assert.ok(win.speechSynthesis.resumes > 0, 'it should have been nudged');
+  });
+
+  it('stops nudging once the speech has finished', () => {
+    const win = fakeWindow();
+    const speaker = speakerIn(win);
+    speaker.announce('something');
+
+    win.speechSynthesis.speaking = false;
+    win.tick();
+    const after = win.speechSynthesis.resumes;
+    win.tick();
+    assert.equal(win.speechSynthesis.resumes, after, 'nothing to nudge');
+  });
+});
+
+describe('saying which channel is carrying the words', () => {
+  it('reports the ordinary case', () => {
+    assert.equal(speakerIn(fakeWindow()).channel, 'voice');
+  });
+
+  it('distinguishes every reason a student might hear nothing', () => {
+    // "Silent" and "going to your screen reader" are the same experience for
+    // anyone not running one, so each reason has to be nameable.
+    const off = speakerIn(fakeWindow());
+    off.setAudio(false);
+    assert.equal(off.channel, 'off');
+
+    const muted = speakerIn(fakeWindow());
+    muted.setVolume(0);
+    assert.equal(muted.channel, 'muted');
+
+    assert.equal(speakerIn(fakeWindow({ synth: null })).channel, 'no-engine');
+
+    const brokenWindow = fakeWindow({ synth: fakeSynth({ works: false }) });
+    const broken = speakerIn(brokenWindow);
+    broken.announce('anything');
+    brokenWindow.flush();          // the engine is given its chance first
+    assert.equal(broken.channel, 'no-voice');
+  });
+
+  it('tells whoever is showing it when the answer changes', () => {
+    const seen = [];
+    const win = fakeWindow({ synth: fakeSynth({ works: false }) });
+    const speaker = speakerIn(win);
+    speaker.onChannelChange = (channel) => seen.push(channel);
+
+    speaker.announce('anything');
+    win.flush();
+    speaker.setAudio(false);
+
+    assert.deepEqual(seen, ['no-voice', 'off']);
   });
 });

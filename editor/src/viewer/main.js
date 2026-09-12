@@ -34,6 +34,7 @@ const ui = {
   commentaryVolumeValue: element('commentary-volume-value'),
   describeScene: element('describe-scene'),
   commentaryTranscript: element('commentary-transcript'),
+  commentaryChannel: element('commentary-channel'),
 };
 
 const view = new RobotView(ui.canvas, robotDescription, {

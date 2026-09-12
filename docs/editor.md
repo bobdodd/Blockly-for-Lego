@@ -475,9 +475,32 @@ student steering by it steers wrong. Speech can be **cancelled**, so each new
 announcement replaces the last: what you hear is where the robot is now.
 
 The live region is still there as the fallback, because some browsers ship a
-speech engine with no voices installed — it reports success and makes no
-sound. The editor checks for an actual voice rather than trusting the engine
-to exist.
+speech engine that reports success and makes no sound.
+
+**Which channel is in use is shown on the page**, under the volume slider.
+That matters more than it sounds: to anyone not running a screen reader,
+"silent" and "going to your screen reader" are the same experience, so
+without it a browser-specific fault is invisible from the outside. If you
+cannot hear anything, read that line first.
+
+##### Chrome needed three things Safari did not
+
+All three produced silence in Chrome while Safari was fine, and all three are
+worth knowing about if you touch this code:
+
+- **Do not judge the engine by `getVoices()`.** Safari fills that list
+  synchronously; Chrome does not. Deciding up front which browser can speak
+  read one as working and the other as broken before either had been asked to
+  say a word. The editor now *tries*, waits for `onstart`, and falls back only
+  once an attempt has demonstrably produced nothing — which also handles the
+  de-Googled Android case correctly, rather than by a lucky guess.
+- **Do not call `speak()` in the same tick as `cancel()`.** Chrome drops it,
+  silently. A cancel now hands over to the next macrotask; the latest
+  announcement still wins, a tick later.
+- **Nudge long speech.** Chrome stops after about fifteen seconds with no
+  error, and the description of the mat runs past that, so it would trail off
+  mid-sentence. A `resume()` every ten seconds keeps it going and is a no-op
+  elsewhere.
 
 The transcript exists for the same reason the commentary does: a Deaf or
 hard-of-hearing student, a student in a room full of other people's robots,

@@ -181,6 +181,13 @@
               </div>
 
               <!--
+                Which channel is actually carrying the words. "It is silent" and "it
+                is going to your screen reader" are the same experience for anyone not
+                running one, so without this the difference is invisible from outside.
+              -->
+              <p id="commentary-channel" class="commentary-channel"></p>
+
+              <!--
                 Where the speaker puts the words when speech is off, or when the browser
                 has an engine but no voices. The transcript below is deliberately NOT a
                 live region: two of them saying the same thing is worse than one.

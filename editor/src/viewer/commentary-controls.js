@@ -16,6 +16,24 @@
 const MAX_TRANSCRIPT = 100;
 
 /**
+ * What is actually carrying the words.
+ *
+ * Worth saying on the page. To anyone not running a screen reader, "silent"
+ * and "going to your screen reader" are the same experience — which is how a
+ * browser-specific fault (Chrome mute, Safari fine) stayed invisible from the
+ * outside for as long as it did.
+ */
+const CHANNELS = {
+  voice: 'Speaking with the browser voice.',
+  'no-voice': 'This browser accepted the speech and made no sound, so the '
+    + 'commentary is going to your screen reader instead.',
+  'no-engine': 'This browser has no speech of its own, so the commentary is '
+    + 'going to your screen reader.',
+  off: 'Speech is off. The commentary is going to your screen reader.',
+  muted: 'The volume is at zero, so the commentary is going to your screen reader.',
+};
+
+/**
  * @param {object} elements  the controls, already in the page
  * @param {HTMLInputElement} elements.toggle  speak / do not speak
  * @param {HTMLInputElement} elements.volume  range, 0–100
@@ -25,7 +43,17 @@ const MAX_TRANSCRIPT = 100;
  * @param {{speaker: object, commentary: object}} parts
  */
 export function mountCommentaryControls(elements, { speaker, commentary }) {
-  const { toggle, volume, volumeValue, describe, transcript } = elements;
+  const { toggle, volume, volumeValue, describe, transcript, channel } = elements;
+
+  function showChannel() {
+    if (!channel) return;
+    channel.textContent = CHANNELS[speaker.channel] ?? '';
+    // Only the working case is unremarkable; the rest are the answer to
+    // "why can I not hear anything".
+    channel.classList.toggle('is-fallback', speaker.channel !== 'voice');
+  }
+  speaker.onChannelChange = showChannel;
+  showChannel();
 
   // The stored preference wins over the markup's default. Otherwise a student
   // who turned speech off last week opens the page, sees a ticked box, and is
