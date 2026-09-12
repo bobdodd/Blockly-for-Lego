@@ -33,6 +33,22 @@
 
         <p id="pose" class="pose">Waiting for the robot…</p>
 
+        <!--
+          This window has no blocks of its own. These ask the editor to run the
+          program it has, so a robot on a projector can be started from beside
+          it rather than by turning back to the laptop. Hidden unless the
+          editor opened this window: on its own it is watching a simulator
+          somebody else started, and there is no program here to run.
+        -->
+        <div class="scene-controls" id="run-controls" hidden>
+          <button type="button" id="run">
+            Run <span class="shortcut" aria-hidden="true">Ctrl+G</span>
+          </button>
+          <button type="button" id="stop" class="secondary" disabled>
+            Stop <span class="shortcut" aria-hidden="true">Ctrl+Shift+G</span>
+          </button>
+        </div>
+
         <div class="scene-controls">
           <label>
             <input type="checkbox" id="follow-robot" checked />

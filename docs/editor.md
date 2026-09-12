@@ -255,6 +255,21 @@ Opened directly by its own URL, it still connects to a simulator you started
 yourself — `viewer.html` on its own, or `viewer.html?simulator=ws://…`.
 Several windows can watch at once.
 
+That window has its own **Run** and **Stop**, on the same keys the editor
+uses. It has no blocks — it asks the editor to run the ones it has, which
+means the request goes through exactly the checks the editor's own button
+does: nothing connected, nothing under "when the program starts", and the
+spoken brief finishing before the program starts. Whatever the editor says
+about it appears in this window too, because the person who pressed the button
+is looking at this one.
+
+The buttons show what can be done next from the **robot's** own program
+events, not from having pressed them, so the two windows cannot disagree about
+whether it is going — and either one can start it.
+
+They are only there when the editor opened the window. On its own it is
+watching a simulator somebody else started and has no program to run.
+
 That window has **no "What the robot is doing" list**. It only ever shows a
 simulator, so the list would always be the same story told twice — the same
 reason it is taken away in the editor when the simulator is connected. The

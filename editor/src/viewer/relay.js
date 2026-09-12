@@ -27,6 +27,12 @@ const CHANNEL = 'blockly-for-lego.telemetry';
 /** Sent by a viewer that has just opened and missed the mat. */
 export const WANTS_HELLO = '__wants-hello__';
 
+/** Sent by a viewer asking the editor to do something it cannot do itself. */
+export const ASKS = '__asks__';
+
+/** Sent by the editor so a viewer can show what happened. */
+export const TELLS = '__tells__';
+
 export function isSupported() {
   return typeof BroadcastChannel === 'function';
 }
@@ -36,20 +42,34 @@ export function isSupported() {
  *
  * @param {() => object|null} lastHello what to send a viewer that just opened,
  *   because the mat was described before it existed
+ * @param {(action: string) => void} [onAsk] a viewer asking for something only
+ *   the editor can do — running a program, which needs the blocks
  */
-export function broadcast(lastHello = () => null) {
-  if (!isSupported()) return { send() {}, close() {} };
+export function broadcast(lastHello = () => null, onAsk = () => {}) {
+  if (!isSupported()) return { send() {}, tell() {}, close() {} };
 
   const channel = new BroadcastChannel(CHANNEL);
   channel.onmessage = ({ data }) => {
-    if (data?.type !== WANTS_HELLO) return;
-    // A viewer opened after the simulator connected has missed the one
-    // message that describes the mat, and nothing repeats it on its own.
-    const hello = lastHello();
-    if (hello) channel.postMessage(hello);
+    if (data?.type === WANTS_HELLO) {
+      // A viewer opened after the simulator connected has missed the one
+      // message that describes the mat, and nothing repeats it on its own.
+      const hello = lastHello();
+      if (hello) channel.postMessage(hello);
+      return;
+    }
+    if (data?.type === ASKS) onAsk(data.action);
   };
 
   return {
+    /** Say what happened, so the window that asked can show it. */
+    tell(text) {
+      try {
+        channel.postMessage({ type: TELLS, text });
+      } catch {
+        // see send()
+      }
+    },
+
     send(payload) {
       try {
         channel.postMessage(payload);
@@ -67,17 +87,35 @@ export function broadcast(lastHello = () => null) {
 /**
  * A viewer's end: listen, and ask for the mat.
  *
- * @param {(payload: object) => void} onMessage
+ * @param {(payload: object) => void} onMessage the simulator's own messages
+ * @param {(text: string) => void} [onTell] what the editor says happened
  */
-export function listen(onMessage) {
-  if (!isSupported()) return { close() {} };
+export function listen(onMessage, onTell = () => {}) {
+  if (!isSupported()) return { ask() {}, close() {} };
 
   const channel = new BroadcastChannel(CHANNEL);
   channel.onmessage = ({ data }) => {
-    if (!data || data.type === WANTS_HELLO) return;
+    if (!data) return;
+    // Our own request, and the editor's answer to somebody's.
+    if (data.type === WANTS_HELLO || data.type === ASKS) return;
+    if (data.type === TELLS) {
+      onTell(data.text);
+      return;
+    }
     onMessage(data);
   };
   channel.postMessage({ type: WANTS_HELLO });
 
-  return { close() { channel.close(); } };
+  return {
+    /**
+     * Ask the editor to do something this window cannot.
+     *
+     * Running a program needs the blocks, and the blocks are in the editor.
+     * So this window asks rather than pretending to be able to.
+     */
+    ask(action) {
+      channel.postMessage({ type: ASKS, action });
+    },
+    close() { channel.close(); },
+  };
 }

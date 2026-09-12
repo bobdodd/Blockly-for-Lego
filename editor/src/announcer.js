@@ -62,10 +62,18 @@ export class Announcer {
   }
 
   /** Something that changes what the student can do. Interrupts. */
+  /**
+   * Something that changes what the student can do next.
+   *
+   * `onStatus`, when set, is told as well — the robot view opened in its own
+   * window shows it there, because somebody watching a projector who pressed
+   * a button needs the answer where they are looking.
+   */
   status(message) {
     this.#status.textContent = message;
     this.#append(message, 'status');
     this.#speak(message, true);
+    this.onStatus?.(message);
   }
 
   /** Something the robot did. Announced politely, in order. */

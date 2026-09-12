@@ -16,6 +16,7 @@
 import { Commentary } from './commentary.js';
 import { mountCommentaryControls } from './commentary-controls.js';
 import { listen, isSupported as relaySupported } from './relay.js';
+import { matchShortcut, shortcutLabel } from '../shortcuts.js';
 import { SimulatorTransport } from '../transport/websocket.js';
 import { RobotView } from './robot-view.js';
 import { Speaker } from './speaker.js';
@@ -38,6 +39,9 @@ const ui = {
   commentaryChannel: element('commentary-channel'),
   testVoice: element('test-voice'),
   commentaryVoice: element('commentary-voice'),
+  runControls: element('run-controls'),
+  run: element('run'),
+  stop: element('stop'),
 };
 
 const view = new RobotView(ui.canvas, robotDescription, {
@@ -75,6 +79,29 @@ function receive(payload) {
   view.handleMessage(payload);
   if (startedElsewhere(payload)) commentary.beginRun();
   commentary.handleMessage(payload);
+  followProgramState(payload);
+}
+
+/**
+ * Keep Run and Stop showing what can be done next.
+ *
+ * Taken from the simulator's own program events rather than from having
+ * pressed the button, so the buttons are right when somebody runs the program
+ * from the editor instead — two windows showing one robot should not disagree
+ * about whether it is going.
+ */
+function followProgramState(payload) {
+  if (payload?.type === 'hello') {
+    ui.run.disabled = false;
+    return;
+  }
+  const phase = payload?.type === 'event' && payload.kind === 'program'
+    ? payload.data?.phase : null;
+  if (!phase) return;
+
+  const running = phase === 'started';
+  ui.run.disabled = running;
+  ui.stop.disabled = !running;
 }
 
 /**
@@ -94,9 +121,36 @@ function watchTheEditor() {
   }
 
   ui.status.textContent = 'Waiting for the editor to connect to a robot…';
-  listen((payload) => {
-    if (payload.type === 'hello') ui.status.textContent = 'Watching the simulated robot.';
-    receive(payload);
+  const relay = listen(
+    (payload) => {
+      if (payload.type === 'hello') ui.status.textContent = 'Watching the simulated robot.';
+      receive(payload);
+    },
+    // Whatever the editor says about itself. Somebody watching this window
+    // pressed the button; the answer has to arrive here, not only there.
+    (text) => { ui.status.textContent = text; },
+  );
+
+  // Only with an editor behind us. Opened on its own this window is watching a
+  // simulator somebody else started, and there is no program here to run.
+  ui.runControls.hidden = false;
+  ui.run.disabled = true;
+  wireRunControls(relay);
+}
+
+/** Ask the editor to run or stop, by button or by the same keys it uses. */
+function wireRunControls(relay) {
+  for (const [element, action] of [[ui.run, 'run'], [ui.stop, 'stop']]) {
+    element.addEventListener('click', () => relay.ask(action));
+    const hint = element.querySelector('.shortcut');
+    if (hint) hint.textContent = shortcutLabel(action);
+  }
+
+  document.addEventListener('keydown', (event) => {
+    const action = matchShortcut(event);
+    if (action !== 'run' && action !== 'stop') return;
+    event.preventDefault();
+    relay.ask(action);
   });
 }
 

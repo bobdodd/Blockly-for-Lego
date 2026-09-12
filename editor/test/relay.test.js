@@ -13,7 +13,7 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
-import { broadcast, isSupported, listen, WANTS_HELLO } from '../src/viewer/relay.js';
+import { ASKS, broadcast, isSupported, listen, TELLS, WANTS_HELLO } from '../src/viewer/relay.js';
 
 /** A BroadcastChannel that delivers to every other channel of the same name. */
 function stubChannels() {
@@ -175,6 +175,83 @@ describe('a browser without the channel', () => {
       assert.equal(isSupported(), false);
       assert.doesNotThrow(() => broadcast().send(hello));
       assert.doesNotThrow(() => listen(() => {}).close());
+    } finally {
+      globalThis.BroadcastChannel = previous;
+    }
+  });
+});
+
+
+describe('a viewer asking the editor to do something', () => {
+  it('reaches the editor', () => {
+    // The pop-out has no blocks. Running a program needs them, so it asks
+    // rather than pretending to be able to.
+    const channels = stubChannels();
+    try {
+      const asked = [];
+      broadcast(() => null, (action) => asked.push(action));
+      const viewer = listen(() => {});
+
+      viewer.ask('run');
+      viewer.ask('stop');
+      assert.deepEqual(asked, ['run', 'stop']);
+    } finally {
+      channels.restore();
+    }
+  });
+
+  it('does not come back to the viewer as telemetry', () => {
+    // Its own request is not something the robot did.
+    const channels = stubChannels();
+    try {
+      const seen = [];
+      const viewer = listen((payload) => seen.push(payload));
+      broadcast(() => null, () => {});
+
+      viewer.ask('run');
+      assert.ok(!seen.some((p) => p.type === ASKS));
+    } finally {
+      channels.restore();
+    }
+  });
+
+  it('gets an answer where the person who asked is looking', () => {
+    // Somebody watching a projector pressed the button. Answering only in the
+    // editor's window tells the one person who is not looking.
+    const channels = stubChannels();
+    try {
+      const told = [];
+      listen(() => {}, (text) => told.push(text));
+      broadcast(() => null).tell('Sending your program to the robot.');
+
+      assert.deepEqual(told, ['Sending your program to the robot.']);
+    } finally {
+      channels.restore();
+    }
+  });
+
+  it('does not mistake an answer for something the robot did', () => {
+    const channels = stubChannels();
+    try {
+      const seen = [];
+      const told = [];
+      listen((p) => seen.push(p), (t) => told.push(t));
+      broadcast(() => null).tell('The program is running.');
+
+      assert.deepEqual(seen, [], 'a status is not telemetry');
+      assert.equal(told.length, 1);
+      assert.ok(TELLS, 'the type exists so both ends agree on it');
+    } finally {
+      channels.restore();
+    }
+  });
+
+  it('is harmless in a browser without the channel', () => {
+    const previous = globalThis.BroadcastChannel;
+    globalThis.BroadcastChannel = undefined;
+    try {
+      assert.doesNotThrow(() => listen(() => {}).ask('run'));
+      assert.doesNotThrow(() => broadcast().tell('anything'));
     } finally {
       globalThis.BroadcastChannel = previous;
     }

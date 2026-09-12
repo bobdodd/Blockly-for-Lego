@@ -98,7 +98,6 @@ const ui = {
 };
 
 const announcer = new Announcer({ log: element('log'), status: element('status') });
-
 let workspace = null;
 let client = null;
 let latestTelemetry = [];
@@ -182,7 +181,24 @@ const sceneSource = new SceneSource();
  * lives in a worker this window owns — so the messages are passed on rather
  * than the other window going looking for them.
  */
-const relay = broadcast(() => lastWorldMessage);
+const relay = broadcast(
+  () => lastWorldMessage,
+  (action) => {
+    // A robot view on a projector can start the program, because the blocks
+    // are here and it has none. It asks; this decides, with exactly the
+    // guards the editor's own buttons go through.
+    if (action === 'run') run();
+    else if (action === 'stop') stop();
+  },
+);
+
+// Anything the editor says about itself reaches the pop-out as well: a student
+// watching a projector pressed the button, so the answer has to arrive where
+// they are looking and not only in the window they are not. Set here rather
+// than beside the announcer because `relay` is a const declared below it, and
+// a status fired in between would land in its dead zone.
+announcer.onStatus = (text) => relay.tell(text);
+
 let commentary = null;
 
 /**

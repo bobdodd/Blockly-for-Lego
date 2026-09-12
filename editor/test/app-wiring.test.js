@@ -330,8 +330,8 @@ describe('the robot view in its own window', () => {
     // The pop-out must not be able to tell which kind of simulator produced
     // a message, or the two paths drift.
     assert.match(viewer, /transport\.onNarration = receive;/);
-    assert.match(viewer, /listen\(\(payload\) => \{/);
     assert.match(viewer, /function receive\(payload\)/);
+    assert.match(viewer, /const relay = listen\(/);
   });
 
   it('mounts every control on both pages', () => {
@@ -370,5 +370,50 @@ describe('the robot view in its own window', () => {
   it('still connects to a simulator of its own when opened directly', () => {
     // Its documented use: a projector watching a simulator somebody started.
     assert.match(viewer, /else connect\(\);/);
+  });
+});
+
+describe('running the program from the pop-out', () => {
+  const app = read('src/app.js');
+  const viewer = read('src/viewer/main.js');
+  const markup = read('viewer.html');
+
+  it('asks the editor rather than pretending to have the blocks', () => {
+    assert.match(viewer, /relay\.ask\(action\)/);
+    assert.match(app, /if \(action === 'run'\) run\(\);/);
+    assert.match(app, /else if \(action === 'stop'\) stop\(\);/);
+  });
+
+  it('goes through the editor\'s own guards', () => {
+    // run() already refuses when nothing is connected, warns about an empty
+    // program, and waits for the spoken brief. A second path would have to
+    // remember all of that.
+    const handler = app.slice(app.indexOf('const relay = broadcast('));
+    const body = handler.slice(0, handler.indexOf('\n);'));
+    assert.ok(!/generateProgram|client\.run/.test(body), 'it must not run the program itself');
+  });
+
+  it('shows the answer where the person who pressed it is looking', () => {
+    assert.match(app, /announcer\.onStatus = \(text\) => relay\.tell\(text\)/);
+    assert.match(viewer, /\(text\) => \{ ui\.status\.textContent = text; \}/);
+  });
+
+  it('offers the buttons only when there is an editor behind it', () => {
+    // Opened on its own it watches a simulator somebody else started, and
+    // there is no program here to run.
+    assert.match(markup, /id="run-controls" hidden/);
+    assert.match(viewer, /ui\.runControls\.hidden = false;/);
+  });
+
+  it('takes their state from the robot, not from the button press', () => {
+    // Two windows showing one robot must not disagree about whether it is
+    // going, and it can be started from either.
+    assert.match(viewer, /function followProgramState/);
+    assert.match(viewer, /payload\.kind === 'program'/);
+  });
+
+  it('answers the same keys the editor does', () => {
+    assert.match(viewer, /matchShortcut\(event\)/);
+    assert.match(viewer, /shortcutLabel\(action\)/);
   });
 });
