@@ -128,17 +128,17 @@
 
           <div class="tablist" role="tablist" aria-label="Robot view and Python">
             <button type="button" role="tab" id="tab-robot"
-                    aria-controls="panel-robot" aria-selected="false" tabindex="-1">
+                    aria-controls="panel-robot" aria-selected="true" tabindex="0">
               Robot view
             </button>
             <button type="button" role="tab" id="tab-python"
-                    aria-controls="panel-python" aria-selected="true" tabindex="0">
+                    aria-controls="panel-python" aria-selected="false" tabindex="-1">
               Python
             </button>
           </div>
 
           <div id="panel-robot" role="tabpanel" aria-labelledby="tab-robot"
-               class="tab-panel" hidden>
+               class="tab-panel">
             <p class="hint">
               Shows the simulated robot. A real hub does not report where it is,
               so this stays empty when you are connected to one.
@@ -205,7 +205,7 @@
           </div>
 
           <div id="panel-python" role="tabpanel" aria-labelledby="tab-python"
-               class="tab-panel">
+               class="tab-panel" hidden>
             <p class="hint">
               This is ordinary SPIKE Python. It runs on a real hub unchanged.
             </p>

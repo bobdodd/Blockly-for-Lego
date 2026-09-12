@@ -582,16 +582,30 @@ describe('choosing a voice rather than taking what comes', () => {
     assert.ok(win.speechSynthesis.spoken[0].voice, 'no voice was set');
   });
 
-  it('prefers a local voice over one that needs the network', () => {
-    // A network voice is the one that fails quietly when the fetch does.
+  it('reaches for a known-good voice by name first', () => {
+    // "A local voice in the right language" picks whatever the operating
+    // system happens to list first, and that turned out to be one Chrome
+    // would claim to speak in while producing nothing.
     const speaker = speakerIn(fakeWindow({ synth: many() }));
     assert.equal(speaker.pickVoice().name, 'Daniel');
   });
 
-  it('prefers the page\'s own language', () => {
+  it('will not use a favourite that speaks the wrong language', () => {
+    // Reading English sentences in a French voice is not an improvement on
+    // picking badly.
     const win = fakeWindow({ synth: many() });
     win.document.documentElement = { lang: 'fr' };
     assert.equal(speakerIn(win).pickVoice().name, 'Amelie');
+  });
+
+  it('prefers a local voice over one that needs the network', () => {
+    // A network voice is the one that fails quietly when the fetch does.
+    const synth = fakeSynth();
+    synth.getVoices = () => [
+      { name: 'Google UK English', lang: 'en-GB', localService: false },
+      { name: 'Fiona', lang: 'en-GB', localService: true },
+    ];
+    assert.equal(speakerIn(fakeWindow({ synth })).pickVoice().name, 'Fiona');
   });
 
   it('uses the one the student picked, over anything it would choose', () => {

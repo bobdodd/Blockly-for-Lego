@@ -242,8 +242,12 @@ where it is, so there would be nothing to draw.
 projector or second screen and leave the editor full size on the student's
 laptop.
 
-The tab is not selected when the editor opens, and nothing about the 3D view
-is even downloaded until you choose it.
+**This is the tab the editor opens on.** It is what the editor is for, and
+the one panel a blind student cannot reach any other way — opening on the
+generated Python made the accessible half of the app the half you had to go
+and find. The cost is three.js loading at start-up rather than on demand; the
+LDraw parts still wait for a connection, because the robot is not built until
+a mat arrives.
 
 #### Spoken commentary
 
@@ -446,7 +450,7 @@ that arrives late describes somewhere the robot has already left.
 | Control | What it does |
 | --- | --- |
 | **Speak the commentary** | Speech on or off. With it **off**, the same sentences go to a polite live region instead, so a screen reader still reads them — off means "do not use the browser voice", not "say nothing". |
-| **Voice** | Which of the browser's voices to use. Left alone it picks one for you, preferring a **local** voice in the page's language. |
+| **Voice** | Which of the browser's voices to use. Left alone it picks **Daniel** where the system has it, then another local voice in the page's language. A named favourite still has to speak the page's language — an English sentence in a French voice is not an improvement on picking badly. |
 | **Volume** | How loud the browser voice is. At **0** the commentary moves to the screen reader, for the same reason. |
 | **Describe the scene** | The whole thing again, now — the mat, the line, what is standing on it, and where the robot is among it. Use it when you have lost track. |
 | **Test the voice** | Speaks one sentence straight out of the button press. If you hear it, the browser voice works. If your screen reader reads it instead, it does not — and the line underneath says what the browser gave as the reason. |
@@ -531,6 +535,13 @@ worth knowing about if you touch this code:
 - **Do not call `speak()` in the same tick as `cancel()`.** Chrome drops it,
   silently. A cancel now hands over to the next macrotask; the latest
   announcement still wins, a tick later.
+- **Prefer a known-good voice by name.** "A local voice in the right
+  language" picks whatever the operating system happens to list first, which
+  is how Chrome ended up with one it would claim to speak in and produce
+  nothing from. `PREFERRED_VOICES` names a few that work, Daniel first: it is
+  local, clear at the speed this narration runs, and the *same* voice in every
+  browser that has it, so a student moving between machines is not relearning
+  a voice each time. Absent ones are skipped, so it costs nothing elsewhere.
 - **Name the voice; do not take the default.** Chrome will report
   `speaking: true`, `paused: false` and no error while producing no sound at
   all, and the voice it picks when nobody picks one is the usual reason —

@@ -84,6 +84,13 @@ describe('each connection shows only the panel that has something in it', () => 
     assert.match(app, /else if \(ui\.speech\) announcer\.speechEnabled = ui\.speech\.checked/);
   });
 
+  it('opens on the robot view, not the generated Python', () => {
+    // The robot view is what the editor is for, and the one panel a blind
+    // student cannot reach any other way. Opening on the Python made the
+    // accessible half of the app the half you had to go and find.
+    assert.match(app, /initial: 'tab-robot'/);
+  });
+
   it('applies the layout once the tablist exists', () => {
     // setConnected can run before the tabs are built; the layout has to be
     // caught up when they are, or a reconnect is the first thing that fixes it.
@@ -126,5 +133,35 @@ describe('the commentary controls', () => {
       /scene:\s*\(\)\s*=>\s*robotView\?\.scene\(\)\s*\?\?\s*sceneSource\.scene\(\)/,
       'the editor should fall back to the plain scene when there is no renderer',
     );
+  });
+});
+
+describe('the markup agrees with the default tab', () => {
+  const markup = read('index.html');
+
+  it('marks the robot view selected before any script runs', () => {
+    // The script flips these at start-up, but the markup is what a screen
+    // reader gets first, and it is the whole truth if the script fails to
+    // load. Declaring one tab and selecting another makes aria-selected a
+    // lie for as long as that gap lasts.
+    const robot = markup.slice(markup.indexOf('id="tab-robot"'));
+    assert.match(robot.slice(0, robot.indexOf('>')), /aria-selected="true"/);
+    assert.match(robot.slice(0, robot.indexOf('>')), /tabindex="0"/);
+
+    const python = markup.slice(markup.indexOf('id="tab-python"'));
+    assert.match(python.slice(0, python.indexOf('>')), /aria-selected="false"/);
+    assert.match(python.slice(0, python.indexOf('>')), /tabindex="-1"/);
+  });
+
+  it('shows the robot panel and hides the Python one to match', () => {
+    const robot = markup.slice(markup.indexOf('id="panel-robot"'));
+    assert.ok(!/hidden/.test(robot.slice(0, robot.indexOf('>'))), 'should start visible');
+
+    const python = markup.slice(markup.indexOf('id="panel-python"'));
+    assert.match(python.slice(0, python.indexOf('>')), /hidden/);
+  });
+
+  it('keeps exactly one tab selected', () => {
+    assert.equal((markup.match(/role="tab"[^>]*aria-selected="true"/g) ?? []).length, 1);
   });
 });

@@ -35,6 +35,21 @@ const AUDIO_KEY = 'blockly-for-lego.commentary-audio';
 const VOLUME_KEY = 'blockly-for-lego.commentary-volume';
 const VOICE_KEY = 'blockly-for-lego.commentary-voice';
 
+/**
+ * Voices to reach for before working one out.
+ *
+ * Named rather than derived because "a local voice in the right language" is
+ * a rule that picks whatever the operating system happens to list first, and
+ * that turned out to be something Chrome would claim to speak in and produce
+ * nothing with. Daniel is a local en-GB voice present on macOS, clear at the
+ * speed this narration runs at, and — the part that matters in a club room —
+ * the *same* voice in every browser that has it, so a student who moves
+ * between machines is not relearning a voice each time.
+ *
+ * Absent ones are skipped, so this costs nothing on a system without them.
+ */
+const PREFERRED_VOICES = ['Daniel', 'Serena', 'Karen', 'Google UK English Male'];
+
 /** How long to wait before deciding an engine that never started is dead. */
 const ENGINE_DEAD_MS = 6000;
 
@@ -245,6 +260,15 @@ export class Speaker {
     const language = (this.window?.document?.documentElement?.lang || 'en')
       .toLowerCase().slice(0, 2);
     const speaks = (voice) => String(voice.lang ?? '').toLowerCase().startsWith(language);
+
+    // A named favourite still has to speak the page's language. Reading
+    // English sentences in a French voice is not an improvement on picking
+    // badly, and a mat description is the wrong place to find that out.
+    for (const name of PREFERRED_VOICES) {
+      const preferred = voices.find((voice) => voice.name === name && speaks(voice));
+      if (preferred) return preferred;
+    }
+
     const local = voices.filter((voice) => voice.localService);
 
     return local.find(speaks)

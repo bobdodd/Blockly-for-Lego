@@ -601,7 +601,13 @@ function wireRobotView() {
   }, { speaker, commentary });
 
   tabs = createTabs(ui.tablist, {
-    initial: 'tab-python',
+    // The robot view, not the Python. It is what the editor is for, and the
+    // one panel a blind student cannot get at any other way — opening on the
+    // generated source made the accessible half of the app the one you had to
+    // go and find. The cost is three.js at start-up rather than on demand;
+    // the LDraw parts still wait for a connection, because the robot is not
+    // built until a mat arrives.
+    initial: 'tab-robot',
     onChange: async (id) => {
       if (id === 'tab-robot') {
         const view = await ensureRobotView();
