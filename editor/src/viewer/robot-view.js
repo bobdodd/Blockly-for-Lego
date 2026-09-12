@@ -123,6 +123,7 @@ export class RobotView {
     return {
       world: this.#world,
       robot,
+      chassis: this.#chassis,
       camera: { position: [x, y, z], target: [target.x, target.y, target.z] },
     };
   }
@@ -176,6 +177,13 @@ export class RobotView {
     await this.#ensureRobot();
   }
 
+  /** The build actually drawn, in the words the narration uses. */
+  #describeBuild() {
+    const wheel = this.#chassis?.wheelDiameterMm ?? this.description.wheelDiameterMm;
+    const track = this.#chassis?.axleTrackMm ?? this.description.axleTrackMm;
+    return `${Math.round(wheel * 10) / 10}mm wheels, ${Math.round(track)}mm apart`;
+  }
+
   /** Throw the model away so the next world rebuilds it at new measurements. */
   #discardRobot() {
     if (this.#robot) this.#view.scene.remove(this.#robot.root);
@@ -194,7 +202,10 @@ export class RobotView {
           this.partsPath,
         );
         this.#view.scene.add(this.#robot.root);
-        this.onStatus(`Watching ${this.description.name}.`);
+        // The measurements, not just the name. Five builds share that name,
+        // and this is the only place the view says which one it drew — which
+        // is also how anyone can tell whether it drew the right one.
+        this.onStatus(`Watching ${this.description.name}: ${this.#describeBuild()}.`);
       } catch (error) {
         this.onStatus(`The robot model would not load: ${error.message}`);
         this.#loading = null;

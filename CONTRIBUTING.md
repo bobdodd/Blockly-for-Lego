@@ -83,6 +83,12 @@ A few rules specific to this codebase:
   again. The 3D view takes them from the `hello` payload rather than from the
   editor's menu, so a simulator started elsewhere is still drawn correctly.
 
+- **A change you can only see is half a change.** The robot catalogue redraws
+  the 3D view, which is no use at all to the student this editor exists for.
+  Anything that alters what the robot *is* has to reach the spoken description
+  too — the build is now a sentence in it, so picking another robot is
+  something you hear. Ask of any new feature: what does this sound like?
+
 - **Only offer robots somebody could build.** A 112mm axle track was described
   here once and was physically impossible: two large angular motors facing
   outwards need 60mm of body each plus a 12mm shaft. A simulator will pretend

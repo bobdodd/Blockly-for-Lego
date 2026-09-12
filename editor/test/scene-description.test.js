@@ -314,6 +314,46 @@ describe('the whole description', () => {
     assert.ok(greens.length <= 2, `the green square is named ${greens.length} times`);
   });
 
+  it('says how the robot is built', () => {
+    // Without this the robot catalogue is sighted-only: the picture changes
+    // and the description says nothing at all.
+    const { text } = describeRobot({
+      world,
+      robot: robotAt(300, 300, 0),
+      chassis: { wheelDiameterMm: 43.2, axleTrackMm: 160 },
+    });
+    assert.match(text, /43\.2 millimetre wheels/);
+    assert.match(text, /16 centimetres apart/);
+  });
+
+  it('names wheels in millimetres, the way anyone who owns one does', () => {
+    // "4.3 centimetre wheels" is nobody's idea of a wheel size.
+    const { text } = describeRobot({
+      world, robot: robotAt(300, 300, 0), chassis: { wheelDiameterMm: 56, axleTrackMm: 160 },
+    });
+    assert.match(text, /56 millimetre wheels/);
+  });
+
+  it('changes what it says when the build changes', () => {
+    // The whole point: choose another robot and hear that you did.
+    const said = (chassis) => describeRobot({ world, robot: robotAt(300, 300, 0), chassis }).text;
+    assert.notEqual(
+      said({ wheelDiameterMm: 56, axleTrackMm: 160 }),
+      said({ wheelDiameterMm: 56, axleTrackMm: 192 }),
+    );
+    assert.notEqual(
+      said({ wheelDiameterMm: 56, axleTrackMm: 160 }),
+      said({ wheelDiameterMm: 43.2, axleTrackMm: 160 }),
+    );
+  });
+
+  it('says nothing about the build when nothing said what it is', () => {
+    // A real hub does not report its measurements, and inventing them would
+    // describe a robot nobody is holding.
+    const { facts } = describeRobot({ world, robot: robotAt(300, 300, 0) });
+    assert.ok(!facts.some((fact) => fact.kind === 'build'));
+  });
+
   it('leaves the mat out when it has already been described', () => {
     const { facts } = describeRobot({ world, robot: robotAt(500, 300, 0, 900), camera });
     assert.deepEqual(facts.map((f) => f.kind), ['robot', 'standing', 'ahead', 'view']);

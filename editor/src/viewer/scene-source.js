@@ -17,6 +17,7 @@ export class SceneSource {
   constructor() {
     this.world = null;
     this.robot = null;
+    this.chassis = null;
   }
 
   /** Feed one simulator message. Anything else is ignored. */
@@ -25,6 +26,9 @@ export class SceneSource {
     if (payload.type === 'hello') {
       this.world = payload.world;
       this.robot = payload.robot;
+      // Which build is running. Without this the catalogue is sighted-only:
+      // the picture changes and the description says nothing.
+      this.chassis = payload.chassis ?? null;
     } else if (payload.type === 'snapshot') {
       this.robot = payload.robot;
     }
@@ -34,6 +38,7 @@ export class SceneSource {
   clear() {
     this.world = null;
     this.robot = null;
+    this.chassis = null;
   }
 
   /**
@@ -44,6 +49,6 @@ export class SceneSource {
    */
   scene() {
     if (!this.world || !this.robot) return null;
-    return { world: this.world, robot: this.robot };
+    return { world: this.world, robot: this.robot, chassis: this.chassis };
   }
 }

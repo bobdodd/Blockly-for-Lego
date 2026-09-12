@@ -287,6 +287,25 @@ describe('the robot catalogue reaches the editor', () => {
     assert.match(app, /localStorage\.setItem\(ROBOT_KEY/);
   });
 
+  it('makes the build audible, not only visible', () => {
+    // A 3D view redrawing is no use to a student who cannot see it. Without
+    // the description saying which build is running, the whole catalogue is
+    // sighted-only.
+    const source = read('src/viewer/scene-source.js');
+    const describer = read('src/viewer/scene-description.js');
+    assert.match(source, /this\.chassis = payload\.chassis/);
+    assert.match(source, /chassis: this\.chassis/);
+    assert.match(describer, /function buildSentence/);
+    assert.match(describer, /millimetre wheels/);
+  });
+
+  it('says which build the view actually drew', () => {
+    // Five builds share one name, and this is the only place the view says
+    // which of them is on screen.
+    assert.match(view, /#describeBuild\(\)/);
+    assert.match(view, /mm wheels, \$\{Math\.round\(track\)\}mm apart/);
+  });
+
   it('changes the robot without loading Python again', () => {
     assert.match(app, /await builtInTransport\.setRobot\(entry\.name\)/);
   });

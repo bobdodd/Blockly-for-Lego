@@ -323,7 +323,7 @@ export function cameraRelation(camera, fallbackTarget) {
  *
  * @returns {{facts: Array<{kind: string, text: string}>, text: string}}
  */
-export function describeScene({ world, robot, camera } = {}) {
+export function describeScene({ world, robot, camera, chassis } = {}) {
   if (!world || !robot?.pose) {
     return { facts: [], text: 'There is no robot to describe yet.' };
   }
@@ -353,7 +353,7 @@ export function describeScene({ world, robot, camera } = {}) {
   const standing = obstacleSentence(world);
   if (standing) facts.push({ kind: 'features', text: standing });
 
-  facts.push(...robotFacts(world, robot));
+  facts.push(...robotFacts(world, robot, chassis));
 
   return { facts, text: facts.map((fact) => fact.text).join(' ') };
 }
@@ -365,12 +365,12 @@ export function describeScene({ world, robot, camera } = {}) {
  * is the padding that made the commentary something to sit through rather
  * than something to use.
  */
-export function describeRobot({ world, robot, camera } = {}) {
+export function describeRobot({ world, robot, camera, chassis } = {}) {
   if (!world || !robot?.pose) {
     return { facts: [], text: 'There is no robot to describe yet.' };
   }
 
-  const facts = robotFacts(world, robot);
+  const facts = robotFacts(world, robot, chassis);
   const view = cameraRelation(camera, [robot.pose.x, robot.pose.y]);
   if (view) facts.push({ kind: 'view', text: view.description });
 
@@ -471,8 +471,27 @@ function obstacleSentence(world) {
   return `Standing on the mat: ${asList(standing.map((item) => item.many))}.`;
 }
 
+/**
+ * How the robot is built.
+ *
+ * The two measurements that decide what a program's numbers mean: a rotation
+ * carries a 43mm wheel 13.6cm and a 62mm wheel 19.6cm, and a wider base turns
+ * less for the same wheel rotation. Without this the catalogue is
+ * sighted-only — the picture changes and nothing says so.
+ */
+function buildSentence(chassis) {
+  const wheel = Number(chassis?.wheelDiameterMm);
+  const track = Number(chassis?.axleTrackMm);
+  if (!wheel || !track) return null;
+
+  // Wheels are named in millimetres by everyone who owns any, so they are
+  // said that way rather than converted into an unfamiliar 4.3 centimetres.
+  const size = Math.round(wheel * 10) / 10;
+  return `It has ${size} millimetre wheels, ${sayDistance(track)} apart.`;
+}
+
 /** Where the robot is, which way it points, and how it sits on the line. */
-function robotFacts(world, robot) {
+function robotFacts(world, robot, chassis) {
   const pose = robot.pose;
   const facts = [];
 
@@ -497,6 +516,9 @@ function robotFacts(world, robot) {
 
   if (where.length) facts.push({ kind: 'standing', text: `It is ${asList(where)}.` });
   else if (line) facts.push({ kind: 'standing', text: lineSentence(line) });
+
+  const build = buildSentence(chassis);
+  if (build) facts.push({ kind: 'build', text: build });
 
   const ahead = aheadSentence(robot);
   if (ahead) facts.push({ kind: 'ahead', text: ahead });

@@ -598,6 +598,16 @@ disturbing the mat, updates the 3D view, **and** updates the constants in the
 Python panel — a program that computed for one robot while another was running
 would do something other than what it plainly says.
 
+It is also **said out loud**: the description includes "it has 43.2 millimetre
+wheels, 16 centimetres apart", so choosing a different build is something you
+hear rather than only something you see. A 3D view redrawing is no use to a
+student who cannot see it, which would have made the whole catalogue
+sighted-only.
+
+The line under the 3D view names the build it drew — *"Watching Driving Base:
+43.2mm wheels, 160mm apart"* — which is also how to check the picture agrees
+with what you picked.
+
 **Mat** chooses what the simulator lays out. Eight of them, ordered from an
 empty floor to a colour-sorting course — see
 [the catalogue](simulator.md#the-catalogue) for what each is for. The choice
