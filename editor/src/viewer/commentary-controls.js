@@ -23,6 +23,23 @@ const MAX_TRANSCRIPT = 100;
  * browser-specific fault (Chrome mute, Safari fine) stayed invisible from the
  * outside for as long as it did.
  */
+/** How long the troubleshooting message survives the engine's own updates. */
+const TROUBLESHOOT_MS = 30000;
+
+/**
+ * The one cause the page cannot detect.
+ *
+ * A browser told not to play sound for a site silences speech while still
+ * reporting `speaking: true`, with no error and a healthy voice list. Nothing
+ * in the engine's state distinguishes it from working, so this is asked
+ * rather than deduced. It is the first thing to check, because it is the
+ * cause that looks exactly like every other one.
+ */
+const HEARD_NOTHING = 'That should have been spoken aloud. If you heard nothing, '
+  + 'the browser is blocking sound for this site: open the padlock in the address '
+  + 'bar, then Site settings, and allow Sound and Autoplay. Chrome silences speech '
+  + 'that way without reporting any error.';
+
 const CHANNELS = {
   voice: 'Speaking with the browser voice.',
   'no-voice': 'The commentary is going to your screen reader, because the '
@@ -88,8 +105,18 @@ export function mountCommentaryControls(elements, { speaker, commentary }) {
     });
   }
 
+  /**
+   * While someone is troubleshooting, the remedy stays put.
+   *
+   * Otherwise the engine reporting that it has started speaking immediately
+   * overwrites the very message explaining what to do when you cannot hear
+   * it speaking.
+   */
+  let troubleshootingUntil = 0;
+
   function showChannel() {
     if (!channel) return;
+    if (Date.now() < troubleshootingUntil) return;
     const reason = speaker.channelReason;
     channel.textContent = [CHANNELS[speaker.channel] ?? '', reason].filter(Boolean).join(' ');
     // Only the working case is unremarkable; the rest are the answer to
@@ -139,9 +166,19 @@ export function mountCommentaryControls(elements, { speaker, commentary }) {
   describe?.addEventListener('click', () => commentary.describeNow());
 
   // Speaking straight out of a click is the one way to tell "this browser
-  // cannot" apart from "this browser has not been allowed to yet" — Chrome
-  // refuses until the page has been used, and refuses silently.
-  testVoice?.addEventListener('click', () => speaker.test());
+  // cannot" apart from "this browser has not been allowed to yet".
+  //
+  // And then it asks, because the remaining cause is one the page cannot see.
+  // A browser told not to play sound for a site silences speech while still
+  // reporting that it is speaking: nothing in the engine's state gives it
+  // away, so the only way to find out is to ask the person who can hear.
+  testVoice?.addEventListener('click', () => {
+    speaker.test();
+    if (!channel) return;
+    troubleshootingUntil = Date.now() + TROUBLESHOOT_MS;
+    channel.textContent = HEARD_NOTHING;
+    channel.classList.add('is-fallback');
+  });
 
   if (transcript) {
     return (text) => {

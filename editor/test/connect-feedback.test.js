@@ -125,3 +125,29 @@ describe('what the student is told went wrong', () => {
     }
   });
 });
+
+describe('the one cause the page cannot detect', () => {
+  const controls = read('src/viewer/commentary-controls.js');
+
+  it('asks whether the sound was heard, because it cannot tell', () => {
+    // A browser told not to play sound for a site silences speech while
+    // reporting speaking: true, no error, and a full voice list. Nothing in
+    // the engine's state distinguishes it from working — this cost four
+    // rounds of guessing at the engine before somebody simply listened.
+    assert.match(controls, /const HEARD_NOTHING/);
+    assert.match(controls, /allow Sound and Autoplay/);
+  });
+
+  it('names where the setting is, not just that one exists', () => {
+    // "Check your browser settings" is not help.
+    assert.match(controls, /padlock in the address/);
+    assert.match(controls, /Site settings/);
+  });
+
+  it('does not let the engine overwrite the remedy', () => {
+    // The engine reporting that it has started speaking would otherwise wipe
+    // the very message explaining what to do when you cannot hear it.
+    assert.match(controls, /troubleshootingUntil/);
+    assert.match(controls, /if \(Date\.now\(\) < troubleshootingUntil\) return;/);
+  });
+});

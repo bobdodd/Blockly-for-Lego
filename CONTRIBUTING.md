@@ -103,6 +103,16 @@ A few rules specific to this codebase:
   `src/viewer/scene-description.js` is pure functions over plain data for
   exactly this reason — no three.js, no DOM, all of it testable.
 
+- **When the platform reports success and the user reports silence, believe
+  the user.** Chrome blocking Autoplay for a site mutes `speechSynthesis`
+  while reporting `speaking: true`, `paused: false`, no error and two hundred
+  voices — there is nothing readable that distinguishes it from working. Four
+  rounds went into "fixing" the engine before anybody simply listened. So:
+  ask for the engine's state before theorising, and where a fault is outside
+  the page's reach, have the interface *ask* rather than assert. "Test the
+  voice" says "if you heard nothing, here is the setting" instead of "the
+  voice is working", because the page cannot know which is true.
+
 - **Test the browser, do not predict it.** Whether speech works is settled by
   trying it and waiting for `onstart`, never by inspecting `getVoices()` or
   sniffing a user agent. Safari fills the voice list synchronously and Chrome

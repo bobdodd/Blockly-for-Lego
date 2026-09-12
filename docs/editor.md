@@ -472,20 +472,29 @@ talking about two different things.
 ##### If Chrome says it is speaking and you hear nothing
 
 The console report from **Test the voice** will show `speaking: true` with no
-error. That means the engine took the words and is playing them somewhere you
-cannot hear. Three things to check, in order:
+error and a full voice list. That means the engine took the words and is
+playing them somewhere you cannot hear.
 
-1. **The voice.** Pick a different one from **Voice** — anything not marked
-   "needs the internet". This is the common cause.
-2. **The tab is muted.** Right-click the tab; if it offers *Unmute site*,
-   that was it. Chrome mutes per site, and it silences speech while still
-   reporting that it is speaking.
-3. **Chrome's sound setting for the site**, at the padlock in the address bar
-   → Site settings → Sound. And Chrome's audio output device, which can
-   differ from the system's.
+**Check this first — it is what it was:**
 
-None of those are things the page can detect or fix, which is why the report
-exists.
+> **Allow Autoplay for the site.** Padlock in the address bar → Site settings
+> → Autoplay (and Sound). Chrome blocking those silences speech **while still
+> reporting that it is speaking**, with no error and a healthy voice list.
+> Nothing in the engine's state gives it away, and nothing the page can read
+> distinguishes it from working perfectly.
+
+That is why **Test the voice** asks whether you heard anything rather than
+telling you it worked: the page genuinely cannot tell.
+
+If autoplay is already allowed:
+
+1. **The tab is muted.** Right-click the tab; if it offers *Unmute site*,
+   that was it.
+2. **The voice.** Pick a different one from **Voice** — anything not marked
+   "needs the internet". A network voice that fails its fetch goes quiet
+   without erroring.
+3. **Chrome's audio output device**, which can differ from the system's.
+   Safari working proves only that the *system* default is fine.
 
 ##### Why speech rather than a live region
 
