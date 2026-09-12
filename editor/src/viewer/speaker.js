@@ -45,7 +45,26 @@ const ENGINE_DEAD_MS = 6000;
  * moment you try to speak they do not. So this waits to be told rather than
  * guessing, and only then falls back.
  */
-const SPEECH_START_MS = 700;
+const SPEECH_START_MS = 2500;
+
+/**
+ * How many starts have to fail before the engine is written off.
+ *
+ * One is not enough. Chrome's very first utterance can take over a second to
+ * begin — loading voices, sometimes fetching a network one — and treating
+ * that single slow start as a broken engine is what left it mute for the rest
+ * of the session.
+ */
+const FAILURES_BEFORE_FALLBACK = 2;
+
+/**
+ * Errors that mean "we stopped it", not "it is broken".
+ *
+ * Every announcement cancels the one before it, and a cancel fires `error`
+ * with one of these. Counting them as failures would write the engine off
+ * during perfectly normal use.
+ */
+const OUR_DOING = new Set(['canceled', 'cancelled', 'interrupted']);
 
 /**
  * How often to nudge a long utterance along.
@@ -84,6 +103,9 @@ export class Speaker {
      * been asked to say a word.
      */
     this.speechBroken = false;
+    /** What the browser last said went wrong, verbatim. */
+    this.lastError = null;
+    this._failures = 0;
     this.onChannelChange = null;
     this._primed = false;
     this._regionTimer = null;
@@ -120,6 +142,12 @@ export class Speaker {
       const utterance = new this.window.SpeechSynthesisUtterance(' ');
       utterance.volume = 0;
       this.synth.speak(utterance);
+      // Speaking inside the gesture is what unlocks iOS; leaving the thing
+      // queued afterwards is not part of the deal. A whitespace utterance is
+      // one of the shapes Chrome is known to mishandle, and left sitting in
+      // the queue it makes every later announcement take the cancel path for
+      // no reason.
+      this.synth.cancel();
     } catch {
       // The engine refused. The live-region path still works, which is the
       // whole reason it exists.
@@ -149,6 +177,22 @@ export class Speaker {
     if (this.volume === 0) return 'muted';
     if (!this.synth) return 'no-engine';
     return this.speechBroken ? 'no-voice' : 'voice';
+  }
+
+  /**
+   * What the browser said, when it said anything.
+   *
+   * `not-allowed` in particular is not a fault to be worked around: it means
+   * the page has not been interacted with yet, and the fix is a button press.
+   */
+  get channelReason() {
+    if (this.channel !== 'no-voice') return '';
+    if (this.lastError === 'not-allowed') {
+      return 'The browser will not speak until you have used the page. '
+        + 'Press "Test the voice".';
+    }
+    if (this.lastError) return `The browser reported "${this.lastError}".`;
+    return 'It accepted the speech and never started.';
   }
 
   setAudio(on) {
@@ -233,23 +277,44 @@ export class Speaker {
       const utterance = new this.window.SpeechSynthesisUtterance(text);
       utterance.volume = this.volume;
 
-      let started = false;
-      utterance.onstart = () => {
-        started = true;
-        this._startKeepAlive();
+      let settled = false;
+      const giveUp = (reason) => {
+        if (settled || token !== this._token) return;
+        settled = true;
+        this.lastError = reason;
+        this._failures += 1;
+        // One slow start is not a broken engine; a run of them is.
+        if (this._failures >= FAILURES_BEFORE_FALLBACK) this.speechBroken = true;
+        this.onChannelChange?.(this.channel);
+        this._toRegion(text);
+        finish?.();
       };
+
+      utterance.onstart = () => {
+        settled = true;
+        this._failures = 0;
+        this.lastError = null;
+        this._startKeepAlive();
+        this.onChannelChange?.(this.channel);
+      };
+
+      // Always wired, not only when a caller wants to know when it finished.
+      // Leaving this off for the announcements nobody waits on threw away the
+      // browser's own explanation of why it would not speak — which is the
+      // one fact that would have identified this in a minute.
+      utterance.onerror = (event) => {
+        const reason = event?.error ?? 'unknown';
+        if (OUR_DOING.has(reason)) return; // we cancelled it ourselves
+        giveUp(reason);
+      };
+
       if (finish) this._watchForEnd(utterance, finish);
       this.synth.speak(utterance);
 
       this.window.setTimeout(() => {
-        if (started || token !== this._token) return;
+        if (settled || token !== this._token) return;
         if (this.synth.speaking || this.synth.pending) return;
-
-        // It was asked, and it did nothing. Now we know.
-        this.speechBroken = true;
-        this.onChannelChange?.(this.channel);
-        this._toRegion(text);
-        finish?.();
+        giveUp(null);
       }, SPEECH_START_MS);
     };
 
@@ -259,6 +324,24 @@ export class Speaker {
     } else {
       start();
     }
+  }
+
+  /**
+   * Try the engine again from inside a real click.
+   *
+   * Chrome will not speak until the page has been interacted with, and when
+   * it refuses it does so silently. Speaking straight out of a button press
+   * is the one way to tell "this browser cannot" apart from "this browser has
+   * not been allowed to yet", and it is a test a student can run themselves
+   * rather than one that needs someone reading the console.
+   */
+  test() {
+    this.speechBroken = false;
+    this.lastError = null;
+    this._failures = 0;
+    this.onChannelChange?.(this.channel);
+    this.prime();
+    this.announce('The browser voice is working.');
   }
 
   /**

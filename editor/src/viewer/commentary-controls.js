@@ -25,8 +25,8 @@ const MAX_TRANSCRIPT = 100;
  */
 const CHANNELS = {
   voice: 'Speaking with the browser voice.',
-  'no-voice': 'This browser accepted the speech and made no sound, so the '
-    + 'commentary is going to your screen reader instead.',
+  'no-voice': 'The commentary is going to your screen reader, because the '
+    + 'browser voice did not play.',
   'no-engine': 'This browser has no speech of its own, so the commentary is '
     + 'going to your screen reader.',
   off: 'Speech is off. The commentary is going to your screen reader.',
@@ -43,11 +43,12 @@ const CHANNELS = {
  * @param {{speaker: object, commentary: object}} parts
  */
 export function mountCommentaryControls(elements, { speaker, commentary }) {
-  const { toggle, volume, volumeValue, describe, transcript, channel } = elements;
+  const { toggle, volume, volumeValue, describe, transcript, channel, testVoice } = elements;
 
   function showChannel() {
     if (!channel) return;
-    channel.textContent = CHANNELS[speaker.channel] ?? '';
+    const reason = speaker.channelReason;
+    channel.textContent = [CHANNELS[speaker.channel] ?? '', reason].filter(Boolean).join(' ');
     // Only the working case is unremarkable; the rest are the answer to
     // "why can I not hear anything".
     channel.classList.toggle('is-fallback', speaker.channel !== 'voice');
@@ -93,6 +94,11 @@ export function mountCommentaryControls(elements, { speaker, commentary }) {
   }
 
   describe?.addEventListener('click', () => commentary.describeNow());
+
+  // Speaking straight out of a click is the one way to tell "this browser
+  // cannot" apart from "this browser has not been allowed to yet" — Chrome
+  // refuses until the page has been used, and refuses silently.
+  testVoice?.addEventListener('click', () => speaker.test());
 
   if (transcript) {
     return (text) => {

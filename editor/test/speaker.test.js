@@ -111,23 +111,66 @@ describe('picking a channel', () => {
     assert.equal(speaker.channel, 'voice');
   });
 
-  it('falls back to the live region once the engine has demonstrably done nothing', () => {
-    // Accepted the utterance, reported success, made no sound. Only trying
-    // tells them apart, so only trying is allowed to decide.
+  it('still delivers the words when a start does not happen', () => {
     const win = fakeWindow({ synth: fakeSynth({ works: false }) });
     const speaker = speakerIn(win);
     speaker.announce('Off the line.');
 
     win.flush();
     assert.equal(win.region.textContent, 'Off the line.');
+  });
+
+  it('does not write the engine off for one slow start', () => {
+    // Chrome's very first utterance can take over a second to begin — voices
+    // loading, sometimes a network voice being fetched. Treating that as a
+    // broken engine is what left it mute for the rest of the session.
+    const win = fakeWindow({ synth: fakeSynth({ works: false }) });
+    const speaker = speakerIn(win);
+    speaker.announce('first');
+    win.flush();
+
+    assert.equal(speaker.channel, 'voice', 'one miss is not a verdict');
+    assert.equal(speaker.willSpeak, true, 'and it tries again');
+  });
+
+  it('writes it off once misses are the pattern', () => {
+    const win = fakeWindow({ synth: fakeSynth({ works: false }) });
+    const speaker = speakerIn(win);
+    speaker.announce('first');
+    win.flush();
+    speaker.announce('second');
+    win.flush();
+
     assert.equal(speaker.channel, 'no-voice');
-    assert.equal(speaker.willSpeak, false, 'and it stops trying');
+    assert.equal(speaker.willSpeak, false);
+  });
+
+  it('forgets the misses as soon as one succeeds', () => {
+    const synth = fakeSynth({ works: false });
+    const win = fakeWindow({ synth });
+    const speaker = speakerIn(win);
+    speaker.announce('first');
+    win.flush();
+
+    synth.speak = function speak(utterance) {
+      this.spoken.push(utterance);
+      this.speaking = true;
+      utterance.onstart?.();
+    };
+    speaker.announce('second');
+    win.flush();
+
+    speaker.announce('third');
+    win.flush();
+    assert.equal(speaker.channel, 'voice', 'a working engine is not on probation');
   });
 
   it('goes back to speaking when voices turn up later', () => {
     const win = fakeWindow({ synth: fakeSynth({ works: false }) });
     const speaker = speakerIn(win);
     speaker.announce('first');
+    win.flush();
+    speaker.announce('second');
     win.flush();
     assert.equal(speaker.channel, 'no-voice');
 
@@ -369,8 +412,7 @@ describe('saying which channel is carrying the words', () => {
 
     const brokenWindow = fakeWindow({ synth: fakeSynth({ works: false }) });
     const broken = speakerIn(brokenWindow);
-    broken.announce('anything');
-    brokenWindow.flush();          // the engine is given its chance first
+    for (let i = 0; i < 2; i++) { broken.announce('anything'); brokenWindow.flush(); }
     assert.equal(broken.channel, 'no-voice');
   });
 
@@ -380,10 +422,74 @@ describe('saying which channel is carrying the words', () => {
     const speaker = speakerIn(win);
     speaker.onChannelChange = (channel) => seen.push(channel);
 
-    speaker.announce('anything');
-    win.flush();
+    for (let i = 0; i < 2; i++) { speaker.announce('anything'); win.flush(); }
     speaker.setAudio(false);
 
-    assert.deepEqual(seen, ['no-voice', 'off']);
+    assert.deepEqual(seen.at(-2), 'no-voice');
+    assert.deepEqual(seen.at(-1), 'off');
+  });
+});
+
+
+describe('saying what the browser said', () => {
+  /** An engine that refuses, the way Chrome refuses before a user gesture. */
+  const refusing = (error) => {
+    const synth = fakeSynth({ works: false });
+    synth.speak = function speak(utterance) {
+      this.spoken.push(utterance);
+      utterance.onerror?.({ error });
+    };
+    return synth;
+  };
+
+  it('keeps the browser\'s own reason, instead of throwing it away', () => {
+    // It used to be wired only when a caller wanted to know when speech
+    // finished — which no commentary announcement does. The browser was
+    // explaining itself into a void.
+    const win = fakeWindow({ synth: refusing('synthesis-failed') });
+    const speaker = speakerIn(win);
+    for (let i = 0; i < 2; i++) speaker.announce('anything');
+
+    assert.equal(speaker.lastError, 'synthesis-failed');
+    assert.match(speaker.channelReason, /synthesis-failed/);
+  });
+
+  it('treats "not allowed" as something the student can fix', () => {
+    // It is not a broken engine: the page has not been used yet, and a button
+    // press is the whole remedy.
+    const win = fakeWindow({ synth: refusing('not-allowed') });
+    const speaker = speakerIn(win);
+    for (let i = 0; i < 2; i++) speaker.announce('anything');
+
+    assert.match(speaker.channelReason, /Test the voice/);
+  });
+
+  it('does not count our own cancelling as the engine failing', () => {
+    // Every announcement cancels the one before it, and a cancel fires an
+    // error. Counting those would write the engine off during normal use.
+    const win = fakeWindow({ synth: refusing('canceled') });
+    const speaker = speakerIn(win);
+    for (let i = 0; i < 5; i++) speaker.announce('anything');
+
+    assert.equal(speaker.channel, 'voice');
+    assert.equal(speaker.lastError, null);
+  });
+
+  it('gives the engine another chance when asked from a button', () => {
+    const synth = fakeSynth({ works: false });
+    const win = fakeWindow({ synth });
+    const speaker = speakerIn(win);
+    for (let i = 0; i < 2; i++) { speaker.announce('anything'); win.flush(); }
+    assert.equal(speaker.channel, 'no-voice');
+
+    synth.speak = function speak(utterance) {
+      this.spoken.push(utterance);
+      this.speaking = true;
+      utterance.onstart?.();
+    };
+    speaker.test();
+    win.flush();
+    assert.equal(speaker.channel, 'voice');
+    assert.match(synth.spoken.at(-1).text, /working/);
   });
 });

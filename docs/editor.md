@@ -448,6 +448,7 @@ that arrives late describes somewhere the robot has already left.
 | **Speak the commentary** | Speech on or off. With it **off**, the same sentences go to a polite live region instead, so a screen reader still reads them — off means "do not use the browser voice", not "say nothing". |
 | **Volume** | How loud the browser voice is. At **0** the commentary moves to the screen reader, for the same reason. |
 | **Describe the scene** | The whole thing again, now — the mat, the line, what is standing on it, and where the robot is among it. Use it when you have lost track. |
+| **Test the voice** | Speaks one sentence straight out of the button press. If you hear it, the browser voice works. If your screen reader reads it instead, it does not — and the line underneath says what the browser gave as the reason. |
 | **Transcript** | Everything that was said, in writing, under the controls. |
 
 Your choices are remembered between sessions.
@@ -488,6 +489,11 @@ cannot hear anything, read that line first.
 All three produced silence in Chrome while Safari was fine, and all three are
 worth knowing about if you touch this code:
 
+- **Wire `onerror` always, not only when someone is waiting.** None of the
+  commentary's announcements pass a completion callback, and `onerror` was
+  only attached for the ones that did — so the browser's own explanation of
+  why it would not speak went into a void. That is the single fact that
+  identifies one of these faults in a minute rather than an afternoon.
 - **Do not judge the engine by `getVoices()`.** Safari fills that list
   synchronously; Chrome does not. Deciding up front which browser can speak
   read one as working and the other as broken before either had been asked to
