@@ -337,6 +337,19 @@ export function describeScene({ world, robot, camera } = {}) {
   const course = courseSentence(world);
   if (course) facts.push({ kind: 'course', text: course });
 
+  // Whatever the course sentence already named, so nothing is said twice.
+  const named = new Set();
+  const line = courses(world)[0];
+  if (line) {
+    for (const point of [line.points[0], line.points.at(-1)]) {
+      const patch = patchAt(world, ...point);
+      if (patch) named.add(patch);
+    }
+  }
+
+  const squares = patchesSentence(world, named);
+  if (squares) facts.push({ kind: 'squares', text: squares });
+
   const standing = obstacleSentence(world);
   if (standing) facts.push({ kind: 'features', text: standing });
 
@@ -397,15 +410,47 @@ function courseSentence(world) {
   const described = legs.slice(0, 4)
     .map((leg) => `${sayDistance(leg.length)} ${leg.compass}`)
     .join(', then ');
-  const more = legs.length > 4 ? `, then ${legs.length - 4} more turns` : '';
+  const left = legs.length - 4;
+  const more = left > 0 ? `, then ${left} more turn${left === 1 ? '' : 's'}` : '';
 
-  const start = patchAt(world, ...line.points[0]);
-  const end = patchAt(world, ...line.points.at(-1));
-  const ends = start && end ? ` It starts in ${start} and ends in ${end}.`
-    : start ? ` It starts in ${start}.`
-      : end ? ` It ends in ${end}.` : '';
+  const [firstX, firstY] = line.points[0];
+  const [lastX, lastY] = line.points.at(-1);
+  // A circuit is the thing that makes a mat worth running a follower on for
+  // more than ten seconds, and reading out its segments one by one hides it.
+  const closed = Math.hypot(lastX - firstX, lastY - firstY) < (line.width_mm ?? 20) * 2;
+
+  const start = patchAt(world, firstX, firstY);
+  const end = patchAt(world, lastX, lastY);
+  let ends;
+  if (closed) ends = ` It comes back to where it starts${start ? `, in ${start}` : ''}.`;
+  else if (start && end) ends = ` It starts in ${start} and ends in ${end}.`;
+  else if (start) ends = ` It starts in ${start}.`;
+  else if (end) ends = ` It ends in ${end}.`;
+  else ends = '';
 
   return `A ${colour} line runs ${described}${more}.${ends}`;
+}
+
+/**
+ * The coloured squares on the mat, other than any already named.
+ *
+ * Without this a mat whose point is the colour sensor describes itself as a
+ * plain line: the squares are not obstacles, and only the ones the line
+ * happens to end in were being mentioned. A student would have been told to
+ * stop on a red square nobody had said was there.
+ */
+function patchesSentence(world, named) {
+  const listed = (world.patches ?? [])
+    .map((patch) => ({
+      name: `${COLOR_NAMES[String(patch.color)] ?? 'coloured'}`,
+      where: zoneOf(world, patch.x + patch.width / 2, patch.y + patch.height / 2),
+      full: `the ${COLOR_NAMES[String(patch.color)] ?? 'coloured'} square`,
+    }))
+    .filter((patch) => !named.has(patch.full))
+    .map((patch) => `${patch.name} ${patch.where}`);
+
+  if (listed.length === 0) return null;
+  return `Coloured squares: ${asList(listed)}.`;
 }
 
 function obstacleSentence(world) {

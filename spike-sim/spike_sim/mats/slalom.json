@@ -1,0 +1,90 @@
+{
+  "name": "slalom",
+  "title": "Slalom",
+  "teaches": "Posts to steer around, using the distance sensor to find them.",
+  "order": 7,
+  "width_mm": 2362.0,
+  "height_mm": 1143.0,
+  "background": 10,
+  "walls": true,
+  "lines": [
+    {
+      "points": [
+        [
+          260.0,
+          840.0
+        ],
+        [
+          260.0,
+          1040.0
+        ]
+      ],
+      "width_mm": 16,
+      "color": 0,
+      "followable": false
+    },
+    {
+      "points": [
+        [
+          218.0,
+          980.0
+        ],
+        [
+          260.0,
+          1040.0
+        ],
+        [
+          302.0,
+          980.0
+        ]
+      ],
+      "width_mm": 16,
+      "color": 0,
+      "followable": false
+    }
+  ],
+  "patches": [
+    {
+      "x": 170,
+      "y": 491,
+      "width": 160,
+      "height": 160,
+      "color": 6
+    },
+    {
+      "x": 2100,
+      "y": 491,
+      "width": 160,
+      "height": 160,
+      "color": 9
+    }
+  ],
+  "obstacles": [
+    {
+      "x": 700,
+      "y": 400,
+      "width": 80,
+      "height": 340,
+      "name": "first post"
+    },
+    {
+      "x": 1150,
+      "y": 400,
+      "width": 80,
+      "height": 340,
+      "name": "second post"
+    },
+    {
+      "x": 1600,
+      "y": 400,
+      "width": 80,
+      "height": 340,
+      "name": "third post"
+    }
+  ],
+  "start": {
+    "x": 250,
+    "y": 571,
+    "heading": 0
+  }
+}

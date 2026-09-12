@@ -1,0 +1,61 @@
+{
+  "name": "open-floor",
+  "title": "Open floor",
+  "teaches": "Driving and turning, with nothing to get in the way.",
+  "order": 1,
+  "width_mm": 2362.0,
+  "height_mm": 1143.0,
+  "background": 10,
+  "walls": true,
+  "lines": [
+    {
+      "points": [
+        [
+          260.0,
+          840.0
+        ],
+        [
+          260.0,
+          1040.0
+        ]
+      ],
+      "width_mm": 16,
+      "color": 0,
+      "followable": false
+    },
+    {
+      "points": [
+        [
+          218.0,
+          980.0
+        ],
+        [
+          260.0,
+          1040.0
+        ],
+        [
+          302.0,
+          980.0
+        ]
+      ],
+      "width_mm": 16,
+      "color": 0,
+      "followable": false
+    }
+  ],
+  "patches": [
+    {
+      "x": 220,
+      "y": 491,
+      "width": 160,
+      "height": 160,
+      "color": 6
+    }
+  ],
+  "obstacles": [],
+  "start": {
+    "x": 300,
+    "y": 571,
+    "heading": 0
+  }
+}

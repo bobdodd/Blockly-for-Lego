@@ -270,8 +270,41 @@ measurement.
 
 ## The mat
 
-The built-in mat is a practice sheet: a black line with a bend, a red target
-square at the end, a green marker, and a wall to stop at. Load your own:
+### The catalogue
+
+Eight mats ship with the simulator, ordered by how much you need to know
+already rather than alphabetically — the menu is a path through them.
+
+```bash
+python3 -m spike_sim --mats            # list them
+python3 -m spike_sim --mat zigzag      # serve one
+```
+
+| Mat | For |
+| --- | --- |
+| `open-floor` | Driving and turning, with nothing to get in the way. |
+| `first-line` | Following a straight line from the green square to the red one. |
+| `the-square` | Four straights and four turns, back where you began. |
+| `practice` | One line with a bend, a square to stop on, a wall at the end. The default, and the mat every example was written against. |
+| `zigzag` | Corners sharp enough to lose the line on. |
+| `the-loop` | A circuit with no end: a follower that works goes round and round. |
+| `slalom` | Posts to steer around, using the distance sensor. |
+| `colour-stops` | Coloured squares along a line, to branch on what the sensor sees. |
+
+They exist because a student at home has whatever the simulator ships with,
+and that is the difference between practising what was set this week and
+finding out what happens if. The editor offers the same list, so a student on
+the hosted copy — who has no command line to pass `--mat` on — picks from a
+menu beside **Connect to simulator**, and the choice is remembered.
+
+They are ordinary mat files with nothing special about them. `practice.json`
+is the mat the simulator always had, written down. A coach can add another by
+dropping a file in `spike_sim/mats/`; `order` decides where it appears in the
+menu, and `title` and `teaches` are what the menu shows.
+
+### Writing one
+
+Load a mat of your own from anywhere:
 
 ```bash
 python3 -m spike_sim --world examples/practice-mat.json
@@ -292,7 +325,8 @@ python3 -m spike_sim --world examples/practice-mat.json
   ],
   "obstacles": [
     {"x": 2100, "y": 450, "width": 60, "height": 300, "name": "end wall"}
-  ]
+  ],
+  "start": {"x": 300, "y": 300, "heading": 0}
 }
 ```
 
@@ -305,6 +339,8 @@ python3 -m spike_sim --world examples/practice-mat.json
 | `lines[].followable` | `false` marks ink that is *not* a course — the north arrow. Default `true`. |
 | `patches` | rectangles of flat colour, painted over lines |
 | `obstacles` | axis-aligned boxes the robot collides with and can range on |
+| `start` | where the robot begins: `{x, y, heading}`. A mat knows where its own start square is; a robot configuration does not, so without this every mat would have to begin where the practice mat begins. Omitted, the robot's configured start is used. |
+| `title`, `teaches`, `order` | catalogue entries — what the menu shows, and where in it |
 
 Colour ids are LEGO's: 0 black, 1 magenta, 2 purple, 3 blue, 4 azure,
 5 turquoise, 6 green, 7 yellow, 8 orange, 9 red, 10 white.

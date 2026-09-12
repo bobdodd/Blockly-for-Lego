@@ -1,0 +1,87 @@
+{
+  "name": "the-square",
+  "title": "Around the square",
+  "teaches": "Driving a square: four straights and four turns, back where you began.",
+  "order": 3,
+  "width_mm": 2362.0,
+  "height_mm": 1143.0,
+  "background": 10,
+  "walls": true,
+  "lines": [
+    {
+      "points": [
+        [
+          260.0,
+          840.0
+        ],
+        [
+          260.0,
+          1040.0
+        ]
+      ],
+      "width_mm": 16,
+      "color": 0,
+      "followable": false
+    },
+    {
+      "points": [
+        [
+          218.0,
+          980.0
+        ],
+        [
+          260.0,
+          1040.0
+        ],
+        [
+          302.0,
+          980.0
+        ]
+      ],
+      "width_mm": 16,
+      "color": 0,
+      "followable": false
+    },
+    {
+      "points": [
+        [
+          500,
+          300
+        ],
+        [
+          1500,
+          300
+        ],
+        [
+          1500,
+          900
+        ],
+        [
+          500,
+          900
+        ],
+        [
+          500,
+          300
+        ]
+      ],
+      "width_mm": 20,
+      "color": 0
+    }
+  ],
+  "patches": [
+    {
+      "x": 420,
+      "y": 220,
+      "width": 160,
+      "height": 160,
+      "color": 6
+    }
+  ],
+  "obstacles": [],
+  "start": {
+    "x": 500,
+    "y": 300,
+    "heading": 0
+  }
+}

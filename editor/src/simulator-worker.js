@@ -34,8 +34,13 @@ import base64, sys
 sys.path.insert(0, "/simulator")
 
 from spike_sim.browser import BrowserHub
+from spike_sim import mats
 
-def _make(on_frame_js, on_message_js, speed, snapshot_interval):
+def _catalogue():
+    import json
+    return json.dumps(mats.catalogue())
+
+def _make(on_frame_js, on_message_js, speed, snapshot_interval, mat):
     def on_frame(frame):
         # base64 rather than a buffer: see the note in simulator-worker.js
         on_frame_js(base64.b64encode(frame).decode("ascii"))
@@ -45,6 +50,7 @@ def _make(on_frame_js, on_message_js, speed, snapshot_interval):
         on_message_js,
         speed=speed,
         snapshot_interval=snapshot_interval,
+        mat=mat or None,
     )
 
     def receive_b64(payload):
@@ -62,7 +68,9 @@ const report = (stage, detail) => post({ type: 'progress', stage, detail });
 
 // --------------------------------------------------------------------------
 
-async function start({ indexURL = DEFAULT_INDEX_URL, speed = 1, snapshotInterval = 0.05 }) {
+async function start({
+  indexURL = DEFAULT_INDEX_URL, speed = 1, snapshotInterval = 0.05, mat = '',
+}) {
   report('loading', 'Downloading Python. This happens once.');
 
   // A variable specifier, so the bundler leaves this as a runtime import
@@ -84,6 +92,7 @@ async function start({ indexURL = DEFAULT_INDEX_URL, speed = 1, snapshotInterval
     (payload) => post({ type: 'message', data: payload }),
     speed,
     snapshotInterval,
+    mat,
   );
 
   hub = created.get(0);
@@ -91,8 +100,14 @@ async function start({ indexURL = DEFAULT_INDEX_URL, speed = 1, snapshotInterval
   created.destroy();
   make.destroy();
 
+  // The catalogue travels with the simulator rather than being duplicated in
+  // the editor: one list, and it cannot drift from the mats that exist.
+  const list = pyodide.globals.get('_catalogue');
+  const catalogue = JSON.parse(list());
+  list.destroy();
+
   await hub.start();
-  post({ type: 'ready' });
+  post({ type: 'ready', catalogue });
 }
 
 /** Unpack the bundled package into Pyodide's filesystem. */

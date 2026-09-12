@@ -22,6 +22,7 @@ import 'blockly/blocks';
 import { Announcer, describeSensors } from './announcer.js';
 import { Commentary } from './viewer/commentary.js';
 import { mountCommentaryControls } from './viewer/commentary-controls.js';
+import { MATS } from './generated/mat-catalogue.js';
 import { SceneSource } from './viewer/scene-source.js';
 import { Speaker } from './viewer/speaker.js';
 import { createTabs } from './tabs.js';
@@ -54,6 +55,7 @@ const element = (id) => document.getElementById(id);
 
 const ui = {
   connectSimulator: element('connect-simulator'),
+  mat: element('mat'),
   connectHub: element('connect-hub'),
   run: element('run'),
   stop: element('stop'),
@@ -111,6 +113,26 @@ let tabs = null;
  * a student to work out which half of the screen is dead.
  */
 let connectionKind = null;
+
+const MAT_KEY = 'blockly-for-lego.mat';
+const DEFAULT_MAT = 'practice';
+
+/**
+ * Which mat the built-in simulator should lay out.
+ *
+ * Remembered, because the point of a catalogue is a student at home working
+ * through it over several evenings, and starting each one back on the
+ * practice mat would undo that.
+ */
+function chosenMat() {
+  try {
+    const saved = localStorage.getItem(MAT_KEY);
+    if (saved && MATS.some((entry) => entry.name === saved)) return saved;
+  } catch {
+    // private browsing, or a locked-down machine
+  }
+  return DEFAULT_MAT;
+}
 
 /** Says the 3D view out loud. See src/viewer/commentary.js. */
 const speaker = new Speaker({ regionId: 'commentary-region' });
@@ -396,7 +418,7 @@ async function startSimulator() {
     return;
   }
 
-  const transport = new InBrowserSimulatorTransport();
+  const transport = new InBrowserSimulatorTransport({ mat: chosenMat() });
   // The first connection downloads about five megabytes of Python. Saying so
   // as it happens is the difference between a wait and an apparent hang --
   // and a spinner says nothing to a screen reader.
@@ -407,6 +429,52 @@ async function startSimulator() {
   };
 
   await connect(transport, 'the built-in simulator');
+}
+
+/**
+ * Fill in the mat menu and act on a change.
+ *
+ * Changing mats while connected reconnects, because the mat is laid out when
+ * the simulator starts. That is a slower thing than a menu usually does, so
+ * it says what it is doing.
+ */
+function wireMatChoice() {
+  if (!ui.mat) return;
+
+  for (const entry of MATS) {
+    const option = document.createElement('option');
+    option.value = entry.name;
+    option.textContent = entry.title;
+    // The whole point of the catalogue is that a student can tell which mat
+    // is worth opening next, so what it is for travels with the name.
+    option.title = entry.teaches;
+    ui.mat.append(option);
+  }
+  ui.mat.value = chosenMat();
+
+  ui.mat.addEventListener('change', async () => {
+    const entry = MATS.find((mat) => mat.name === ui.mat.value) ?? MATS[0];
+    try {
+      localStorage.setItem(MAT_KEY, ui.mat.value);
+    } catch {
+      // the choice still applies to this session
+    }
+
+    if (connectionKind !== 'simulator') {
+      announcer.status(`${entry.title}. ${entry.teaches} Connect to the simulator to use it.`);
+      return;
+    }
+    if (client instanceof HubClient && !(client.transport instanceof InBrowserSimulatorTransport)) {
+      announcer.status(
+        `Restart the simulator with --mat ${entry.name} to change the mat it is running.`,
+      );
+      return;
+    }
+
+    announcer.status(`Laying out ${entry.title}. ${entry.teaches}`);
+    await disconnect();
+    await startSimulator();
+  });
 }
 
 async function disconnect() {
@@ -817,6 +885,7 @@ async function connectHub() {
 }
 
 function wireControls() {
+  wireMatChoice();
   ui.connectSimulator.addEventListener('click', connectSimulator);
 
   ui.connectHub.addEventListener('click', () => {

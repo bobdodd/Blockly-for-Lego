@@ -20,6 +20,7 @@ from . import events as ev
 from .hub import HubSimulator
 from .robot import Robot, RobotConfig
 from .server import SimulatorServer
+from . import mats
 from .world import World, default_world
 
 KIND_PREFIX = {
@@ -47,6 +48,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--world", help="path to a world JSON file")
     parser.add_argument(
+        "--mat",
+        metavar="NAME",
+        help="a mat from the catalogue: " + ", ".join(mats.names()),
+    )
+    parser.add_argument(
+        "--mats", action="store_true", help="list the mats in the catalogue and exit"
+    )
+    parser.add_argument(
         "--snapshot-interval", type=float, default=0.05,
         help="seconds between robot telemetry snapshots for viewers (default 0.05)",
     )
@@ -68,7 +77,12 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def make_hub(args) -> HubSimulator:
-    world = World.load(args.world) if args.world else default_world()
+    if args.world:
+        world = World.load(args.world)
+    elif args.mat:
+        world = mats.load(args.mat)
+    else:
+        world = default_world()
     config = RobotConfig(
         noise=args.noise,
         wheel_diameter_mm=args.wheel_diameter,
@@ -159,8 +173,26 @@ async def serve(args) -> int:
     return 0
 
 
+def list_mats() -> int:
+    for entry in mats.catalogue():
+        print(f"{entry['name']:<14} {entry['title']:<18} {entry['teaches']}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.mats:
+        return list_mats()
+
+    if args.mat and args.mat not in mats.names():
+        # Checked here rather than where the mat is built, because by then it
+        # is inside a coroutine and comes out as a traceback. A mistyped name
+        # is a typo: a traceback tells a student their program is broken, and
+        # this tells them what to type.
+        print(f"There is no mat called {args.mat!r}.")
+        print(f"Try one of: {', '.join(mats.names())}")
+        return 2
+
     coroutine = run_one(args) if args.run else serve(args)
     try:
         return asyncio.run(coroutine)

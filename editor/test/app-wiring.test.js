@@ -165,3 +165,45 @@ describe('the markup agrees with the default tab', () => {
     assert.equal((markup.match(/role="tab"[^>]*aria-selected="true"/g) ?? []).length, 1);
   });
 });
+
+describe('the mat catalogue reaches the editor', () => {
+  const app = read('src/app.js');
+  const markup = read('index.html');
+  const build = read('scripts/build.js');
+
+  it('is generated from the mats themselves, not written out twice', () => {
+    // The editor needs the list before the simulator has loaded — a student
+    // picks a mat and then connects — so it cannot ask the worker. Generating
+    // it from the same files the simulator reads means a mat that is offered
+    // exists, and one that exists is offered.
+    assert.match(build, /function bundleMatCatalogue/);
+    assert.match(build, /spike-sim', 'spike_sim', 'mats'/);
+    assert.match(app, /from '\.\/generated\/mat-catalogue\.js'/);
+  });
+
+  it('carries the data files, not only the Python', () => {
+    // The mats are JSON. A bundler that takes only .py leaves the browser
+    // with a catalogue module and no mats in it.
+    assert.match(build, /endsWith\('\.py'\) \|\| entry\.name\.endsWith\('\.json'\)/);
+  });
+
+  it('has somewhere to pick one', () => {
+    assert.ok(markup.includes('id="mat"'), 'no mat picker in the markup');
+    assert.match(markup, /for="mat"/, 'the picker needs a label');
+  });
+
+  it('remembers the choice between evenings', () => {
+    // The point of a catalogue is a student working through it over several
+    // sessions; starting each one back on the practice mat undoes that.
+    assert.match(app, /localStorage\.setItem\(MAT_KEY/);
+    assert.match(app, /function chosenMat\(\)/);
+  });
+
+  it('refuses a remembered mat that no longer exists', () => {
+    assert.match(app, /MATS\.some\(\(entry\) => entry\.name === saved\)/);
+  });
+
+  it('says what a mat is for, not just its name', () => {
+    assert.match(app, /option\.title = entry\.teaches/);
+  });
+});

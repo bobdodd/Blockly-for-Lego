@@ -55,7 +55,9 @@ async function writeSimulator(runtime) {
       if (entry.isDirectory()) {
         runtime.FS.mkdirTree(target);
         await walk(full, `${prefix}${entry.name}/`);
-      } else if (entry.name.endsWith('.py')) {
+      } else if (entry.name.endsWith('.py') || entry.name.endsWith('.json')) {
+        // .json too: the mat catalogue is data, and a browser needs the same
+        // mats as a command line.
         runtime.FS.writeFile(target, await readFile(full, 'utf8'), { encoding: 'utf8' });
       }
     }
@@ -77,6 +79,7 @@ describe('the simulator under Pyodide', () => {
       (payload) => messages.push(JSON.parse(payload)),
       20,      // speed
       0.01,    // snapshot interval
+      '',      // mat: empty means the built-in practice mat
     );
     hub = created.get(0);
     receive = created.get(1);
@@ -107,6 +110,36 @@ bad
 `);
     assert.deepEqual(missing.toJs(), [], 'every simulator module must import');
     missing.destroy();
+  });
+
+  it('carries the mat catalogue into the browser', async () => {
+    // The mats are data files, not Python, so they travel only if the bundler
+    // was told to take them. A student in the browser gets the same catalogue
+    // as one at a command line, or the menu offers mats that are not there.
+    const listed = await pyodide.runPythonAsync(`
+from spike_sim import mats
+[entry["name"] for entry in mats.catalogue()]
+`);
+    const names = listed.toJs();
+    listed.destroy();
+
+    assert.ok(names.length >= 6, `only ${names.length} mats made it across`);
+    assert.ok(names.includes('practice'));
+    assert.equal(names[0], 'open-floor', 'and in the order a student meets them');
+  });
+
+  it('lays out a named mat from the catalogue', async () => {
+    const world = await pyodide.runPythonAsync(`
+from spike_sim import mats
+mat = mats.load("the-square")
+[mat.width_mm, len([l for l in mat.lines if l.followable]), mat.start[0]]
+`);
+    const [width, courses, startX] = world.toJs();
+    world.destroy();
+
+    assert.ok(width > 0);
+    assert.equal(courses, 1);
+    assert.equal(startX, 500, 'the square mat starts the robot on its own corner');
   });
 
   it('says hello with the mat and the robot', () => {

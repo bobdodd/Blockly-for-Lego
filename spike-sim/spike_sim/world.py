@@ -144,6 +144,17 @@ class World:
     walls: bool = True
     """Treat the mat edge as a wall the distance sensor can see."""
 
+    start: tuple[float, float, float] | None = None
+    """Where the robot begins on this mat: ``(x, y, heading)``.
+
+    A mat knows where its own starting square is; the robot's configuration
+    does not. Without this every mat would have to put its start in the same
+    place as the practice mat, which is a strange constraint to put on a maze.
+
+    ``None`` leaves it to :class:`~spike_sim.robot.RobotConfig`, so a test that
+    builds a bare world and asks for a particular start still gets it.
+    """
+
     # -- describing it ------------------------------------------------------
 
     def describe_point(self, x: float, y: float) -> str:
@@ -305,6 +316,7 @@ class World:
             patches=[ColorPatch(**patch) for patch in data.get("patches", [])],
             obstacles=[Obstacle(**obs) for obs in data.get("obstacles", [])],
             walls=data.get("walls", True),
+            start=_read_start(data.get("start")),
         )
 
     @staticmethod
@@ -328,7 +340,26 @@ class World:
             "patches": [vars(p) for p in self.patches],
             "obstacles": [vars(o) for o in self.obstacles],
             "walls": self.walls,
+            "start": (
+                None
+                if self.start is None
+                else {"x": self.start[0], "y": self.start[1], "heading": self.start[2]}
+            ),
         }
+
+
+def _read_start(value) -> tuple[float, float, float] | None:
+    """Accept ``{"x": .., "y": .., "heading": ..}`` or a bare triple."""
+    if value is None:
+        return None
+    if isinstance(value, dict):
+        return (
+            float(value.get("x", 0.0)),
+            float(value.get("y", 0.0)),
+            float(value.get("heading", 0.0)),
+        )
+    x, y, heading = value
+    return (float(x), float(y), float(heading))
 
 
 def north_arrow(x: float = 260.0, y: float = 840.0, length: float = 200.0) -> list[LinePath]:
@@ -383,6 +414,7 @@ def default_world() -> World:
         obstacles=[
             Obstacle(x=2100, y=450, width=60, height=300, name="end wall"),
         ],
+        start=(300.0, 300.0, 0.0),
     )
 
 

@@ -248,7 +248,7 @@ describe('the whole description', () => {
     const { facts } = describeScene({ world, robot: robotAt(500, 300, 0, 900), camera });
     assert.deepEqual(
       facts.map((f) => f.kind),
-      ['view', 'mat', 'course', 'features', 'robot', 'standing', 'ahead'],
+      ['view', 'mat', 'course', 'squares', 'features', 'robot', 'standing', 'ahead'],
     );
   });
 
@@ -262,6 +262,56 @@ describe('the whole description', () => {
     const { text } = describeScene({ world, robot: robotAt(500, 300, 0), camera });
     assert.match(text, /A black line runs 80 centimetres east/);
     assert.match(text, /starts in the green square/);
+  });
+
+  it('names a circuit as a circuit', () => {
+    // Reading out a loop's segments one by one hides the thing that makes it
+    // worth running a follower on for more than ten seconds.
+    const loop = {
+      ...world,
+      lines: [{ points: [[200, 200], [800, 200], [800, 700], [200, 700], [200, 200]],
+        width_mm: 20, color: 0 }],
+      patches: [],
+    };
+    const { text } = describeScene({ world: loop, robot: robotAt(200, 200, 0), camera });
+    assert.match(text, /comes back to where it starts/);
+  });
+
+  it('counts one remaining turn as a turn, not turns', () => {
+    const long = {
+      ...world,
+      lines: [{ points: [[100, 100], [300, 100], [300, 300], [500, 300], [500, 500],
+        [700, 500]], width_mm: 20, color: 0 }],
+      patches: [],
+    };
+    const { text } = describeScene({ world: long, robot: robotAt(100, 100, 0), camera });
+    assert.match(text, /1 more turn\b/);
+    assert.ok(!/1 more turns/.test(text));
+  });
+
+  it('names coloured squares that are not at the ends of the line', () => {
+    // Without this, a mat whose whole point is the colour sensor describes
+    // itself as a plain line, and a student is told to stop on a square
+    // nobody said was there.
+    const stops = {
+      ...world,
+      lines: [{ points: [[200, 300], [2000, 300]], width_mm: 20, color: 0 }],
+      patches: [
+        { x: 140, y: 220, width: 160, height: 160, color: 6 },
+        { x: 700, y: 220, width: 160, height: 160, color: 3 },
+        { x: 1400, y: 220, width: 160, height: 160, color: 9 },
+      ],
+    };
+    const { text } = describeScene({ world: stops, robot: robotAt(220, 300, 0), camera });
+    assert.match(text, /Coloured squares/);
+    assert.match(text, /blue/);
+    assert.match(text, /red/);
+  });
+
+  it('does not name the same square twice', () => {
+    const { text } = describeScene({ world, robot: robotAt(220, 300, 0), camera });
+    const greens = text.match(/green square/g) ?? [];
+    assert.ok(greens.length <= 2, `the green square is named ${greens.length} times`);
   });
 
   it('leaves the mat out when it has already been described', () => {

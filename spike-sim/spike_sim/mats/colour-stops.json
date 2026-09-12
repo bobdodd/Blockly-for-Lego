@@ -1,0 +1,96 @@
+{
+  "name": "colour-stops",
+  "title": "Colour stops",
+  "teaches": "Coloured squares along a line, to stop or turn on what the sensor sees.",
+  "order": 8,
+  "width_mm": 2362.0,
+  "height_mm": 1143.0,
+  "background": 10,
+  "walls": true,
+  "lines": [
+    {
+      "points": [
+        [
+          260.0,
+          840.0
+        ],
+        [
+          260.0,
+          1040.0
+        ]
+      ],
+      "width_mm": 16,
+      "color": 0,
+      "followable": false
+    },
+    {
+      "points": [
+        [
+          218.0,
+          980.0
+        ],
+        [
+          260.0,
+          1040.0
+        ],
+        [
+          302.0,
+          980.0
+        ]
+      ],
+      "width_mm": 16,
+      "color": 0,
+      "followable": false
+    },
+    {
+      "points": [
+        [
+          220,
+          571
+        ],
+        [
+          2100,
+          571
+        ]
+      ],
+      "width_mm": 20,
+      "color": 0
+    }
+  ],
+  "patches": [
+    {
+      "x": 140,
+      "y": 491,
+      "width": 160,
+      "height": 160,
+      "color": 6
+    },
+    {
+      "x": 700,
+      "y": 491,
+      "width": 160,
+      "height": 160,
+      "color": 3
+    },
+    {
+      "x": 1200,
+      "y": 491,
+      "width": 160,
+      "height": 160,
+      "color": 7
+    },
+    {
+      "x": 1700,
+      "y": 491,
+      "width": 160,
+      "height": 160,
+      "color": 9
+    }
+  ],
+  "obstacles": [],
+  "start": {
+    "x": 300,
+    "y": 571,
+    "heading": 0
+  }
+}

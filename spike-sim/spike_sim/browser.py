@@ -29,6 +29,7 @@ import json
 from typing import Callable
 
 from . import events as ev
+from . import mats
 from .hub import HubSimulator
 from .robot import Robot, RobotConfig
 from .telemetry import event_payload, hello_payload, snapshot_payload
@@ -40,6 +41,7 @@ class BrowserHub:
 
     :param on_frame: called with each outgoing protocol frame, as ``bytes``
     :param on_message: called with each JSON payload, as a ``str``
+    :param mat: a name from :mod:`spike_sim.mats`, when no ``world`` is given
 
     Both are handed across the JavaScript boundary, so they take plain types:
     JSON is serialized here rather than relying on an object converter.
@@ -54,7 +56,10 @@ class BrowserHub:
         snapshot_interval: float = 0.05,
         world: World | None = None,
         config: RobotConfig | None = None,
+        mat: str | None = None,
     ):
+        if world is None and mat:
+            world = mats.load(mat)
         self._on_frame = on_frame
         self._on_message = on_message
         self.snapshot_interval = snapshot_interval
@@ -132,9 +137,7 @@ class BrowserHub:
         if action == "press":
             robot.press_force_sensor(command.get("port", "E"), command.get("force", 100))
         elif action == "reset":
-            robot.x = robot.config.start_x
-            robot.y = robot.config.start_y
-            robot.heading = robot.config.start_heading
+            robot.x, robot.y, robot.heading = robot.start_pose
             robot.stop_all_motors()
             robot.reset_odometer()
             self.hub.log.emit(ev.PROGRAM, "The robot was put back at its starting place.")

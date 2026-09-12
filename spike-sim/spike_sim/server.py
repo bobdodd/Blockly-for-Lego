@@ -216,9 +216,7 @@ class SimulatorServer:
         elif action == "press":
             robot.press_force_sensor(command.get("port", "E"), command.get("force", 100))
         elif action == "reset":
-            robot.x = robot.config.start_x
-            robot.y = robot.config.start_y
-            robot.heading = robot.config.start_heading
+            robot.x, robot.y, robot.heading = robot.start_pose
             robot.stop_all_motors()
             robot.reset_odometer()
             self.hub.log.emit(ev.PROGRAM, "The robot was put back at its starting place.")

@@ -154,9 +154,7 @@ class Robot:
         self.time = 0.0
         self.log = log or ev.EventLog(clock=lambda: self.time)
 
-        self.x = self.config.start_x
-        self.y = self.config.start_y
-        self.heading = self.config.start_heading
+        self.x, self.y, self.heading = self.start_pose
 
         self.ports: dict[str, object] = {letter: None for letter in PORTS}
         self.ports[self.config.left_motor] = Motor(
@@ -397,6 +395,17 @@ class Robot:
     @property
     def odometer_mm(self) -> float:
         return self._odometer
+
+    @property
+    def start_pose(self) -> tuple[float, float, float]:
+        """Where this robot begins, as ``(x, y, heading)``.
+
+        The mat's own starting place when it names one, because a mat knows
+        where its start square is and a robot configuration does not.
+        """
+        if self.world.start is not None:
+            return self.world.start
+        return (self.config.start_x, self.config.start_y, self.config.start_heading)
 
     # -- reporting ----------------------------------------------------------
 

@@ -67,6 +67,9 @@ export class InBrowserSimulatorTransport {
             break;
 
           case 'ready':
+            // The mats the simulator actually has, so the editor's menu can
+            // never offer one that is not there.
+            this.catalogue = data.catalogue ?? [];
             resolve();
             break;
 
@@ -99,6 +102,7 @@ export class InBrowserSimulatorTransport {
         type: 'start',
         speed: this.options.speed,
         snapshotInterval: this.options.snapshotInterval,
+        mat: this.options.mat ?? '',
         ...(this.options.indexURL ? { indexURL: this.options.indexURL } : {}),
       });
     });
