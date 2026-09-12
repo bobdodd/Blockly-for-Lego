@@ -133,7 +133,10 @@ export class Announcer {
 
     if (interrupt) globalThis.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(message);
-    utterance.rate = 1.1;
+    // The speed the student chose for the commentary. Two speech channels on
+    // one page reading at different speeds is not a considered difference,
+    // it is an oversight anyone can hear.
+    utterance.rate = this.rate ?? 1.1;
     globalThis.speechSynthesis.speak(utterance);
     this.#lastSpokenAt = now;
   }

@@ -650,3 +650,71 @@ describe('choosing a voice rather than taking what comes', () => {
     assert.equal(report.voiceIsLocal, true);
   });
 });
+
+
+describe('how fast it reads', () => {
+  it('applies the chosen speed to what it says', () => {
+    const win = fakeWindow();
+    const speaker = speakerIn(win);
+    speaker.setRate(2.5);
+    speaker.announce('quickly');
+    assert.equal(win.speechSynthesis.spoken[0].rate, 2.5);
+  });
+
+  it('starts at normal speed', () => {
+    const win = fakeWindow();
+    speakerIn(win).announce('anything');
+    assert.equal(win.speechSynthesis.spoken[0].rate, 1);
+  });
+
+  it('goes fast enough for somebody who listens at four times', () => {
+    // A screen reader user who has spent years at that speed does not slow
+    // down for one web page, and a narration they have to wait through is one
+    // they turn off — which here means turning off the only access to the 3D
+    // view there is.
+    const { max } = Speaker.rateRange;
+    assert.ok(max >= 4, `${max} is too slow a ceiling`);
+
+    const win = fakeWindow();
+    const speaker = speakerIn(win);
+    speaker.setRate(max);
+    speaker.announce('anything');
+    assert.equal(win.speechSynthesis.spoken[0].rate, max);
+  });
+
+  it('goes slow enough for somebody meeting a synthetic voice', () => {
+    const { min } = Speaker.rateRange;
+    assert.ok(min <= 0.5, `${min} is too fast a floor`);
+  });
+
+  it('does not let a slider send it out of range', () => {
+    const speaker = speakerIn(fakeWindow());
+    speaker.setRate(99);
+    assert.equal(speaker.rate, Speaker.rateRange.max);
+    speaker.setRate(0);
+    assert.equal(speaker.rate, Speaker.rateRange.min);
+    speaker.setRate(Number.NaN);
+    assert.equal(speaker.rate, 1);
+  });
+
+  it('remembers it across a reload', () => {
+    const storage = memoryStorage();
+    speakerIn(fakeWindow(), storage).setRate(3);
+    assert.equal(speakerIn(fakeWindow(), storage).rate, 3);
+  });
+
+  it('cuts a sentence short rather than finishing it at the old speed', () => {
+    const win = fakeWindow();
+    const speaker = speakerIn(win);
+    speaker.announce('a long sentence');
+    const before = win.speechSynthesis.cancels;
+    speaker.setRate(3);
+    assert.ok(win.speechSynthesis.cancels > before);
+  });
+
+  it('reports it, for the bug report', () => {
+    const speaker = speakerIn(fakeWindow());
+    speaker.setRate(1.75);
+    assert.equal(speaker.diagnose().rate, 1.75);
+  });
+});

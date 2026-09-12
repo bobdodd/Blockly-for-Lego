@@ -255,6 +255,26 @@ Opened directly by its own URL, it still connects to a simulator you started
 yourself — `viewer.html` on its own, or `viewer.html?simulator=ws://…`.
 Several windows can watch at once.
 
+##### Setting the speed
+
+The range goes to **five times** normal on purpose. A screen reader user who
+has spent years listening at three or four times does not slow down for one
+web page, and a narration they have to wait through is one they will turn off
+— which for the 3D view means turning off the only access to it there is. The
+bottom of the range matters as much for somebody meeting a robot, or a
+synthetic voice, for the first time.
+
+Both sliders are plain `<input type="range">`, which brings the keyboard, the
+screen reader and the touch target with it. What a range does *not* bring is
+meaning: it reports its raw number, and "2.5" on its own is not a speed. Both
+sliders carry an `aria-valuetext` — "2.5 times normal speed", "muted — screen
+reader only" — rewritten on every change, because one written once becomes a
+lie the moment the slider moves.
+
+Letting go of the slider speaks a sample **at the new speed**, since that is
+the only way to judge a speed. Eighteen steps end to end, so the arrow keys
+reach both ends without it becoming a chore.
+
 ##### Only one window speaks
 
 Both windows describe the robot, and both receive the same telemetry — so both
@@ -500,6 +520,7 @@ that arrives late describes somewhere the robot has already left.
 | --- | --- |
 | **Speak the commentary** | Speech on or off. With it **off**, the same sentences go to a polite live region instead, so a screen reader still reads them — off means "do not use the browser voice", not "say nothing". |
 | **Voice** | Which of the browser's voices to use. Left alone it picks **Daniel** where the system has it, then another local voice in the page's language. A named favourite still has to speak the page's language — an English sentence in a French voice is not an improvement on picking badly. |
+| **Speed** | How fast it reads, from **half** normal speed to **five times** it. The narration log's own voice follows the same setting. |
 | **Volume** | How loud the browser voice is. At **0** the commentary moves to the screen reader, for the same reason. |
 | **Describe the scene** | The whole thing again, now — the mat, the line, what is standing on it, and where the robot is among it. Use it when you have lost track. |
 | **Test the voice** | Speaks one sentence straight out of the button press. If you hear it, the browser voice works. If your screen reader reads it instead, it does not — and the line underneath says what the browser gave as the reason. |

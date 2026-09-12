@@ -35,6 +35,8 @@ const ui = {
   commentaryOn: element('commentary-on'),
   commentaryVolume: element('commentary-volume'),
   commentaryVolumeValue: element('commentary-volume-value'),
+  commentaryRate: element('commentary-rate'),
+  commentaryRateValue: element('commentary-rate-value'),
   describeScene: element('describe-scene'),
   commentaryTranscript: element('commentary-transcript'),
   commentaryChannel: element('commentary-channel'),
@@ -69,12 +71,20 @@ speaker.caption = mountCommentaryControls({
   toggle: ui.commentaryOn,
   volume: ui.commentaryVolume,
   volumeValue: ui.commentaryVolumeValue,
+  rate: ui.commentaryRate,
+  rateValue: ui.commentaryRateValue,
   describe: ui.describeScene,
   transcript: ui.commentaryTranscript,
   channel: ui.commentaryChannel,
   testVoice: ui.testVoice,
   voice: ui.commentaryVoice,
-}, { speaker, commentary, takeTheVoice: () => voice.claim() });
+}, {
+  speaker,
+  commentary,
+  takeTheVoice: () => voice.claim(),
+  // No narration list in this window, so nothing else to keep in step.
+  onRate: () => {},
+});
 
 // This page watches a run it did not start, so the brief is triggered by the
 // simulator's own "started" event rather than by a Run button. There is

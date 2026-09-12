@@ -63,8 +63,30 @@ const CHANNELS = {
 export function mountCommentaryControls(elements, parts) {
   const { speaker, commentary } = parts;
   const {
-    toggle, volume, volumeValue, describe, transcript, channel, testVoice, voice,
+    toggle, volume, volumeValue, rate, rateValue,
+    describe, transcript, channel, testVoice, voice,
   } = elements;
+
+  /**
+   * What a slider should say about itself.
+   *
+   * A range reports its raw number to a screen reader, and "2.5" on its own
+   * is not a speed. `aria-valuetext` replaces it with something that is, and
+   * has to be rewritten on every change or it becomes a lie the moment the
+   * slider moves.
+   */
+  function setValueText(control, output, text) {
+    if (control) control.setAttribute('aria-valuetext', text);
+    if (output) output.textContent = text;
+  }
+
+  /** "normal", "twice normal speed", "half normal speed". */
+  function sayRate(value) {
+    if (value === 1) return 'normal speed';
+    if (value === 2) return 'twice normal speed';
+    if (value === 0.5) return 'half normal speed';
+    return `${value} times normal speed`;
+  }
 
   /**
    * Offer the browser's voices, local ones first.
@@ -158,6 +180,30 @@ export function mountCommentaryControls(elements, parts) {
     });
   }
 
+  if (rate) {
+    const { min, max } = speaker.constructor.rateRange;
+    rate.min = String(min);
+    rate.max = String(max);
+    rate.value = String(speaker.rate);
+    showRate();
+
+    rate.addEventListener('input', () => {
+      speaker.setRate(Number(rate.value));
+      parts.onRate?.(speaker.rate);
+      showRate();
+    });
+    // On release, not on every step: dragging would otherwise cancel and
+    // restart a sentence per pixel. And it is spoken *at* the new speed,
+    // because that is the only way to judge a speed.
+    rate.addEventListener('change', () => {
+      speaker.announce('This is the speed the commentary will be read at.');
+    });
+  }
+
+  function showRate() {
+    setValueText(rate, rateValue, sayRate(speaker.rate));
+  }
+
   if (volume) {
     volume.value = String(Math.round(speaker.volume * 100));
     showVolume();
@@ -173,11 +219,14 @@ export function mountCommentaryControls(elements, parts) {
   }
 
   function showVolume() {
-    if (!volumeValue) return;
     const percent = Math.round(speaker.volume * 100);
     // "0%" reads as broken. Say what actually happens at zero: the commentary
     // is not gone, it has moved to the screen reader.
-    volumeValue.textContent = percent === 0 ? 'muted — screen reader only' : `${percent}%`;
+    setValueText(
+      volume,
+      volumeValue,
+      percent === 0 ? 'muted — screen reader only' : `${percent}%`,
+    );
   }
 
   describe?.addEventListener('click', () => commentary.describeNow());

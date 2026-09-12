@@ -34,6 +34,20 @@
 const AUDIO_KEY = 'blockly-for-lego.commentary-audio';
 const VOLUME_KEY = 'blockly-for-lego.commentary-volume';
 const VOICE_KEY = 'blockly-for-lego.commentary-voice';
+const RATE_KEY = 'blockly-for-lego.commentary-rate';
+
+/**
+ * How fast the commentary is read.
+ *
+ * The range is deliberately wide at the top. A screen reader user who has
+ * spent years at three or four times normal speed does not slow down for one
+ * web page, and a narration they have to wait through is one they will turn
+ * off — which for the 3D view means turning off the only access to it there
+ * is. The bottom end matters just as much for somebody meeting a robot, or a
+ * synthetic voice, for the first time.
+ */
+const SLOWEST = 0.5;
+const FASTEST = 5;
 
 /**
  * Voices to reach for before working one out.
@@ -162,6 +176,7 @@ export class Speaker {
     this.audioOn = this.storage.getItem(AUDIO_KEY) !== 'off';
     this.volume = clampVolume(Number(this.storage.getItem(VOLUME_KEY) ?? 1));
     this.voiceName = this.storage.getItem(VOICE_KEY) || '';
+    this.rate = clampRate(Number(this.storage.getItem(RATE_KEY) ?? 1));
 
     // iOS unlocks the speech engine only inside a user gesture, and the first
     // gesture here is usually pressing Run — by which time the robot is
@@ -329,6 +344,22 @@ export class Speaker {
     this.onChannelChange?.(this.channel);
   }
 
+  /** How fast to read, as a multiple of the voice's normal speed. */
+  setRate(value) {
+    const wasSpeaking = this.willSpeak;
+    this.rate = clampRate(value);
+    this.storage.setItem(RATE_KEY, String(this.rate));
+    // Rate belongs to an utterance, not to the engine, so a change only takes
+    // effect on the next one. Cutting the current one short is better than
+    // letting it run on at a speed the student has just rejected.
+    if (wasSpeaking && this.synth) this.stop();
+  }
+
+  /** The range a rate control should offer. */
+  static get rateRange() {
+    return { min: SLOWEST, max: FASTEST };
+  }
+
   setVolume(value) {
     const wasSpeaking = this.willSpeak;
     this.volume = clampVolume(value);
@@ -408,6 +439,7 @@ export class Speaker {
 
       const utterance = new this.window.SpeechSynthesisUtterance(text);
       utterance.volume = this.volume;
+      utterance.rate = this.rate;
 
       // Naming the voice rather than leaving it to the browser. See pickVoice.
       const voice = this.pickVoice();
@@ -538,6 +570,7 @@ export class Speaker {
       paused: this.synth?.paused ?? null,
       audioOn: this.audioOn,
       volume: this.volume,
+      rate: this.rate,
       voice: this.pickVoice()?.name ?? null,
       voiceIsLocal: this.pickVoice()?.localService ?? null,
       chosenByHand: this.voiceName || null,
@@ -649,6 +682,11 @@ export class Speaker {
 function clampVolume(value) {
   if (!Number.isFinite(value)) return 1;
   return Math.min(1, Math.max(0, value));
+}
+
+function clampRate(value) {
+  if (!Number.isFinite(value)) return 1;
+  return Math.min(FASTEST, Math.max(SLOWEST, value));
 }
 
 /**

@@ -388,3 +388,11 @@ button[aria-disabled="true"] {
 /* The voice picker. Long names, so let it size to its content but not run
    away with the row. */
 #commentary-voice { max-width: 18rem; }
+
+/* The speed slider. Same width as the volume one so the row reads as a pair. */
+#commentary-rate { min-width: 9rem; }
+
+#commentary-rate-value {
+  color: var(--muted);
+  min-width: 9ch;
+}

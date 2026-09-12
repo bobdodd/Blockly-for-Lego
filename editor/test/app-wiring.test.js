@@ -467,3 +467,51 @@ describe('two windows, one voice', () => {
     assert.match(controls, /channel\.tabIndex = claimable \? 0 : -1/);
   });
 });
+
+describe('setting the speech speed', () => {
+  const markup = read('index.html');
+  const controls = read('src/viewer/commentary-controls.js');
+  const app = read('src/app.js');
+
+  it('is a native range, so the keyboard and the screen reader come free', () => {
+    const slider = markup.slice(markup.indexOf('id="commentary-rate"'));
+    const tag = slider.slice(0, slider.indexOf('>'));
+    assert.match(markup, /<input type="range" id="commentary-rate"/);
+    assert.match(tag, /min="0\.5"/);
+    assert.match(tag, /max="5"/);
+  });
+
+  it('says what its number means', () => {
+    // A range reports its raw value to a screen reader, and "2.5" on its own
+    // is not a speed.
+    assert.match(markup, /aria-valuetext="normal speed"/);
+    assert.match(controls, /function setValueText/);
+    assert.match(controls, /control\.setAttribute\('aria-valuetext', text\)/);
+  });
+
+  it('keeps saying it as the slider moves', () => {
+    // A valuetext written once becomes a lie the moment the slider moves.
+    assert.match(controls, /function showRate\(\)/);
+    const handler = controls.slice(controls.indexOf("rate.addEventListener('input'"));
+    assert.match(handler.slice(0, 200), /showRate\(\)/);
+  });
+
+  it('fixes the volume slider the same way, rather than leaving two behaviours', () => {
+    assert.match(controls, /setValueText\(\s*volume,/);
+  });
+
+  it('is labelled', () => {
+    assert.match(markup, /<label for="commentary-rate">/);
+  });
+
+  it('speaks a sample at the new speed, because that is how you judge one', () => {
+    assert.match(controls, /This is the speed the commentary will be read at/);
+  });
+
+  it('reads the log aloud at the same speed', () => {
+    // Two speech channels on one page at different speeds is an oversight
+    // anyone can hear.
+    assert.match(app, /announcer\.rate = speaker\.rate;/);
+    assert.match(app, /onRate: \(value\) => \{ announcer\.rate = value; \}/);
+  });
+});

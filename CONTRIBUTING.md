@@ -83,6 +83,15 @@ A few rules specific to this codebase:
   again. The 3D view takes them from the `hello` payload rather than from the
   editor's menu, so a simulator started elsewhere is still drawn correctly.
 
+- **A range input is accessible; its value is not.** `<input type="range">`
+  brings the keyboard, the screen reader and the touch target with it, and
+  reports a raw number that usually means nothing on its own — "2.5" is not a
+  speed and "0" is not "going to your screen reader". Give every slider an
+  `aria-valuetext` and rewrite it on every change, or it becomes a lie the
+  moment the slider moves. Keep the step coarse enough that arrow keys reach
+  both ends, and let go of a slider that controls sound to hear a sample of
+  what it now does.
+
 - **Only one window may speak.** Both windows get the same telemetry and both
   have a speaker, so anything that talks has to go through the baton in
   `viewer/baton.js`: the window with focus speaks and the others stand down.

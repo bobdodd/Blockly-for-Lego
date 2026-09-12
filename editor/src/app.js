@@ -83,6 +83,8 @@ const ui = {
   commentaryOn: element('commentary-on'),
   commentaryVolume: element('commentary-volume'),
   commentaryVolumeValue: element('commentary-volume-value'),
+  commentaryRate: element('commentary-rate'),
+  commentaryRateValue: element('commentary-rate-value'),
   describeScene: element('describe-scene'),
   commentaryTranscript: element('commentary-transcript'),
   commentaryChannel: element('commentary-channel'),
@@ -211,6 +213,10 @@ const relay = broadcast(
 // than beside the announcer because `relay` is a const declared below it, and
 // a status fired in between would land in its dead zone.
 announcer.onStatus = (text) => relay.tell(text);
+// The log's own voice reads at the speed chosen for the commentary. Two
+// speech channels on one page at different speeds is an oversight you can
+// hear, not a considered difference.
+announcer.rate = speaker.rate;
 
 let commentary = null;
 
@@ -826,12 +832,19 @@ function wireRobotView() {
     toggle: ui.commentaryOn,
     volume: ui.commentaryVolume,
     volumeValue: ui.commentaryVolumeValue,
+    rate: ui.commentaryRate,
+    rateValue: ui.commentaryRateValue,
     describe: ui.describeScene,
     transcript: ui.commentaryTranscript,
     channel: ui.commentaryChannel,
     testVoice: ui.testVoice,
     voice: ui.commentaryVoice,
-  }, { speaker, commentary, takeTheVoice: () => voice.claim() });
+  }, {
+    speaker,
+    commentary,
+    takeTheVoice: () => voice.claim(),
+    onRate: (value) => { announcer.rate = value; },
+  });
 
   tabs = createTabs(ui.tablist, {
     // The robot view, not the Python. It is what the editor is for, and the
