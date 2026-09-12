@@ -41,55 +41,55 @@
           <button type="button" id="reset-view" class="secondary">Reset the view</button>
         </div>
 
-        <div class="commentary" role="group" aria-labelledby="commentary-heading">
-          <h3 id="commentary-heading" class="commentary-heading">Spoken commentary</h3>
-          <p class="hint">
-            Describes the mat from above, and what the robot does on it, as it
-            happens. Turn the speech off and it goes to your screen reader
-            instead.
-          </p>
-
-          <div class="commentary-row">
-            <label class="commentary-toggle">
-              <input type="checkbox" id="commentary-on" checked />
-              Speak the commentary
-            </label>
-
-            <label for="commentary-voice">Voice</label>
-            <select id="commentary-voice">
-              <option value="">Chosen for you</option>
-            </select>
-
-            <label for="commentary-volume">Volume</label>
-            <input type="range" id="commentary-volume" min="0" max="100" step="10" value="100" />
-            <output id="commentary-volume-value" for="commentary-volume">100%</output>
-
-            <button type="button" id="describe-scene" class="secondary">Describe the scene</button>
-            <button type="button" id="test-voice" class="secondary">Test the voice</button>
-          </div>
-
-          <!--
-            Which channel is actually carrying the words. "It is silent" and "it
-            is going to your screen reader" are the same experience for anyone not
-            running one, so without this the difference is invisible from outside.
-          -->
-          <p id="commentary-channel" class="commentary-channel"></p>
-
-          <!--
-            Where the speaker puts the words when speech is off, or when the browser
-            has an engine but no voices. The transcript below is deliberately NOT a
-            live region: two of them saying the same thing is worse than one.
-          -->
-          <p id="commentary-region" class="visually-hidden" role="status" aria-live="polite"></p>
-
-          <ul id="commentary-transcript" class="commentary-transcript" aria-label="What has been said"></ul>
-        </div>
+        <!--
+          What the highlight is pointing at. It belongs beside the picture it
+          annotates, not in the panel of words.
+        -->
+        <p id="focus-label" class="focus-label" role="status" aria-live="polite"></p>
       </section>
 
-      <aside class="narration-panel" aria-labelledby="narration-heading">
-        <h2 id="narration-heading">What the robot is doing</h2>
-        <p id="focus-label" class="focus-label" role="status" aria-live="polite"></p>
-        <ul id="narration" class="narration" role="log" aria-live="polite" aria-relevant="additions"></ul>
+      <aside class="commentary-panel" aria-labelledby="commentary-heading">
+        <h2 id="commentary-heading">Spoken commentary</h2>
+        <p class="hint">
+          Describes the mat from above, and what the robot does on it, as it
+          happens. Turn the speech off and it goes to your screen reader
+          instead.
+        </p>
+
+        <div class="commentary-row">
+          <label class="commentary-toggle">
+            <input type="checkbox" id="commentary-on" checked />
+            Speak the commentary
+          </label>
+
+          <label for="commentary-voice">Voice</label>
+          <select id="commentary-voice">
+            <option value="">Chosen for you</option>
+          </select>
+
+          <label for="commentary-volume">Volume</label>
+          <input type="range" id="commentary-volume" min="0" max="100" step="10" value="100" />
+          <output id="commentary-volume-value" for="commentary-volume">100%</output>
+
+          <button type="button" id="describe-scene" class="secondary">Describe the scene</button>
+          <button type="button" id="test-voice" class="secondary">Test the voice</button>
+        </div>
+
+        <!--
+          Which channel is actually carrying the words. "It is silent" and "it
+          is going to your screen reader" are the same experience for anyone not
+          running one, so without this the difference is invisible from outside.
+        -->
+        <p id="commentary-channel" class="commentary-channel"></p>
+
+        <!--
+          Where the speaker puts the words when speech is off, or when the browser
+          has an engine but no voices. The transcript below is deliberately NOT a
+          live region: two of them saying the same thing is worse than one.
+        -->
+        <p id="commentary-region" class="visually-hidden" role="status" aria-live="polite"></p>
+
+        <ul id="commentary-transcript" class="commentary-transcript" aria-label="What has been said"></ul>
       </aside>
     </main>
 

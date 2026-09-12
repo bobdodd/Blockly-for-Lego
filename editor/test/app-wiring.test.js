@@ -334,6 +334,39 @@ describe('the robot view in its own window', () => {
     assert.match(viewer, /function receive\(payload\)/);
   });
 
+  it('mounts every control on both pages', () => {
+    // The two pages mount the same controls from the same module, and one of
+    // them once quietly had three fewer: the voice picker, the channel
+    // read-out and the test button were in its markup, connected to nothing.
+    // Nothing failed; they simply did not work.
+    const keys = (source) => {
+      const call = source.slice(source.indexOf('mountCommentaryControls({'));
+      return [...call.slice(0, call.indexOf('}, {')).matchAll(/^\s*(\w+):/gm)]
+        .map((match) => match[1]).sort();
+    };
+    assert.deepEqual(keys(viewer), keys(app), 'the two pages wire different controls');
+  });
+
+  it('has no narration list, because the commentary already says it', () => {
+    // This window only ever shows a simulator, so the list is always the same
+    // story told twice — exactly as it is in the editor with one connected.
+    const markup = read('viewer.html');
+    assert.ok(!markup.includes('id="narration"'), 'the list should be gone');
+    assert.ok(!viewer.includes('addNarration'), 'and nothing should be writing to it');
+  });
+
+  it('gives the commentary the panel the list used to have', () => {
+    const markup = read('viewer.html');
+    assert.match(markup, /<aside class="commentary-panel"/);
+    assert.match(markup, /<h2 id="commentary-heading">Spoken commentary<\/h2>/);
+  });
+
+  it('keeps the highlight label beside the picture it annotates', () => {
+    const markup = read('viewer.html');
+    const scene = markup.slice(markup.indexOf('class="scene-panel"'), markup.indexOf('</section>'));
+    assert.ok(scene.includes('id="focus-label"'), 'it annotates the view, not the words');
+  });
+
   it('still connects to a simulator of its own when opened directly', () => {
     // Its documented use: a projector watching a simulator somebody started.
     assert.match(viewer, /else connect\(\);/);

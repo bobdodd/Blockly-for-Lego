@@ -14,7 +14,7 @@
   .viewer-layout { grid-template-columns: 1fr; grid-template-rows: minmax(18rem, 1fr) auto; }
 }
 
-.scene-panel, .narration-panel {
+.scene-panel, .commentary-panel {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -55,24 +55,26 @@
   font-size: 0.92rem;
 }
 
-.narration {
-  list-style: none;
+/* The transcript is this window's main body of text now that the narration
+   list has gone, so it takes the room the list used to have rather than
+   sitting in the corner it had as a footnote inside the scene panel. */
+.commentary-panel .commentary {
+  border: 0;
+  padding: 0;
   margin: 0;
-  padding: 0.5rem;
+  background: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.commentary-panel .commentary-transcript {
   flex: 1;
   min-height: 8rem;
-  overflow-y: auto;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: var(--page);
+  max-height: none;
   font-size: 0.95rem;
 }
-.narration-entry { padding: 0.22rem 0; border-bottom: 1px solid var(--line); }
-.narration-entry:last-child { border-bottom: none; }
-.narration-console::before { content: "printed: "; font-weight: 600; }
-.narration-error::before { content: "error: "; font-weight: 600; }
-.narration-error { color: var(--error-ink); }
-.narration-sensor { color: var(--muted); }
 
 /* --- tabs, shared by the editor's reference panel ----------------------- */
 

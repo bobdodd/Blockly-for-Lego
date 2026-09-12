@@ -7,9 +7,10 @@
  * exists so the robot can go on a projector or a second screen while a
  * student keeps the editor full size.
  *
- * The narration panel is not decoration. It carries the same sentences a
- * blind student hears, next to the picture, so a coach demonstrating to a
- * class has both in front of them and the two stay tied together.
+ * There is no narration list here, unlike in the editor. This window only
+ * ever shows a simulator, and the spoken commentary already tells that story
+ * — in a register built for being listened to rather than read back. Two
+ * panels saying the same thing is one too many on a projector.
  */
 
 import { Commentary } from './commentary.js';
@@ -25,7 +26,6 @@ const element = (id) => document.getElementById(id);
 const ui = {
   canvas: element('scene'),
   status: element('viewer-status'),
-  narration: element('narration'),
   focusLabel: element('focus-label'),
   follow: element('follow-robot'),
   reset: element('reset-view'),
@@ -58,6 +58,9 @@ speaker.caption = mountCommentaryControls({
   volumeValue: ui.commentaryVolumeValue,
   describe: ui.describeScene,
   transcript: ui.commentaryTranscript,
+  channel: ui.commentaryChannel,
+  testVoice: ui.testVoice,
+  voice: ui.commentaryVoice,
 }, { speaker, commentary });
 
 // This page watches a run it did not start, so the brief is triggered by the
@@ -67,25 +70,11 @@ speaker.caption = mountCommentaryControls({
 const startedElsewhere = (payload) => payload?.type === 'event'
   && payload.kind === 'program' && payload.data?.phase === 'started';
 
-const MAX_NARRATION = 120;
-
-function addNarration(payload) {
-  const entry = document.createElement('li');
-  entry.className = `narration-entry narration-${payload.kind}`;
-  entry.textContent = payload.message;
-  ui.narration.append(entry);
-  while (ui.narration.children.length > MAX_NARRATION) {
-    ui.narration.firstElementChild.remove();
-  }
-  ui.narration.scrollTop = ui.narration.scrollHeight;
-}
-
 /** Everything that arrives, whichever pipe it came down. */
 function receive(payload) {
   view.handleMessage(payload);
   if (startedElsewhere(payload)) commentary.beginRun();
   commentary.handleMessage(payload);
-  if (payload.type === 'event') addNarration(payload);
 }
 
 /**

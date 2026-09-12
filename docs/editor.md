@@ -255,6 +255,12 @@ Opened directly by its own URL, it still connects to a simulator you started
 yourself — `viewer.html` on its own, or `viewer.html?simulator=ws://…`.
 Several windows can watch at once.
 
+That window has **no "What the robot is doing" list**. It only ever shows a
+simulator, so the list would always be the same story told twice — the same
+reason it is taken away in the editor when the simulator is connected. The
+spoken commentary takes the panel instead, with its transcript given the room
+the list used to have.
+
 **This is the tab the editor opens on.** It is what the editor is for, and
 the one panel a blind student cannot reach any other way — opening on the
 generated Python made the accessible half of the app the half you had to go
