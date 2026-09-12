@@ -40,6 +40,7 @@ export class InBrowserSimulatorTransport {
 
   #worker = null;
   #ready = null;
+  #matChange = null;
 
   /**
    * @param {{speed?: number, snapshotInterval?: number, indexURL?: string,
@@ -75,6 +76,11 @@ export class InBrowserSimulatorTransport {
             this.onProgress(data);
             break;
 
+          case 'mat-ready':
+            this.#matChange?.resolve(data.mat);
+            this.#matChange = null;
+            break;
+
           case 'ready':
             // The mats the simulator actually has, so the editor's menu can
             // never offer one that is not there.
@@ -98,6 +104,8 @@ export class InBrowserSimulatorTransport {
             // Before "ready" this is a failure to start, and the promise is
             // still waiting on it. After, it is a fault in a running
             // simulator, which the editor reports without tearing down.
+            this.#matChange?.reject(new Error(data.message));
+            this.#matChange = null;
             reject(new Error(data.message));
             this.onProgress({ stage: 'error', detail: data.message });
             break;
@@ -117,6 +125,27 @@ export class InBrowserSimulatorTransport {
     });
 
     return this.#ready;
+  }
+
+  /**
+   * Lay out a different mat without starting over.
+   *
+   * Python is the expensive part of this and the mat is the cheap one, so the
+   * worker keeps the first and rebuilds the second. Tearing the worker down
+   * meant loading Python again every time a student tried another mat, which
+   * is most of what a catalogue is for.
+   */
+  setMat(name) {
+    if (!this.#worker) {
+      this.options.mat = name;
+      return Promise.resolve(name);
+    }
+
+    this.options.mat = name;
+    return new Promise((resolve, reject) => {
+      this.#matChange = { resolve, reject };
+      this.#worker.postMessage({ type: 'mat', name });
+    });
   }
 
   send(bytes) {

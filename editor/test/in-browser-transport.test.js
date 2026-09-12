@@ -26,10 +26,12 @@ function stubBrowser() {
   };
 
   globalThis.document = { baseURI: 'https://example.test/block-lego/index.html' };
+  let live = null;
   globalThis.Worker = class {
     constructor(url, options) {
       this.url = url;
       this.options = options;
+      live = this;
     }
 
     postMessage(message) { posted.push(message); }
@@ -39,6 +41,8 @@ function stubBrowser() {
 
   return {
     posted,
+    /** Pretend the worker sent something back. */
+    reply: (message) => live?.onmessage({ data: message }),
     restore() {
       globalThis.document = previous.document;
       globalThis.Worker = previous.Worker;
@@ -120,5 +124,74 @@ describe('what the worker is actually told', () => {
     } finally {
       browser.restore();
     }
+  });
+});
+
+
+describe('changing the mat without starting over', () => {
+  it('asks the worker to swap it, rather than being torn down', async () => {
+    // Python is the expensive part and the mat is the cheap one. Tearing the
+    // worker down meant loading Python again every time a student tried
+    // another mat, which is most of what a catalogue is for.
+    const browser = stubBrowser();
+    try {
+      const transport = new InBrowserSimulatorTransport({ mat: 'practice' });
+      const running = transport.connect();
+      browser.reply({ type: 'ready', catalogue: [] });
+      await running;
+      browser.posted.length = 0;
+
+      transport.setMat('zigzag');
+      const asked = browser.posted.find((message) => message.type === 'mat');
+      assert.ok(asked, 'the worker was never asked to change the mat');
+      assert.equal(asked.name, 'zigzag');
+    } finally {
+      browser.restore();
+    }
+  });
+
+  it('waits for the worker to say the mat is laid out', async () => {
+    const browser = stubBrowser();
+    try {
+      const transport = new InBrowserSimulatorTransport();
+      const running = transport.connect();
+      browser.reply({ type: 'ready', catalogue: [] });
+      await running;
+
+      const changing = transport.setMat('slalom');
+      let settled = false;
+      changing.then(() => { settled = true; });
+
+      await Promise.resolve();
+      assert.equal(settled, false, 'it should still be waiting');
+
+      browser.reply({ type: 'mat-ready', mat: 'slalom' });
+      assert.equal(await changing, 'slalom');
+    } finally {
+      browser.restore();
+    }
+  });
+
+  it('reports a mat that will not load, rather than hanging', async () => {
+    const browser = stubBrowser();
+    try {
+      const transport = new InBrowserSimulatorTransport();
+      const running = transport.connect();
+      browser.reply({ type: 'ready', catalogue: [] });
+      await running;
+
+      const changing = transport.setMat('no-such-mat');
+      browser.reply({ type: 'error', message: 'There is no mat called that.' });
+
+      await assert.rejects(changing, /no mat called/);
+    } finally {
+      browser.restore();
+    }
+  });
+
+  it('just remembers the choice when nothing is running yet', async () => {
+    const transport = new InBrowserSimulatorTransport();
+    assert.equal(await transport.setMat('the-loop'), 'the-loop');
+    assert.equal(transport.options.mat, 'the-loop', 'and uses it when it starts');
   });
 });

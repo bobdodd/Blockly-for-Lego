@@ -63,6 +63,15 @@ let pyodide = null;
 let hub = null;
 let receive = null;
 
+/**
+ * What the hub was built with, so another can be built the same way.
+ *
+ * Changing mats used to throw the whole worker away and load Python again
+ * from scratch. Python is the expensive part and the mat is the cheap one, so
+ * the mat is what gets rebuilt.
+ */
+let settings = { speed: 1, snapshotInterval: 0.05 };
+
 const post = (message) => self.postMessage(message);
 const report = (stage, detail) => post({ type: 'progress', stage, detail });
 
@@ -86,19 +95,8 @@ async function start({
   report('starting', 'Starting the robot.');
   await pyodide.runPythonAsync(BOOTSTRAP);
 
-  const make = pyodide.globals.get('_make');
-  const created = make(
-    (payload) => post({ type: 'frame', data: payload }),
-    (payload) => post({ type: 'message', data: payload }),
-    speed,
-    snapshotInterval,
-    mat,
-  );
-
-  hub = created.get(0);
-  receive = created.get(1);
-  created.destroy();
-  make.destroy();
+  settings = { speed, snapshotInterval };
+  buildHub(mat);
 
   // The catalogue travels with the simulator rather than being duplicated in
   // the editor: one list, and it cannot drift from the mats that exist.
@@ -108,6 +106,38 @@ async function start({
 
   await hub.start();
   post({ type: 'ready', catalogue });
+}
+
+/** Build a hub on the mat named, replacing any there is. */
+function buildHub(mat) {
+  const make = pyodide.globals.get('_make');
+  const created = make(
+    (payload) => post({ type: 'frame', data: payload }),
+    (payload) => post({ type: 'message', data: payload }),
+    settings.speed,
+    settings.snapshotInterval,
+    mat ?? '',
+  );
+
+  hub = created.get(0);
+  receive = created.get(1);
+  created.destroy();
+  make.destroy();
+}
+
+/**
+ * Lay out a different mat, without loading Python all over again.
+ *
+ * The new hub says hello with the new mat, which is the same message the
+ * editor already listens for, so nothing downstream has to know this happened.
+ */
+async function changeMat(name) {
+  if (!pyodide) throw new Error('The simulator is not running yet.');
+
+  await stop();
+  buildHub(name);
+  await hub.start();
+  post({ type: 'mat-ready', mat: name });
 }
 
 /** Unpack the bundled package into Pyodide's filesystem. */
@@ -155,6 +185,10 @@ self.onmessage = async (event) => {
 
       case 'command':
         hub?.command(payload.data);
+        break;
+
+      case 'mat':
+        await changeMat(payload.name);
         break;
 
       case 'stop':

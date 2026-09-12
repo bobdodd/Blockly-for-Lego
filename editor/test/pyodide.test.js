@@ -172,6 +172,36 @@ mat = mats.load("the-square")
     await named.stop();
   });
 
+  it('can lay out a different mat in a runtime that is already loaded', async () => {
+    // What a mat change does in the worker: stop the hub, build another on a
+    // different mat, in the same Python. Tearing the worker down instead
+    // meant loading Python again every time a student tried another mat.
+    const seen = [];
+    const make = pyodide.globals.get('_make');
+
+    const build = async (mat) => {
+      const created = make(() => {}, (payload) => seen.push(JSON.parse(payload)), 20, 1, mat);
+      const built = created.get(0);
+      created.destroy();
+      await built.start();
+      return built;
+    };
+
+    const first = await build('first-line');
+    await first.stop();
+    seen.length = 0;
+
+    const second = await build('slalom');
+    make.destroy();
+
+    const hello = seen.find((message) => message.type === 'hello');
+    assert.ok(hello, 'the replacement never said hello');
+    assert.equal(hello.world.obstacles.length, 3, 'slalom has three posts');
+    assert.equal(hello.world.lines.filter((l) => l.followable).length, 0, 'and no line');
+
+    await second.stop();
+  });
+
   it('says hello with the mat and the robot', () => {
     const hello = messages.filter((m) => m.type === 'hello');
     assert.equal(hello.length, 1);

@@ -592,10 +592,11 @@ empty floor to a colour-sorting course — see
 [the catalogue](simulator.md#the-catalogue) for what each is for. The choice
 is remembered between sessions, because working through them is the point.
 
-Changing it while the built-in simulator is running restarts it on the new
-mat. Connected to a simulator you started yourself, the mat is whatever you
-passed `--mat` on the command line, and the editor says so rather than
-pretending to change it.
+Changing it while the built-in simulator is running lays out the new mat
+straight away — the connection stays up and Python is not loaded again, which
+matters when trying several mats is the point. Connected to a simulator you
+started yourself, the mat is whatever you passed `--mat` on the command line,
+and the editor says so rather than pretending to change it.
 
 **Connect to simulator** talks to the simulator on `ws://127.0.0.1:8765`. Run
 it first — see [Getting started](getting-started.md#run-the-editor).

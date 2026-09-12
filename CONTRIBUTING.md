@@ -75,6 +75,13 @@ A few rules specific to this codebase:
   accessibility tree, so a screen reader announces content the tab says is
   not showing, and `aria-selected` becomes a lie. `test/stylesheet.test.js`
   guards it.
+- **Whoever sets the busy state clears it.** `connectSimulator` puts the page
+  into its working state and clears it in a `finally`. Anything that calls
+  `startSimulator` directly skips that, and the page sits on "Starting the
+  robot." with the connect buttons disabled — indistinguishable from a hang,
+  and it looked exactly like one. Either go through the function that owns the
+  state, or do not touch it at all.
+
 - **An option added at both ends is not added.** The in-browser transport
   lists its options one by one rather than spreading a `...rest`, which is
   right — a rest would swallow a typo — but it means every new option has to

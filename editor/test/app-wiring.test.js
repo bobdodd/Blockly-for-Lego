@@ -224,8 +224,27 @@ describe('the mat catalogue reaches the editor', () => {
     assert.match(app, /Restart the simulator with --mat/);
   });
 
-  it('actually reconnects when the mat changes', () => {
-    assert.match(app, /await disconnect\(\);\s*\n\s*await startSimulator\(\);/);
+  it('changes the mat without loading Python again', () => {
+    // Tearing the worker down and reconnecting meant a student trying four
+    // mats waited for Python four times, which is most of what a catalogue
+    // is for.
+    assert.match(app, /await builtInTransport\.setMat\(entry\.name\)/);
+    const handler = app.slice(app.indexOf("ui.mat.addEventListener('change'"));
+    const body = handler.slice(0, handler.indexOf('\n  });'));
+    assert.ok(!/startSimulator\(\)/.test(body), 'no reconnect on a mat change');
+  });
+
+  it('does not leave the page looking busy forever', () => {
+    // The busy panel is cleared in connectSimulator's finally. Calling
+    // startSimulator directly from elsewhere skips it, and the page sits on
+    // "Starting the robot." with the connect buttons disabled.
+    const handler = app.slice(app.indexOf("ui.mat.addEventListener('change'"));
+    const body = handler.slice(0, handler.indexOf('\n  });'));
+    assert.ok(!/setBusy\(/.test(body), 'the mat change should not touch the busy state');
+  });
+
+  it('says when a mat change fails, rather than leaving the old one showing', () => {
+    assert.match(app, /The mat would not change/);
   });
 
   it('says what a mat is for, not just its name', () => {

@@ -127,6 +127,9 @@ let connectionKind = null;
  */
 let simulatorIsBuiltIn = false;
 
+/** The built-in simulator's transport, when that is what is connected. */
+let builtInTransport = null;
+
 const MAT_KEY = 'blockly-for-lego.mat';
 const DEFAULT_MAT = 'practice';
 
@@ -427,6 +430,7 @@ async function startSimulator() {
   if (isLocalOrigin()) {
     if (await connect(new SimulatorTransport(), 'the simulator', { quiet: true })) {
       simulatorIsBuiltIn = false;
+      builtInTransport = null;
       const mat = chosenMat();
       if (mat !== DEFAULT_MAT) {
         // It has whatever mat it was started with, and nothing here can
@@ -450,6 +454,7 @@ async function startSimulator() {
 
   const transport = new InBrowserSimulatorTransport({ mat: chosenMat() });
   simulatorIsBuiltIn = true;
+  builtInTransport = transport;
   // The first connection downloads about five megabytes of Python. Saying so
   // as it happens is the difference between a wait and an apparent hang --
   // and a spinner says nothing to a screen reader.
@@ -502,9 +507,16 @@ function wireMatChoice() {
       return;
     }
 
+    // The worker keeps Python and rebuilds only the mat, so this is quick and
+    // the connection survives it. Reconnecting instead meant loading Python
+    // again every time a student tried another mat.
     announcer.status(`Laying out ${entry.title}. ${entry.teaches}`);
-    await disconnect();
-    await startSimulator();
+    try {
+      await builtInTransport.setMat(entry.name);
+      announcer.status(`${entry.title}. ${entry.teaches}`);
+    } catch (error) {
+      announcer.status(`The mat would not change: ${error.message}`);
+    }
   });
 }
 
@@ -512,6 +524,7 @@ async function disconnect() {
   await client?.disconnect().catch(() => undefined);
   client = null;
   simulatorIsBuiltIn = false;
+  builtInTransport = null;
   setConnected(false);
 }
 
