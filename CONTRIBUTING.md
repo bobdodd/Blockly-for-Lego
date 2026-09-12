@@ -83,6 +83,13 @@ A few rules specific to this codebase:
   again. The 3D view takes them from the `hello` payload rather than from the
   editor's menu, so a simulator started elsewhere is still drawn correctly.
 
+- **Only one window may speak.** Both windows get the same telemetry and both
+  have a speaker, so anything that talks has to go through the baton in
+  `viewer/baton.js`: the window with focus speaks and the others stand down.
+  Doubling the audio does not read as a bug, it reads as the program having
+  run twice. Yielding silences the sound and the live region, never the
+  visible transcript — that is per-screen and not a duplication.
+
 - **Two pages mount the same controls; wire both.** The editor and the
   pop-out both call `mountCommentaryControls`, and the pop-out once quietly
   had three fewer arguments than the editor — the voice picker, the channel

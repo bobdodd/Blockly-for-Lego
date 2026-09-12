@@ -118,6 +118,16 @@ export class Speaker {
      * same code read one as working and the other as broken before either had
      * been asked to say a word.
      */
+    /**
+     * True while another window is doing the speaking.
+     *
+     * Both windows receive the same telemetry and both used to say it, a
+     * moment apart, which sounds like the program running twice. The visible
+     * transcript is still written — two people reading two screens is not a
+     * duplication of anything — but nothing is spoken and nothing goes to the
+     * live region, because the other window is already saying it.
+     */
+    this.yielded = false;
     this.speechBroken = false;
     /** What the browser last said went wrong, verbatim. */
     this.lastError = null;
@@ -133,7 +143,17 @@ export class Speaker {
     // not be — so it clears the flag. It is never used to set it.
     this.synth?.addEventListener?.('voiceschanged', () => {
       if (!this.speechBroken) return;
-      this.speechBroken = false;
+      /**
+     * True while another window is doing the speaking.
+     *
+     * Both windows receive the same telemetry and both used to say it, a
+     * moment apart, which sounds like the program running twice. The visible
+     * transcript is still written — two people reading two screens is not a
+     * duplication of anything — but nothing is spoken and nothing goes to the
+     * live region, because the other window is already saying it.
+     */
+    this.yielded = false;
+    this.speechBroken = false;
       this.onChannelChange?.(this.channel);
     });
 
@@ -178,7 +198,17 @@ export class Speaker {
 
   /** True when speech is the channel an announcement would take right now. */
   get willSpeak() {
-    return Boolean(this.audioOn && this.volume > 0 && this.synth && !this.speechBroken);
+    return Boolean(
+      !this.yielded && this.audioOn && this.volume > 0 && this.synth && !this.speechBroken,
+    );
+  }
+
+  /** Hand the voice to another window, or take it back. */
+  setYielded(yielded) {
+    const was = this.yielded;
+    this.yielded = Boolean(yielded);
+    if (this.yielded && !was) this.stop();
+    if (this.yielded !== was) this.onChannelChange?.(this.channel);
   }
 
   /**
@@ -190,6 +220,7 @@ export class Speaker {
    * fault stayed hidden.
    */
   get channel() {
+    if (this.yielded) return 'elsewhere';
     if (!this.audioOn) return 'off';
     if (this.volume === 0) return 'muted';
     if (!this.synth) return 'no-engine';
@@ -283,6 +314,16 @@ export class Speaker {
   setVoice(name) {
     this.voiceName = name || '';
     this.storage.setItem(VOICE_KEY, this.voiceName);
+    /**
+     * True while another window is doing the speaking.
+     *
+     * Both windows receive the same telemetry and both used to say it, a
+     * moment apart, which sounds like the program running twice. The visible
+     * transcript is still written — two people reading two screens is not a
+     * duplication of anything — but nothing is spoken and nothing goes to the
+     * live region, because the other window is already saying it.
+     */
+    this.yielded = false;
     this.speechBroken = false;
     this._failures = 0;
     this.onChannelChange?.(this.channel);
@@ -315,6 +356,13 @@ export class Speaker {
       return;
     }
     if (caption) this.caption?.(text);
+
+    // Another window is saying this. The transcript above is still written,
+    // because that is per-screen and not a duplication; the sound is not.
+    if (this.yielded) {
+      onDone?.();
+      return;
+    }
 
     let settled = false;
     const finish = onDone
@@ -438,6 +486,16 @@ export class Speaker {
    * rather than one that needs someone reading the console.
    */
   test() {
+    /**
+     * True while another window is doing the speaking.
+     *
+     * Both windows receive the same telemetry and both used to say it, a
+     * moment apart, which sounds like the program running twice. The visible
+     * transcript is still written — two people reading two screens is not a
+     * duplication of anything — but nothing is spoken and nothing goes to the
+     * live region, because the other window is already saying it.
+     */
+    this.yielded = false;
     this.speechBroken = false;
     this.lastError = null;
     this._failures = 0;

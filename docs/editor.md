@@ -255,6 +255,21 @@ Opened directly by its own URL, it still connects to a simulator you started
 yourself — `viewer.html` on its own, or `viewer.html?simulator=ws://…`.
 Several windows can watch at once.
 
+##### Only one window speaks
+
+Both windows describe the robot, and both receive the same telemetry — so both
+said it, a moment apart, which sounds like the program running twice.
+
+**The window you are looking at speaks.** Opening the robot view gives it the
+voice; clicking back into the editor takes it back. The other window goes
+quiet but keeps writing its own transcript, because two people reading two
+screens is not a duplication of anything.
+
+The line under the volume says which window has it, and moving it is a click
+or Enter away:
+
+> Another window is speaking. Click here to move the voice to this one.
+
 That window has its own **Run** and **Stop**, on the same keys the editor
 uses. It has no blocks — it asks the editor to run the ones it has, which
 means the request goes through exactly the checks the editor's own button

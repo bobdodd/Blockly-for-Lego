@@ -42,6 +42,7 @@ const HEARD_NOTHING = 'That should have been spoken aloud. If you heard nothing,
 
 const CHANNELS = {
   voice: 'Speaking with the browser voice.',
+  elsewhere: 'Another window is speaking. Click here to move the voice to this one.',
   'no-voice': 'The commentary is going to your screen reader, because the '
     + 'browser voice did not play.',
   'no-engine': 'This browser has no speech of its own, so the commentary is '
@@ -59,7 +60,8 @@ const CHANNELS = {
  * @param {HTMLElement} [elements.transcript]  the visible mirror
  * @param {{speaker: object, commentary: object}} parts
  */
-export function mountCommentaryControls(elements, { speaker, commentary }) {
+export function mountCommentaryControls(elements, parts) {
+  const { speaker, commentary } = parts;
   const {
     toggle, volume, volumeValue, describe, transcript, channel, testVoice, voice,
   } = elements;
@@ -122,9 +124,24 @@ export function mountCommentaryControls(elements, { speaker, commentary }) {
     // Only the working case is unremarkable; the rest are the answer to
     // "why can I not hear anything".
     channel.classList.toggle('is-fallback', speaker.channel !== 'voice');
+    // Only actionable when there is something to do about it.
+    const claimable = speaker.channel === 'elsewhere';
+    channel.tabIndex = claimable ? 0 : -1;
+    channel.role = claimable ? 'button' : null;
   }
   speaker.onChannelChange = showChannel;
   showChannel();
+
+  // The line says "click here to move the voice to this one", so it has to be
+  // something you can click — and, more to the point, reach with a keyboard.
+  if (channel) {
+    channel.addEventListener('click', () => parts.takeTheVoice?.());
+    channel.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      parts.takeTheVoice?.();
+    });
+  }
 
   // The stored preference wins over the markup's default. Otherwise a student
   // who turned speech off last week opens the page, sees a ticked box, and is

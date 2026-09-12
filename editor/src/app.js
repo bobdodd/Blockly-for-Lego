@@ -20,6 +20,7 @@
 import 'blockly/blocks';
 
 import { Announcer, describeSensors } from './announcer.js';
+import { takeTheVoice } from './viewer/baton.js';
 import { Commentary } from './viewer/commentary.js';
 import { mountCommentaryControls } from './viewer/commentary-controls.js';
 import { MATS } from './generated/mat-catalogue.js';
@@ -172,6 +173,18 @@ function chosenMat() {
 
 /** Says the 3D view out loud. See src/viewer/commentary.js. */
 const speaker = new Speaker({ regionId: 'commentary-region' });
+
+/**
+ * Only the window being looked at speaks.
+ *
+ * The robot view in its own window describes the robot too, and both windows
+ * get the same telemetry — so both said it, a moment apart, which sounds like
+ * the program running twice.
+ */
+const voice = takeTheVoice({
+  onLost: () => speaker.setYielded(true),
+  onTaken: () => speaker.setYielded(false),
+});
 const sceneSource = new SceneSource();
 
 /**
@@ -818,7 +831,7 @@ function wireRobotView() {
     channel: ui.commentaryChannel,
     testVoice: ui.testVoice,
     voice: ui.commentaryVoice,
-  }, { speaker, commentary });
+  }, { speaker, commentary, takeTheVoice: () => voice.claim() });
 
   tabs = createTabs(ui.tablist, {
     // The robot view, not the Python. It is what the editor is for, and the

@@ -13,6 +13,7 @@
  * panels saying the same thing is one too many on a projector.
  */
 
+import { takeTheVoice } from './baton.js';
 import { Commentary } from './commentary.js';
 import { mountCommentaryControls } from './commentary-controls.js';
 import { listen, isSupported as relaySupported } from './relay.js';
@@ -54,6 +55,14 @@ const view = new RobotView(ui.canvas, robotDescription, {
 // page a screen reader cannot read at all, so this is not an enhancement of
 // the view — for a blind student it *is* the view.
 const speaker = new Speaker({ regionId: 'commentary-region' });
+
+// Only the window being looked at speaks; see baton.js. Opening this window
+// is itself a claim, because that is what somebody who just opened it expects.
+const voice = takeTheVoice({
+  onLost: () => speaker.setYielded(true),
+  onTaken: () => speaker.setYielded(false),
+});
+voice.claim();
 const commentary = new Commentary({ view, speaker });
 
 speaker.caption = mountCommentaryControls({
@@ -65,7 +74,7 @@ speaker.caption = mountCommentaryControls({
   channel: ui.commentaryChannel,
   testVoice: ui.testVoice,
   voice: ui.commentaryVoice,
-}, { speaker, commentary });
+}, { speaker, commentary, takeTheVoice: () => voice.claim() });
 
 // This page watches a run it did not start, so the brief is triggered by the
 // simulator's own "started" event rather than by a Run button. There is

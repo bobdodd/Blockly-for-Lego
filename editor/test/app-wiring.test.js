@@ -339,11 +339,16 @@ describe('the robot view in its own window', () => {
     // them once quietly had three fewer: the voice picker, the channel
     // read-out and the test button were in its markup, connected to nothing.
     // Nothing failed; they simply did not work.
-    const keys = (source) => {
-      const call = source.slice(source.indexOf('mountCommentaryControls({'));
-      return [...call.slice(0, call.indexOf('}, {')).matchAll(/^\s*(\w+):/gm)]
-        .map((match) => match[1]).sort();
+    const call = (source) => {
+      const from = source.indexOf('mountCommentaryControls({');
+      return source.slice(from, source.indexOf('});', from));
     };
+    const keys = (source) => [...call(source).matchAll(/(\w+):/g)]
+      .map((match) => match[1]).sort();
+
+    // Both arguments, not just the elements. The second one — the speaker,
+    // the commentary, the voice claim — went to one page and not the other
+    // once already, with nothing failing and nothing saying so.
     assert.deepEqual(keys(viewer), keys(app), 'the two pages wire different controls');
   });
 
@@ -415,5 +420,50 @@ describe('running the program from the pop-out', () => {
   it('answers the same keys the editor does', () => {
     assert.match(viewer, /matchShortcut\(event\)/);
     assert.match(viewer, /shortcutLabel\(action\)/);
+  });
+});
+
+describe('two windows, one voice', () => {
+  const app = read('src/app.js');
+  const viewer = read('src/viewer/main.js');
+  const speaker = read('src/viewer/speaker.js');
+  const controls = read('src/viewer/commentary-controls.js');
+
+  it('is wired in both windows', () => {
+    // Both receive the same telemetry and both have a speaker, so both said
+    // the same sentences a moment apart — which sounds like the program
+    // running twice.
+    for (const [name, source] of [['src/app.js', app], ['src/viewer/main.js', viewer]]) {
+      assert.match(source, /takeTheVoice\(\{/, `${name} does not take the voice`);
+      assert.match(source, /onLost: \(\) => speaker\.setYielded\(true\)/, name);
+      assert.match(source, /onTaken: \(\) => speaker\.setYielded\(false\)/, name);
+    }
+  });
+
+  it('the pop-out claims it on opening', () => {
+    // Somebody who has just opened the robot view expects it to be the one
+    // talking to them.
+    assert.match(viewer, /voice\.claim\(\);/);
+  });
+
+  it('a yielded window still writes its own transcript', () => {
+    // Two people reading two screens is not a duplication of anything; only
+    // the sound is.
+    const announce = speaker.slice(speaker.indexOf('  announce(text'));
+    const body = announce.slice(0, announce.indexOf('\n  }'));
+    assert.ok(
+      body.indexOf('this.caption?.(text)') < body.indexOf('if (this.yielded)'),
+      'the caption must be written before standing down',
+    );
+  });
+
+  it('says which window is speaking, and offers to move it', () => {
+    assert.match(controls, /elsewhere: 'Another window is speaking/);
+    assert.match(controls, /parts\.takeTheVoice\?\.\(\)/);
+  });
+
+  it('lets a keyboard move the voice, not only a mouse', () => {
+    assert.match(controls, /event\.key !== 'Enter' && event\.key !== ' '/);
+    assert.match(controls, /channel\.tabIndex = claimable \? 0 : -1/);
   });
 });
