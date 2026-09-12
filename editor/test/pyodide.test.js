@@ -142,6 +142,36 @@ mat = mats.load("the-square")
     assert.equal(startX, 500, 'the square mat starts the robot on its own corner');
   });
 
+  it('lays out the mat it was asked for, not the default one', async () => {
+    // The whole chain, in the place it can actually be run: the worker passes
+    // a name to _make, _make passes it to BrowserHub, BrowserHub loads it.
+    // The editor once set a mat that never survived the trip, and every run
+    // used the default with nothing saying otherwise.
+    const seen = [];
+    const make = pyodide.globals.get('_make');
+    const created = make(
+      () => {},
+      (payload) => seen.push(JSON.parse(payload)),
+      20,
+      1,
+      'the-square',
+    );
+    const named = created.get(0);
+    created.destroy();
+    make.destroy();
+
+    await named.start();
+    const hello = seen.find((message) => message.type === 'hello');
+    assert.ok(hello, 'the second hub never said hello');
+
+    // "Around the square" begins its robot on its own corner, and the
+    // practice mat does not.
+    assert.equal(hello.robot.pose.x, 500, 'this is not the square mat');
+    assert.equal(hello.world.obstacles.length, 0, 'the square mat has no wall');
+
+    await named.stop();
+  });
+
   it('says hello with the mat and the robot', () => {
     const hello = messages.filter((m) => m.type === 'hello');
     assert.equal(hello.length, 1);

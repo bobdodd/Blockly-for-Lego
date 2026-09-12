@@ -114,6 +114,19 @@ let tabs = null;
  */
 let connectionKind = null;
 
+/**
+ * Whether the simulator on the other end is the one running in this browser.
+ *
+ * Tracked here rather than asked of the client, whose transport is a private
+ * field — `client.transport` is `undefined`, so a test against it is always
+ * false and the branch that depends on it always wrong. Only this module
+ * knows which transport it built, so only this module can answer.
+ *
+ * It matters because the built-in simulator can be restarted on a different
+ * mat and one you started yourself cannot: its mat came from `--mat`.
+ */
+let simulatorIsBuiltIn = false;
+
 const MAT_KEY = 'blockly-for-lego.mat';
 const DEFAULT_MAT = 'practice';
 
@@ -124,6 +137,11 @@ const DEFAULT_MAT = 'practice';
  * through it over several evenings, and starting each one back on the
  * practice mat would undo that.
  */
+/** A mat's readable name, for saying out loud. */
+function matTitle(name) {
+  return MATS.find((entry) => entry.name === name)?.title ?? name;
+}
+
 function chosenMat() {
   try {
     const saved = localStorage.getItem(MAT_KEY);
@@ -407,7 +425,19 @@ async function connectSimulator() {
 
 async function startSimulator() {
   if (isLocalOrigin()) {
-    if (await connect(new SimulatorTransport(), 'the simulator', { quiet: true })) return;
+    if (await connect(new SimulatorTransport(), 'the simulator', { quiet: true })) {
+      simulatorIsBuiltIn = false;
+      const mat = chosenMat();
+      if (mat !== DEFAULT_MAT) {
+        // It has whatever mat it was started with, and nothing here can
+        // change that. Saying so beats a menu that looks like it worked.
+        announcer.status(
+          `Connected to the simulator you started, so its mat is whichever one it `
+            + `was given. Restart it with --mat ${mat} to use ${matTitle(mat)}.`,
+        );
+      }
+      return;
+    }
   }
 
   if (!builtInSupported()) {
@@ -419,6 +449,7 @@ async function startSimulator() {
   }
 
   const transport = new InBrowserSimulatorTransport({ mat: chosenMat() });
+  simulatorIsBuiltIn = true;
   // The first connection downloads about five megabytes of Python. Saying so
   // as it happens is the difference between a wait and an apparent hang --
   // and a spinner says nothing to a screen reader.
@@ -464,7 +495,7 @@ function wireMatChoice() {
       announcer.status(`${entry.title}. ${entry.teaches} Connect to the simulator to use it.`);
       return;
     }
-    if (client instanceof HubClient && !(client.transport instanceof InBrowserSimulatorTransport)) {
+    if (!simulatorIsBuiltIn) {
       announcer.status(
         `Restart the simulator with --mat ${entry.name} to change the mat it is running.`,
       );
@@ -480,6 +511,7 @@ function wireMatChoice() {
 async function disconnect() {
   await client?.disconnect().catch(() => undefined);
   client = null;
+  simulatorIsBuiltIn = false;
   setConnected(false);
 }
 

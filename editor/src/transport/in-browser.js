@@ -41,8 +41,17 @@ export class InBrowserSimulatorTransport {
   #worker = null;
   #ready = null;
 
-  constructor({ speed = 1, snapshotInterval = 0.05, indexURL } = {}) {
-    this.options = { speed, snapshotInterval, indexURL };
+  /**
+   * @param {{speed?: number, snapshotInterval?: number, indexURL?: string,
+   *          mat?: string}} options
+   */
+  constructor({ speed = 1, snapshotInterval = 0.05, indexURL, mat = '' } = {}) {
+    // Listed one by one on purpose — a `...rest` here would take anything and
+    // hide a typo — which means every new option has to be added in three
+    // places, and `mat` was added at both ends and not in the middle. It went
+    // in from the editor, came out of the worker, and was dropped here in
+    // between, so every mat was the default one and nothing said otherwise.
+    this.options = { speed, snapshotInterval, indexURL, mat };
   }
 
   connect() {

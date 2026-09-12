@@ -75,6 +75,21 @@ A few rules specific to this codebase:
   accessibility tree, so a screen reader announces content the tab says is
   not showing, and `aria-selected` becomes a lie. `test/stylesheet.test.js`
   guards it.
+- **An option added at both ends is not added.** The in-browser transport
+  lists its options one by one rather than spreading a `...rest`, which is
+  right — a rest would swallow a typo — but it means every new option has to
+  be added in *three* places: where it is set, where it is forwarded, and
+  where it is read. `mat` was added at two of them, so every simulator ran the
+  default mat and nothing anywhere said otherwise.
+  `test/in-browser-transport.test.js` now pins the forwarding.
+
+- **Do not test a private field from outside.** `client.transport` is
+  `undefined` because `HubClient` holds it in `#transport`, so
+  `!(client.transport instanceof X)` is permanently true and the branch
+  depending on it permanently wrong. If only one module knows a fact, keep
+  the fact in that module rather than trying to read it back off an object
+  that deliberately hid it.
+
 - **Never answer only through the status region.** It is `visually-hidden`,
   so anything said only there is said only to a screen reader. A button whose
   entire response is a hidden announcement is indistinguishable, to everyone

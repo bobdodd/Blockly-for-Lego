@@ -203,6 +203,31 @@ describe('the mat catalogue reaches the editor', () => {
     assert.match(app, /MATS\.some\(\(entry\) => entry\.name === saved\)/);
   });
 
+  it('does not ask the client for a transport it keeps private', () => {
+    // HubClient holds its transport in a #private field, so `client.transport`
+    // is undefined — a test against it is always false, and the branch that
+    // depended on it always took the wrong side. Changing mats therefore did
+    // nothing but print a misleading message.
+    // Comments may name it; code may not.
+    const code = app.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    assert.ok(
+      !/client\.transport/.test(code),
+      'the transport is private; track which one was built instead',
+    );
+    assert.match(app, /let simulatorIsBuiltIn = false;/);
+    assert.match(app, /if \(!simulatorIsBuiltIn\)/);
+  });
+
+  it('says so when the mat cannot be changed from here', () => {
+    // A simulator you started yourself has whatever --mat gave it, and a menu
+    // that looks like it worked is worse than one that explains itself.
+    assert.match(app, /Restart the simulator with --mat/);
+  });
+
+  it('actually reconnects when the mat changes', () => {
+    assert.match(app, /await disconnect\(\);\s*\n\s*await startSimulator\(\);/);
+  });
+
   it('says what a mat is for, not just its name', () => {
     assert.match(app, /option\.title = entry\.teaches/);
   });
