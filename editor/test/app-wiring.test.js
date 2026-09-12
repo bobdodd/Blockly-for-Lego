@@ -310,3 +310,32 @@ describe('the robot catalogue reaches the editor', () => {
     assert.match(app, /await builtInTransport\.setRobot\(entry\.name\)/);
   });
 });
+
+describe('the robot view in its own window', () => {
+  const app = read('src/app.js');
+  const viewer = read('src/viewer/main.js');
+
+  it('is told to watch the editor rather than go looking', () => {
+    // The built-in simulator has no socket to find: it lives in a worker the
+    // editor's window owns, and no second window can reach it.
+    assert.match(app, /viewer\.html\?relay=1/);
+    assert.match(viewer, /has\('relay'\)/);
+  });
+
+  it('gets everything the editor gets', () => {
+    assert.match(app, /relay\.send\(payload\)/);
+  });
+
+  it('handles both pipes the same way once a message arrives', () => {
+    // The pop-out must not be able to tell which kind of simulator produced
+    // a message, or the two paths drift.
+    assert.match(viewer, /transport\.onNarration = receive;/);
+    assert.match(viewer, /listen\(\(payload\) => \{/);
+    assert.match(viewer, /function receive\(payload\)/);
+  });
+
+  it('still connects to a simulator of its own when opened directly', () => {
+    // Its documented use: a projector watching a simulator somebody started.
+    assert.match(viewer, /else connect\(\);/);
+  });
+});

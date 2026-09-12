@@ -83,6 +83,13 @@ A few rules specific to this codebase:
   again. The 3D view takes them from the `hello` payload rather than from the
   editor's menu, so a simulator started elsewhere is still drawn correctly.
 
+- **A second window cannot reach the built-in simulator.** It runs in a
+  worker the editor's window owns. Anything else that wants its messages —
+  the pop-out robot view, and anything like it — has them repeated over
+  `viewer/relay.js` rather than connecting itself. When the only simulator was
+  one you started, every viewer was a socket client, and that assumption
+  outlived the thing that made it true.
+
 - **A change you can only see is half a change.** The robot catalogue redraws
   the 3D view, which is no use at all to the student this editor exists for.
   Anything that alters what the robot *is* has to reach the spoken description

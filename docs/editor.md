@@ -240,7 +240,20 @@ where it is, so there would be nothing to draw.
 
 **Open in its own window** is the one for teaching: put the robot on a
 projector or second screen and leave the editor full size on the student's
-laptop.
+laptop. It shows the same robot the editor is connected to, whichever kind
+that is — the window **watches the editor** rather than going looking for a
+simulator of its own.
+
+That distinction matters because the built-in simulator has no socket for a
+second window to connect to: it runs in a worker belonging to the editor's
+window, and no other window can reach a worker it does not own. The editor
+repeats every message it receives on a same-origin channel, and the pop-out
+listens. A window opened after the simulator connected asks for the mat,
+because that is described once and nothing repeats it on its own.
+
+Opened directly by its own URL, it still connects to a simulator you started
+yourself — `viewer.html` on its own, or `viewer.html?simulator=ws://…`.
+Several windows can watch at once.
 
 **This is the tab the editor opens on.** It is what the editor is for, and
 the one panel a blind student cannot reach any other way — opening on the

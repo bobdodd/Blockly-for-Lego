@@ -14,6 +14,7 @@
 
 import { Commentary } from './commentary.js';
 import { mountCommentaryControls } from './commentary-controls.js';
+import { listen, isSupported as relaySupported } from './relay.js';
 import { SimulatorTransport } from '../transport/websocket.js';
 import { RobotView } from './robot-view.js';
 import { Speaker } from './speaker.js';
@@ -79,6 +80,37 @@ function addNarration(payload) {
   ui.narration.scrollTop = ui.narration.scrollHeight;
 }
 
+/** Everything that arrives, whichever pipe it came down. */
+function receive(payload) {
+  view.handleMessage(payload);
+  if (startedElsewhere(payload)) commentary.beginRun();
+  commentary.handleMessage(payload);
+  if (payload.type === 'event') addNarration(payload);
+}
+
+/**
+ * Watch the editor window rather than a simulator of our own.
+ *
+ * The built-in simulator runs in a worker belonging to the editor's window,
+ * and no second window can reach a worker it does not own. So the editor
+ * repeats what it receives and this listens, which works whichever kind of
+ * simulator is on the other end of it.
+ */
+function watchTheEditor() {
+  if (!relaySupported()) {
+    ui.status.textContent =
+      'This browser cannot pass the robot between windows. Use the robot view '
+      + 'inside the editor instead.';
+    return;
+  }
+
+  ui.status.textContent = 'Waiting for the editor to connect to a robot…';
+  listen((payload) => {
+    if (payload.type === 'hello') ui.status.textContent = 'Watching the simulated robot.';
+    receive(payload);
+  });
+}
+
 async function connect() {
   const base = new URLSearchParams(location.search).get('simulator')
     ?? 'ws://127.0.0.1:8765';
@@ -87,12 +119,7 @@ async function connect() {
   const url = base.includes('?') ? `${base}&observe=1` : `${base}/?observe=1`;
   const transport = new SimulatorTransport(url);
 
-  transport.onNarration = (payload) => {
-    view.handleMessage(payload);
-    if (startedElsewhere(payload)) commentary.beginRun();
-    commentary.handleMessage(payload);
-    if (payload.type === 'event') addNarration(payload);
-  };
+  transport.onNarration = receive;
   transport.onClose = () => {
     ui.status.textContent = 'The simulator disconnected. Start it again and reload this page.';
     view.clear();
@@ -117,4 +144,9 @@ ui.reset.addEventListener('click', () => view.resetView());
 
 view.start();
 commentary.start();
-connect();
+
+// Opened by the editor's "Open in its own window" button, or on its own
+// against a simulator someone started. The two need different pipes and the
+// flag says which, rather than trying one and guessing from the silence.
+if (new URLSearchParams(location.search).has('relay')) watchTheEditor();
+else connect();

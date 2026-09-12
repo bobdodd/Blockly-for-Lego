@@ -25,6 +25,7 @@ import { mountCommentaryControls } from './viewer/commentary-controls.js';
 import { MATS } from './generated/mat-catalogue.js';
 import { ROBOTS } from './generated/robot-catalogue.js';
 import { SceneSource } from './viewer/scene-source.js';
+import { broadcast } from './viewer/relay.js';
 import { Speaker } from './viewer/speaker.js';
 import { createTabs } from './tabs.js';
 import { matchShortcut, shortcutLabel } from './shortcuts.js';
@@ -173,6 +174,15 @@ function chosenMat() {
 /** Says the 3D view out loud. See src/viewer/commentary.js. */
 const speaker = new Speaker({ regionId: 'commentary-region' });
 const sceneSource = new SceneSource();
+
+/**
+ * Repeats the simulator's messages to any robot view opened in its own window.
+ *
+ * The built-in simulator has no socket for a second window to connect to — it
+ * lives in a worker this window owns — so the messages are passed on rather
+ * than the other window going looking for them.
+ */
+const relay = broadcast(() => lastWorldMessage);
 let commentary = null;
 
 /**
@@ -384,6 +394,8 @@ async function connect(transport, description, { quiet = false } = {}) {
       // needs to hear what the robot did
       sceneSource.handleMessage(payload);
       commentary?.handleMessage(payload);
+      // And on to a robot view in its own window, if one is open.
+      relay.send(payload);
     };
   }
   transport.onClose = () => {
@@ -825,7 +837,9 @@ function wireRobotView() {
   ui.popOut.addEventListener('click', () => {
     // A separate window is the right shape for teaching: put the robot on a
     // projector or second screen and leave the editor full size.
-    const opened = window.open('viewer.html', 'blockly-for-lego-robot',
+    // `relay=1` tells it to watch this window rather than go looking for a
+    // simulator of its own — the built-in one has no socket to find.
+    const opened = window.open('viewer.html?relay=1', 'blockly-for-lego-robot',
       'width=1000,height=760');
     announcer.status(
       opened
