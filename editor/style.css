@@ -53,6 +53,18 @@
  */
 [hidden] { display: none !important; }
 
+/*
+ * Nothing on this page is smaller than 16px.
+ *
+ * Secondary text used to be set at 0.9-0.95rem, which is the ordinary way to
+ * make a hint look like a hint — and it put the smallest type in the app on
+ * the sentences that explain how to use it. A student who has to magnify
+ * before they can read the instructions has been charged for the instructions.
+ *
+ * Rank is carried by colour and weight instead: `--muted` for secondary,
+ * bold for emphasis. Both survive magnification; size does not, because
+ * shrinking is the thing being avoided.
+ */
 body {
   margin: 0;
   font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -180,7 +192,7 @@ button[disabled] {
 }
 
 h2 { font-size: 1.05rem; margin: 0 0 0.35rem; }
-.hint { margin: 0 0 0.5rem; color: var(--muted); font-size: 0.92rem; }
+.hint { margin: 0 0 0.5rem; color: var(--muted); }
 
 .workspace-panel, .side-panel > section {
   background: var(--panel);
@@ -221,7 +233,6 @@ h2 { font-size: 1.05rem; margin: 0 0 0.35rem; }
   border: 1px solid var(--line);
   border-radius: 4px;
   background: var(--page);
-  font-size: 0.95rem;
 }
 .log .entry { padding: 0.2rem 0; border-bottom: 1px solid var(--line); }
 .log .entry:last-child { border-bottom: none; }
@@ -234,7 +245,7 @@ h2 { font-size: 1.05rem; margin: 0 0 0.35rem; }
 
 .python {
   width: 100%;
-  font: 0.9rem/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font: 1rem/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   padding: 0.5rem;
   border: 1px solid var(--line);
   border-radius: 4px;
@@ -253,7 +264,6 @@ h2 { font-size: 1.05rem; margin: 0 0 0.35rem; }
   flex: 1 1 100%;
   margin: 0;
   color: var(--muted);
-  font-size: 0.95rem;
 }
 
 /* A label above the control it names, rather than beside it. */
@@ -284,7 +294,6 @@ h2 { font-size: 1.05rem; margin: 0 0 0.35rem; }
  */
 .save-state {
   color: var(--muted);
-  font-size: 0.92rem;
   min-width: 9rem;
 }
 
@@ -420,7 +429,6 @@ button[aria-disabled="true"] {
   border: 1px solid var(--line);
   border-radius: 4px;
   background: var(--page);
-  font-size: 0.92rem;
 }
 
 .commentary-transcript:empty { display: none; }
@@ -461,7 +469,6 @@ button[aria-disabled="true"] {
 .commentary-channel {
   margin: 0.5rem 0 0;
   color: var(--muted);
-  font-size: 0.9rem;
 }
 
 .commentary-channel:empty { display: none; }
@@ -501,6 +508,13 @@ button[aria-disabled="true"] {
    below it. No !important, and nothing here reaches into the workspace's
    behaviour — only how visible its own controls are.
    -------------------------------------------------------------------------- */
+
+/* Blockly's tooltip is `font: 9pt sans-serif` — 12px, the smallest text it
+   draws. Same reason as everything else here: a tooltip explaining a block is
+   no use to somebody who has to magnify to read the explanation. */
+.blocklyTooltipDiv {
+  font: 1rem/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
 
 .blocklyZoom > image,
 .blocklyZoom > svg > image,

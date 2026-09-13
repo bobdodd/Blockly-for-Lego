@@ -266,6 +266,21 @@ const workspaceTheme = Blockly.Theme.defineTheme('spike', {
     scrollbarColour: '#6b7681',
     scrollbarOpacity: 1,
   },
+  /*
+   * The text on the blocks, at 16px.
+   *
+   * Blockly sets FIELD_TEXT_FONTSIZE to 11 and renders it in points, so the
+   * words on every block come out at 14.7px — the smallest type in the editor
+   * on the one thing a student is here to read. An automated audit misses it
+   * because it is SVG <text>, which is the worst way for a defect to be
+   * invisible: nothing reports it and everybody squints.
+   *
+   * The unit is points, not pixels, and 12pt is exactly 16px. Blocks grow to
+   * fit, which is the intended cost.
+   */
+  fontStyle: {
+    size: 12,
+  },
 });
 
 function startWorkspace() {
