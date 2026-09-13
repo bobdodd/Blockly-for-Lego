@@ -20,6 +20,13 @@ something does not work.
 | **[The simulator](simulator.md)** | The simulated hub in full: command line, physics, mat format, the SPIKE API it implements, narration, network interface. |
 | **[Talking to a hub](protocol.md)** | The SPIKE Prime protocol — transports, framing, every message, the traps — and the client we built on it. |
 
+## Known issues upstream
+
+**[Bugs in the things we build on](upstream.md)** — findings in Blockly that
+reach our pages and that we have chosen not to work around, with the evidence
+and the reasoning. Read this before acting on an accessibility audit of the
+editor: most of what one reports is Blockly's internals working correctly.
+
 ## Why
 
 **[Background](background.md)** — why the official app is unusable without

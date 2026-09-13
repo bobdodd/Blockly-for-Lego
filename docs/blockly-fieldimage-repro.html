@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>FieldImage alt repro</title></head>
+<body>
+<div id="ws" style="height:400px;width:600px"></div>
+<pre id="out">running…</pre>
+
+<script src="https://cdn.jsdelivr.net/npm/blockly@13.3.0/blockly_compressed.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/blockly@13.3.0/blocks_compressed.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/blockly@13.3.0/msg/en.js"></script>
+<script>
+Blockly.setLocale(Blockly.Msg);
+const ws = Blockly.inject('ws', { media: 'https://cdn.jsdelivr.net/npm/blockly@13.3.0/media/' });
+
+const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+
+// 1. A stock text block — Blockly wraps its field in two decorative quote images.
+Blockly.serialization.blocks.append({ type: 'text', fields: { TEXT: 'hello' } }, ws);
+
+// 2. A custom block with a MEANINGFUL image: one clickable, one not.
+Blockly.Blocks['alt_demo'] = { init() {
+  this.appendDummyInput()
+    .appendField(new Blockly.FieldImage(PNG, 16, 16, 'Warning: motor stalls'))
+    .appendField(new Blockly.FieldImage(PNG, 16, 16, 'Run the program', () => {}));
+}};
+Blockly.serialization.blocks.append({ type: 'alt_demo' }, ws);
+
+const row = (label, img) => {
+  const g = img.parentElement;
+  return [
+    label,
+    '  element          : ' + img.constructor.name,
+    '  alt attribute    : ' + JSON.stringify(img.getAttribute('alt')),
+    '  "alt" in element : ' + ('alt' in img) + '   <- not an SVG IDL attribute',
+    '  <title> child    : ' + !!img.querySelector('title'),
+    '  aria-hidden      : ' + img.getAttribute('aria-hidden'),
+    '  group role       : ' + g.getAttribute('role'),
+    '  group aria-label : ' + JSON.stringify(g.getAttribute('aria-label')),
+  ].join('\n');
+};
+
+const imgs = [...document.querySelectorAll('.blocklyImageField image')];
+document.getElementById('out').textContent = [
+  row('[1] stock text block, decorative quote (not clickable):', imgs[0]),
+  row('[2] custom field, meaningful alt, NOT clickable:', imgs[2]),
+  row('[3] custom field, meaningful alt, clickable:', imgs[3]),
+].join('\n\n');
+</script>
+</body></html>
