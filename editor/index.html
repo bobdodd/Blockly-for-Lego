@@ -81,16 +81,30 @@
       controls for what is already on the screen.
     -->
     <section class="toolbar" aria-label="Program">
-      <label class="program-name" for="program-name">Program name</label>
-      <input
-        type="text"
-        id="program-name"
-        class="program-name-input"
-        maxlength="80"
-        autocomplete="off"
-        spellcheck="false"
-      />
-      <span id="save-state" class="save-state"></span>
+      <!--
+        The name, and whether it has been saved, as one thing.
+
+        Whether there are unsaved changes is a fact about this field, so it is
+        under the field and described by it: aria-describedby means a screen
+        reader reads it on arriving at the input, which is when it matters and
+        the only time it does. It is deliberately not a live region — hearing
+        "unsaved changes" after every block moved would be unbearable — so
+        without this it was a sentence sitting beside a text box with nothing
+        connecting the two.
+      -->
+      <div class="program-name-field">
+        <label class="program-name" for="program-name">Program name</label>
+        <input
+          type="text"
+          id="program-name"
+          class="program-name-input"
+          maxlength="80"
+          autocomplete="off"
+          spellcheck="false"
+          aria-describedby="save-state"
+        />
+        <span id="save-state" class="save-state"></span>
+      </div>
 
       <button type="button" id="new-program" class="secondary">New</button>
       <button type="button" id="open-program" class="secondary">Open…</button>

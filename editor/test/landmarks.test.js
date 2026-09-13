@@ -209,3 +209,54 @@ describe('the smallest text on the page is still readable', () => {
     assert.ok(!/font-size/.test(rule[1]), 'the hint should be the size of its button');
   });
 });
+
+describe('whether the program is saved belongs to the name field', () => {
+  const markup = code('index.html');
+  const css = read('style.css').replace(/\/\*[\s\S]*?\*\//g, '');
+
+  it('is read out on reaching the input, not left beside it', () => {
+    // It is deliberately not a live region — hearing "unsaved changes" after
+    // every block moved would be unbearable — so without aria-describedby it
+    // was a sentence next to a text box with nothing joining the two, and a
+    // screen reader user had no way to learn it except by hunting for it.
+    const tag = markup.slice(markup.indexOf('id="program-name"'));
+    assert.match(tag.slice(0, tag.indexOf('>')), /aria-describedby="save-state"/);
+    assert.ok(markup.includes('id="save-state"'), 'the description has to exist');
+  });
+
+  it('and stays a description rather than becoming an announcement', () => {
+    // aria-describedby reads it on focus, which is when it matters. A live
+    // region would read it on every keystroke that marked the program dirty.
+    const state = markup.slice(markup.indexOf('id="save-state"'));
+    const tag = state.slice(0, state.indexOf('>'));
+    assert.ok(!/aria-live|role="status"|role="alert"/.test(tag), 'not a live region');
+  });
+
+  it('stacks under the label and the input, sharing their left edge', () => {
+    // Node cannot see layout, so this pins what makes the layout possible: the
+    // three are one column, left aligned, in the order you need them. At large
+    // magnification a label beside its field is the first thing to leave the
+    // viewport, and a reader who has scrolled to the input then has no way to
+    // know what it was called.
+    assert.match(markup, /<div class="program-name-field">/);
+    const field = css.match(/\.program-name-field\s*\{([^}]*)\}/);
+    assert.ok(field, 'the field should be its own stack');
+    assert.match(field[1], /flex-direction:\s*column/);
+    assert.match(field[1], /align-items:\s*(flex-start|start)/, 'left aligned, not centred');
+
+    // and in source order, which is the order it reads and the order it draws
+    const block = markup.slice(markup.indexOf('<div class="program-name-field">'));
+    const label = block.indexOf('<label');
+    const input = block.indexOf('<input');
+    const state = block.indexOf('id="save-state"');
+    assert.ok(label < input && input < state, 'label, then field, then description');
+  });
+
+  it('without stretching every button to the field it made taller', () => {
+    // A flex row defaults to `stretch`, so the two-row field pulled New, Open
+    // and Save to its own height.
+    const toolbar = css.match(/\.toolbar\s*\{([^}]*)\}/);
+    assert.ok(toolbar, 'no .toolbar rule');
+    assert.match(toolbar[1], /align-items:\s*(center|flex-start|start)/);
+  });
+});
