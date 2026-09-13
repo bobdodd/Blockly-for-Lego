@@ -131,10 +131,11 @@ body {
   flex-wrap: wrap;
   gap: 0.5rem;
   padding: 0.75rem 1rem;
-  /* Centred rather than stretched: the program-name field is two rows tall
-     now that the save state sits under the input, and a flex row's default
-     `stretch` would pull every button to that height. */
-  align-items: center;
+  /* Tops aligned, not centred and not stretched. The fields are three rows
+     tall now and a description can wrap to two lines, so centring left their
+     labels at three different heights and `stretch` pulled every button to
+     the tallest one. */
+  align-items: flex-start;
 }
 
 /*
@@ -275,11 +276,14 @@ h2 { font-size: 1.05rem; margin: 0 0 0.35rem; }
  * A visible answer where a `title` tooltip used to be: what a mat teaches,
  * what a build is for, why Save behaves oddly in this browser. A tooltip
  * needs a mouse and a hover, so it said nothing to a keyboard, a touchscreen
- * or a screen reader. These take a whole line of the toolbar to themselves.
+ * or a screen reader.
+ *
+ * It used to span a whole toolbar row as a flex item. Inside a field's stack
+ * it is simply the third line, under the control it describes.
  */
 .choice-note {
-  flex: 1 1 100%;
   margin: 0;
+  max-width: 22rem;
   color: var(--muted);
 }
 
@@ -293,7 +297,26 @@ h2 { font-size: 1.05rem; margin: 0 0 0.35rem; }
 /* --- the program toolbar ------------------------------------------------ */
 
 /*
+ * The program's fields, on a row of their own.
+ *
+ * Without this the three of them and the four file buttons share one wrapping
+ * row, and the buttons land wherever the fields stop — New and Open marooned
+ * to the right of the mat, Save and Save as on the line below. Giving the
+ * fields the full width keeps each group whole.
+ */
+.program-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.5rem 1.5rem;
+  flex: 1 1 100%;
+}
+
+/*
  * Label, field, description: stacked and left aligned, as a form is.
+ *
+ * Used by all three of the program's fields — its name, its robot and its
+ * mat — so they read as one form rather than three arrangements.
  *
  * The three belong to each other, so they share one left edge and read top to
  * bottom in the order you need them. That is worth more than the row it
@@ -311,16 +334,40 @@ h2 { font-size: 1.05rem; margin: 0 0 0.35rem; }
 
 .program-name { font-weight: 600; }
 
-.program-name-input {
+.program-name-input,
+.program-name-field select {
   font: inherit;
   padding: 0.45rem 0.6rem;
   border: 1px solid var(--line);
   border-radius: 4px;
   background: var(--panel);
   color: var(--ink);
-  width: 18rem;
   max-width: 100%;
 }
+
+.program-name-input {
+  width: 22rem;
+}
+
+/*
+ * The menus size to their own longest option rather than to a number I chose.
+ *
+ * "Standard base — 56mm wheels, 160mm apart" is 22rem and a bit, and a fixed
+ * width clipped it to "160mm ap". A picker that hides half of what it is
+ * offering is not one, and the measurements are the whole reason a student
+ * would pick one base over another.
+ */
+.program-name-field select {
+  width: auto;
+  min-width: 14rem;
+  /* Room for the disclosure arrow on the right. Without it `width: auto`
+     sizes to the text alone and the last couple of pixels go under the
+     arrow. */
+  padding-right: 2rem;
+}
+
+/* The label above a field, in the same weight as the program name's. */
+.choice-label { font-weight: 600; }
 
 /*
  * Deliberately not a live region. Whether there are unsaved changes is worth

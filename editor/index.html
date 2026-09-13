@@ -92,6 +92,7 @@
         without this it was a sentence sitting beside a text box with nothing
         connecting the two.
       -->
+      <div class="program-fields">
       <div class="program-name-field">
         <label class="program-name" for="program-name">Program name</label>
         <input
@@ -106,6 +107,37 @@
         <span id="save-state" class="save-state"></span>
       </div>
 
+      <!--
+        The robot and the mat are part of the program, not of running it.
+
+        A saved file records the robot because the same blocks mean different
+        distances on a different driving base. It records the mat for the same
+        reason one step up: the mat is the exercise — "following a straight
+        line from the green square to the red one" is the specification and
+        the blocks are the answer to it. A student picks the exercise and then
+        writes the program for it; that is one act, and these belong beside
+        the name rather than among the buttons that start things.
+
+        Robot before mat because that is the order a student thinks in. The
+        mat is the teacher's frame.
+
+        What each one is for is written under it, and tied to the menu with
+        aria-describedby so it is read on arriving there — the same shape as
+        the name and its save state above.
+      -->
+      <div class="program-name-field">
+        <label class="choice-label" for="robot">Robot</label>
+        <select id="robot" aria-describedby="robot-note"></select>
+        <p id="robot-note" class="choice-note"></p>
+      </div>
+
+      <div class="program-name-field">
+        <label class="choice-label" for="mat">Mat</label>
+        <select id="mat" aria-describedby="mat-note"></select>
+        <p id="mat-note" class="choice-note"></p>
+      </div>
+      </div>
+
       <button type="button" id="new-program" class="secondary">New</button>
       <button type="button" id="open-program" class="secondary">Open…</button>
       <button type="button" id="save-program">
@@ -115,13 +147,7 @@
       <p id="save-note" class="choice-note" hidden></p>
     </section>
 
-    <section class="toolbar" aria-label="Robot controls">
-      <label class="mat-choice" for="robot">Robot</label>
-      <select id="robot" aria-describedby="robot-note"></select>
-
-      <label class="mat-choice" for="mat">Mat</label>
-      <select id="mat" aria-describedby="mat-note"></select>
-
+    <section class="toolbar" aria-label="Running your program">
       <button id="connect-simulator" type="button">
         Connect to simulator
       </button>
@@ -137,18 +163,6 @@
       <button id="read-sensors" type="button" disabled>
         Read the sensors aloud
       </button>
-
-      <!--
-        What each build and each mat is for, in writing.
-
-        This was a `title` on every <option>, which is a tooltip: it needs a
-        mouse hovering over a menu that is already open, screen readers are
-        not obliged to read it, and a touchscreen has no way to ask for it at
-        all. The whole point of the catalogue is that a student can tell which
-        mat is worth opening next, so the answer is on the page.
-      -->
-      <p id="robot-note" class="choice-note"></p>
-      <p id="mat-note" class="choice-note"></p>
     </section>
 
     <!--

@@ -13,6 +13,18 @@
  * that did not say which robot it was made for would be a trap, and we have
  * already been caught by exactly that arithmetic once.
  *
+ * **And the mat, for the same reason one step up.** The mat is the exercise:
+ * "following a straight line from the green square to the red one" is the
+ * specification, and the blocks are the answer to it. A line follower opened
+ * onto an empty floor is a program that looks broken and is not, which is the
+ * same trap the robot was, so a file says which mat it was written for.
+ *
+ * The robot and the mat are then treated differently on opening, because they
+ * are different kinds of thing. The robot is the machine on the table and a
+ * file cannot change it, so a mismatch is said and left alone. The mat is
+ * only ever a description of a world the simulator builds, so a file can
+ * simply ask for it — and the picker still moves it afterwards.
+ *
  * **Block types are permanent.** Blockly's loader fails on a type it does not
  * recognise, so renaming a block silently breaks every file a student has
  * saved. `version` exists to hang a migration on if that ever becomes
@@ -32,10 +44,10 @@ export const DEFAULT_NAME = 'My program';
 /**
  * Build the object that gets written to a file.
  *
- * @param {{name?: string, blocks: object, robot: object}} program
+ * @param {{name?: string, blocks: object, robot: object, mat?: string}} program
  * @returns {object}
  */
-export function buildProject({ name, blocks, robot }) {
+export function buildProject({ name, blocks, robot, mat }) {
   return {
     format: PROGRAM_FORMAT,
     version: PROGRAM_VERSION,
@@ -47,6 +59,12 @@ export function buildProject({ name, blocks, robot }) {
       leftPort: robot.leftPort,
       rightPort: robot.rightPort,
     },
+    // The mat this was written against, by name. Added without bumping
+    // PROGRAM_VERSION on purpose: an older file simply has no mat and opens
+    // exactly as it did, and a newer file opened by an older editor carries a
+    // field it ignores. Neither needs a migration, which is what the version
+    // is for.
+    ...(mat ? { mat } : {}),
     blocks,
   };
 }
@@ -64,7 +82,8 @@ export function serialiseProject(program) {
  * come back as `error`; problems worth mentioning come back as `warnings`.
  *
  * @param {string} text file contents
- * @param {{knownBlockTypes?: Iterable<string>, robot?: object}} [context]
+ * @param {{knownBlockTypes?: Iterable<string>, robot?: object,
+ *          knownMats?: Iterable<string>}} [context]
  * @returns {{project: object|null, error: string|null, warnings: string[]}}
  */
 export function parseProject(text, context = {}) {
@@ -132,10 +151,24 @@ export function parseProject(text, context = {}) {
     warnings.push(...robotDifferences(data.robot, context.robot));
   }
 
+  // A mat this editor no longer has is worth saying, because the caller is
+  // about to lay out something else and the program will look broken on it.
+  const mat = typeof data.mat === 'string' ? data.mat : null;
+  const knownMats = context.knownMats ? new Set(context.knownMats) : null;
+  const matIsKnown = mat !== null && (!knownMats || knownMats.has(mat));
+  if (mat !== null && !matIsKnown) {
+    warnings.push(
+      `This program was written for a mat called ${mat}, which this editor does ` +
+        `not have. It will run on whichever mat is laid out, and may not do what ` +
+        `it looks like it should.`,
+    );
+  }
+
   return {
     project: {
       name: cleanName(data.name),
       robot: data.robot ?? null,
+      mat: matIsKnown ? mat : null,
       blocks: data.blocks,
       savedAt: typeof data.savedAt === 'string' ? data.savedAt : null,
     },

@@ -79,7 +79,7 @@ describe('the toolbars are not navigation', () => {
     const markup = code('index.html');
     assert.ok(!/<nav[ >]/.test(markup), 'the editor has no navigation');
     assert.match(markup, /<section class="toolbar" aria-label="Program">/);
-    assert.match(markup, /<section class="toolbar" aria-label="Robot controls">/);
+    assert.match(markup, /<section class="toolbar" aria-label="Running your program">/);
   });
 });
 
@@ -258,5 +258,63 @@ describe('whether the program is saved belongs to the name field', () => {
     const toolbar = css.match(/\.toolbar\s*\{([^}]*)\}/);
     assert.ok(toolbar, 'no .toolbar rule');
     assert.match(toolbar[1], /align-items:\s*(center|flex-start|start)/);
+  });
+});
+
+describe('the robot and the mat belong to the program', () => {
+  const markup = code('index.html');
+  const project = read('src/project.js');
+  const app = read('src/app.js');
+
+  it('so they sit in the Program region, not among the run controls', () => {
+    // A saved file records the robot because the same blocks mean different
+    // distances on a different base, and the mat because the mat is the
+    // exercise — "following a straight line from the green square to the red
+    // one" is the specification and the blocks are the answer. Picking the
+    // exercise and writing the program for it is one act.
+    const program = markup.slice(markup.indexOf('aria-label="Program"'),
+      markup.indexOf('aria-label="Running your program"'));
+    for (const id of ['program-name', 'robot', 'mat']) {
+      assert.ok(program.includes(`id="${id}"`), `#${id} should be in the Program region`);
+    }
+    const running = markup.slice(markup.indexOf('aria-label="Running your program"'));
+    for (const id of ['connect-simulator', 'connect-hub', 'run', 'stop']) {
+      assert.ok(running.includes(`id="${id}"`), `#${id} should be in the running region`);
+    }
+  });
+
+  it('in the order a student thinks in: name, robot, mat', () => {
+    // The mat is the teacher's frame; the student is thinking about the robot.
+    const at = (id) => markup.indexOf(`id="${id}"`);
+    assert.ok(at('program-name') < at('robot'), 'name before robot');
+    assert.ok(at('robot') < at('mat'), 'robot before mat');
+  });
+
+  it('each stacked and described, like the name above them', () => {
+    for (const [id, note] of [['robot', 'robot-note'], ['mat', 'mat-note']]) {
+      const tag = markup.slice(markup.indexOf(`id="${id}"`));
+      assert.match(tag.slice(0, tag.indexOf('>')), new RegExp(`aria-describedby="${note}"`));
+      assert.ok(markup.includes(`id="${note}"`), `${note} has to exist`);
+    }
+    // all three in the same kind of stack
+    assert.equal((markup.match(/class="program-name-field"/g) ?? []).length, 3);
+  });
+
+  it('and a file records the mat as well as the robot', () => {
+    // Without it, a line follower written for Zigzag reopens onto whatever is
+    // laid out and runs across a blank floor saying nothing — the same trap
+    // the robot was, one step up.
+    assert.match(project, /export function buildProject\(\{ name, blocks, robot, mat \}\)/);
+    assert.match(app, /mat: chosenMat\(\)/);
+  });
+
+  it('but asks for it rather than warning, unlike the robot', () => {
+    // The robot is the machine on the table and a file cannot change it, so a
+    // mismatch is said and left alone. A mat is only a world the simulator
+    // builds, so opening the exercise can lay out the exercise — and the
+    // picker still moves it afterwards.
+    assert.match(app, /if \(project\.mat && project\.mat !== chosenMat\(\)\) await useMat\(project\.mat\)/);
+    assert.match(app, /async function useMat\(/);
+    assert.match(app, /ui\.mat\.addEventListener\('change', \(\) => useMat\(ui\.mat\.value\)\)/);
   });
 });

@@ -595,37 +595,45 @@ function wireMatChoice() {
   ui.mat.value = chosenMat();
   describeChoice(ui.matNote, MATS.find((mat) => mat.name === ui.mat.value));
 
-  ui.mat.addEventListener('change', async () => {
-    const entry = MATS.find((mat) => mat.name === ui.mat.value) ?? MATS[0];
-    describeChoice(ui.matNote, entry);
-    try {
-      localStorage.setItem(MAT_KEY, ui.mat.value);
-    } catch {
-      // the choice still applies to this session
-    }
+  ui.mat.addEventListener('change', () => useMat(ui.mat.value));
+}
 
-    if (connectionKind !== 'simulator') {
-      announcer.status(`${entry.title}. ${entry.teaches} Connect to the simulator to use it.`);
-      return;
-    }
-    if (!simulatorIsBuiltIn) {
-      announcer.status(
-        `Restart the simulator with --mat ${entry.name} to change the mat it is running.`,
-      );
-      return;
-    }
+/**
+ * Lay out a mat, from the picker or from a file that asked for it.
+ *
+ * @param {string} name
+ */
+async function useMat(name) {
+  const entry = MATS.find((mat) => mat.name === name) ?? MATS[0];
+  if (ui.mat.value !== entry.name) ui.mat.value = entry.name;
+  describeChoice(ui.matNote, entry);
+  try {
+    localStorage.setItem(MAT_KEY, entry.name);
+  } catch {
+    // the choice still applies to this session
+  }
 
-    // The worker keeps Python and rebuilds only the mat, so this is quick and
-    // the connection survives it. Reconnecting instead meant loading Python
-    // again every time a student tried another mat.
-    announcer.status(`Laying out ${entry.title}. ${entry.teaches}`);
-    try {
-      await builtInTransport.setMat(entry.name);
-      announcer.status(`${entry.title}. ${entry.teaches}`);
-    } catch (error) {
-      announcer.status(`The mat would not change: ${error.message}`);
-    }
-  });
+  if (connectionKind !== 'simulator') {
+    announcer.status(`${entry.title}. ${entry.teaches} Connect to the simulator to use it.`);
+    return;
+  }
+  if (!simulatorIsBuiltIn) {
+    announcer.status(
+      `Restart the simulator with --mat ${entry.name} to change the mat it is running.`,
+    );
+    return;
+  }
+
+  // The worker keeps Python and rebuilds only the mat, so this is quick and
+  // the connection survives it. Reconnecting instead meant loading Python
+  // again every time a student tried another mat.
+  announcer.status(`Laying out ${entry.title}. ${entry.teaches}`);
+  try {
+    await builtInTransport.setMat(entry.name);
+    announcer.status(`${entry.title}. ${entry.teaches}`);
+  } catch (error) {
+    announcer.status(`The mat would not change: ${error.message}`);
+  }
 }
 
 /**
@@ -994,6 +1002,7 @@ async function saveProgram({ prompt = false } = {}) {
     name: programName,
     blocks: Blockly.serialization.workspaces.save(workspace),
     robot: robotConfig,
+    mat: chosenMat(),
   });
 
   try {
@@ -1041,6 +1050,7 @@ async function openProgram() {
   const { project, error, warnings } = parseProject(opened.text, {
     knownBlockTypes: knownBlockTypes(),
     robot: robotConfig,
+    knownMats: MATS.map((entry) => entry.name),
   });
 
   if (error) {
@@ -1054,6 +1064,11 @@ async function openProgram() {
   markSaved();
 
   announcer.status(`Opened ${project.name}.`);
+  // The mat is asked for rather than warned about, unlike the robot: the
+  // robot is the machine on the table and a file cannot change it, while a
+  // mat is only a world the simulator builds. Opening the exercise should lay
+  // out the exercise. The picker is untouched, so it still overrides this.
+  if (project.mat && project.mat !== chosenMat()) await useMat(project.mat);
   // A robot mismatch is not a reason to refuse the program, but it is the
   // difference between a program that drives properly and one that looks
   // badly written, so it is said rather than left to be discovered.

@@ -180,6 +180,58 @@ describe('warning about a different robot', () => {
   });
 });
 
+describe('the mat a program was written for', () => {
+  const mats = ['open-floor', 'first-line', 'zigzag'];
+
+  it('travels in the file, because the mat is the exercise', () => {
+    // "Following a straight line from the green square to the red one" is the
+    // specification; the blocks are the answer to it. A file that did not say
+    // which mat it was written for would reopen onto whatever happened to be
+    // laid out and run across it saying nothing — the same trap the robot
+    // was, one step up.
+    const text = serialiseProject({ name: 'Line follower', blocks, robot, mat: 'zigzag' });
+    assert.match(text, /"mat": "zigzag"/);
+
+    const { project, error, warnings } = parseProject(text, { knownMats: mats });
+    assert.equal(error, null);
+    assert.deepEqual(warnings, []);
+    assert.equal(project.mat, 'zigzag');
+  });
+
+  it('is simply absent from a file saved before it was recorded', () => {
+    // Added without bumping PROGRAM_VERSION, so an older file has to open
+    // exactly as it did rather than being refused or warned about.
+    const text = JSON.stringify(buildProject({ name: 'Older', blocks, robot }));
+    assert.ok(!/"mat"/.test(text), 'no mat should be written when none is given');
+
+    const { project, error, warnings } = parseProject(text, { knownMats: mats });
+    assert.equal(error, null);
+    assert.deepEqual(warnings, []);
+    assert.equal(project.mat, null);
+  });
+
+  it('says so when the file names a mat this editor does not have', () => {
+    // The caller is about to lay out something else, and the program will
+    // look broken on it.
+    const text = serialiseProject({ name: 'Old exercise', blocks, robot, mat: 'retired-mat' });
+    const { project, error, warnings } = parseProject(text, { knownMats: mats });
+
+    assert.equal(error, null, 'an unknown mat is not a reason to refuse the program');
+    assert.equal(warnings.length, 1);
+    assert.match(warnings[0], /retired-mat/);
+    assert.equal(project.mat, null, 'and nothing is asked for that cannot be laid out');
+  });
+
+  it('is taken at face value when the caller does not say what it has', () => {
+    // parseProject is used without a catalogue in tests and tools.
+    const { project, warnings } = parseProject(
+      serialiseProject({ name: 'x', blocks, robot, mat: 'zigzag' }),
+    );
+    assert.deepEqual(warnings, []);
+    assert.equal(project.mat, 'zigzag');
+  });
+});
+
 describe('finding the block types a program uses', () => {
   it('walks nested inputs, shadows and next-blocks', () => {
     const types = usedBlockTypes(blocks);
