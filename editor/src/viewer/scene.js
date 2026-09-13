@@ -51,8 +51,25 @@ export function createScene(canvas) {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
+  /*
+   * The colour behind the robot, following the reader's theme.
+   *
+   * CSS cannot reach a WebGL clear colour, so this is the second half of the
+   * `.scene` rule in viewer.css and has to be changed with it. It listens as
+   * well as reads: someone who switches their system to dark while the view
+   * is open should not be left with the one lit rectangle on the page.
+   */
+  const SCENE_BACKGROUND = { light: '#dfe6ea', dark: '#1b242a' };
+  const darkQuery = globalThis.matchMedia?.('(prefers-color-scheme: dark)');
+
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color('#dfe6ea');
+  const paintBackground = () => {
+    scene.background = new THREE.Color(
+      darkQuery?.matches ? SCENE_BACKGROUND.dark : SCENE_BACKGROUND.light,
+    );
+  };
+  paintBackground();
+  darkQuery?.addEventListener?.('change', paintBackground);
 
   const camera = new THREE.PerspectiveCamera(45, 1, 10, 20000);
   camera.up.set(0, 0, 1); // the simulator's world is z-up

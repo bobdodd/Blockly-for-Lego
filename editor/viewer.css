@@ -24,6 +24,15 @@
   min-height: 0;
 }
 
+/*
+ * The canvas, and the colour behind whatever is drawn on it.
+ *
+ * Two declarations of the same thing that have to agree: this one shows
+ * before three.js has loaded and wherever WebGL is unavailable, and the one
+ * in scene.js is the renderer's own clear colour. CSS cannot reach that, so
+ * scene.js reads the same media query and they are changed together or not
+ * at all.
+ */
 .scene {
   flex: 1;
   min-height: 16rem;
@@ -31,6 +40,12 @@
   border-radius: 4px;
   display: block;
   background: #dfe6ea;
+}
+
+@media (prefers-color-scheme: dark) {
+  .scene {
+    background: #1b242a;
+  }
 }
 
 .pose {

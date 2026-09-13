@@ -760,6 +760,117 @@ button[aria-disabled="true"] {
 }
 
 /* --------------------------------------------------------------------------
+   Dark mode reaches the workspace
+   --------------------------------------------------------------------------
+   Blockly has no dark theme and no opinion about prefers-color-scheme, so
+   until now the page went dark around a workspace that stayed white — a lit
+   slab in the middle of a dark room. Worse than ugly: the toolbox keeps its
+   #ddd background while its category labels inherit our --ink, which in dark
+   mode is near-white. Start, Movement, Motors and the rest were rendering at
+   about 1.1:1. Effectively invisible, and only in dark mode, which is why it
+   survived every check made in the light.
+
+   The blocks themselves are the awkward part. They are mid-dark since the
+   palette was lowered so their white labels could be read, and no dark
+   background separates from them — measured, the best of several was 2.1:1
+   against the closest category, where a component needs 3:1. Lightening them
+   for dark mode would flip their labels to black and give the editor two
+   different palettes to keep in step.
+
+   So the block keeps its colour and gains an edge. #c9d2da is 11.9:1 against
+   the workspace behind it and 3.4:1 against the darkest block it outlines,
+   which is the pair that has to hold. Shadow blocks are excluded: they sit
+   inside other blocks, not on the workspace, and already contrast with what
+   is behind them.
+   -------------------------------------------------------------------------- */
+
+@media (prefers-color-scheme: dark) {
+  .blocklySvg {
+    background-color: #11161a;
+  }
+
+  .blocklyToolbox {
+    background-color: #192126;
+  }
+
+  .blocklyFlyoutBackground {
+    fill: #192126;
+  }
+
+  /* The grid is drawn as <line stroke="#ccc"> inside a <pattern>, which is a
+     presentation attribute, so CSS reaches it. Dim rather than dark: it is
+     orientation, not content. */
+  pattern[id^="blocklyGridPattern"] line {
+    stroke: #33414b;
+  }
+
+  /* The edge that makes a block findable against the workspace. */
+  g.blocklyBlock:not(.blocklyShadow) > .blocklyPath {
+    stroke: #c9d2da;
+    stroke-width: 1px;
+  }
+
+  /* Everything below flips a colour that was chosen against a light surface
+     and is now sitting on a dark one. */
+
+  /* The zoom buttons and trashcan are on the workspace, which is dark now. */
+  .blocklyZoom:focus-visible > .blocklyFocusRing,
+  .blocklyTrash:focus-visible > .blocklyFocusRing {
+    stroke: #ffffff;
+    outline-color: #11161a;
+  }
+
+  /* Used for the flyout's labels and the workspace selection ring, both of
+     which are on dark surfaces here. The block and field rules set their own
+     colours explicitly and are unaffected. */
+  .injectionDiv.injectionDiv.injectionDiv {
+    --blockly-active-node-color: #ffffff;
+    --blockly-active-tree-color: #62c3ea;
+  }
+
+  /* #4b5560 on a dark workspace is 2.4:1; hover has to go the other way. */
+  .blocklyScrollbarBackground:hover + .blocklyScrollbarHandle,
+  .blocklyScrollbarHandle:hover,
+  .blocklyFlyout .blocklyScrollbarBackground:hover + .blocklyScrollbarHandle,
+  .blocklyFlyout .blocklyScrollbarHandle:hover {
+    fill: #a9b6c0;
+  }
+
+  /*
+   * The zoom buttons and trashcan, for the same reason and in the same
+   * direction. Darkening a #888 sprite is what makes it readable on a white
+   * workspace and what buries it on a dark one — at brightness(0.8) they
+   * measured 3.5:1, over the line but not by much. Lightening instead puts
+   * them at 8.5:1, and emphasis has to follow: on a dark workspace more
+   * attention means lighter, not darker.
+   */
+  .blocklyZoom > image,
+  .blocklyZoom > svg > image,
+  .blocklyTrash > image,
+  .blocklyTrashLid {
+    filter: brightness(1.3);
+  }
+
+  .blocklyZoom > image:hover,
+  .blocklyZoom > svg > image:hover,
+  .blocklyZoom:focus > image,
+  .blocklyZoom:focus > svg > image,
+  .blocklyTrash:hover > image,
+  .blocklyTrash:focus > image,
+  .blocklyTrash:hover > .blocklyTrashLid,
+  .blocklyTrash:focus > .blocklyTrashLid,
+  .blocklyTrash.blocklyTrashFull > image,
+  .blocklyTrash.blocklyTrashFull > .blocklyTrashLid {
+    filter: brightness(1.7);
+  }
+
+  .blocklyZoom > image:active,
+  .blocklyZoom > svg > image:active {
+    filter: brightness(2);
+  }
+}
+
+/* --------------------------------------------------------------------------
    More contrast, when the system asks for it
    --------------------------------------------------------------------------
    Last in the file on purpose: these override element rules defined above,

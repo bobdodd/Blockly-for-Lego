@@ -341,3 +341,108 @@ describe('the focus ring is two bands, and stands off what it encloses', () => {
     );
   });
 });
+
+describe('dark mode reaches the workspace', () => {
+  const css = read('style.css');
+
+  /**
+   * Every dark-mode block in the file, joined.
+   *
+   * There is more than one — the palette near the top and the workspace lower
+   * down — so taking the first is how this test came to assert nothing about
+   * the thing it names.
+   */
+  const darkBlock = () => {
+    const bare = css.replace(/\/\*[\s\S]*?\*\//g, '');
+    const parts = [];
+    let from = 0;
+    for (;;) {
+      const at = bare.indexOf('@media (prefers-color-scheme: dark)', from);
+      if (at < 0) break;
+      let depth = 0, i = bare.indexOf('{', at);
+      const start = i;
+      do { if (bare[i] === '{') depth++; else if (bare[i] === '}') depth--; i++; } while (depth > 0);
+      parts.push(bare.slice(start, i));
+      from = i;
+    }
+    assert.ok(parts.length > 0, 'there should be a dark-mode block');
+    return parts.join('\n');
+  };
+
+  it('because Blockly has no dark theme and no opinion about the media query', () => {
+    // The page used to go dark around a workspace that stayed white.
+    const dark = darkBlock();
+    for (const surface of ['.blocklySvg', '.blocklyToolbox', '.blocklyFlyoutBackground']) {
+      assert.ok(dark.includes(surface), `${surface} should follow the theme`);
+    }
+  });
+
+  it('and the toolbox goes dark with the label colour it inherits', () => {
+    // The bug this fixes: the toolbox kept Blockly's #ddd while its labels
+    // inherited our --ink, which in dark mode is near-white. The category
+    // names rendered at about 1.1:1 — invisible, and only in dark mode.
+    const dark = darkBlock();
+    const toolbox = dark.match(/\.blocklyToolbox\s*\{[^}]*background-color:\s*(#[0-9a-fA-F]{3,6})/);
+    assert.ok(toolbox, 'the toolbox needs a dark background');
+
+    // From inside the dark blocks: matching --ink across the whole file finds
+    // the light one first and compares two dark colours, which passes for the
+    // wrong reason and fails for a worse one.
+    const ink = darkBlock().match(/--ink:\s*(#[0-9a-fA-F]{3,6})/);
+    assert.ok(ink, 'could not find the dark --ink');
+    const ratio = contrast(parse(ink[1]), parse(toolbox[1]));
+    assert.ok(ratio >= 4.5, `toolbox labels would be ${ratio.toFixed(2)}:1`);
+  });
+
+  it('gives blocks an edge, because no dark background separates from them', () => {
+    // Measured: the best of several dark backgrounds was 2.1:1 against the
+    // closest category, where a component needs 3:1. The edge has to clear
+    // 3:1 against the workspace behind it AND the block it outlines — one
+    // without the other is a line you cannot see on one side of itself.
+    const dark = darkBlock();
+    const workspace = dark.match(/\.blocklySvg\s*\{[^}]*background-color:\s*(#[0-9a-fA-F]{3,6})/);
+    const edge = dark.match(/blocklyBlock:not\(\.blocklyShadow\)[^{]*\{[^}]*stroke:\s*(#[0-9a-fA-F]{3,6})/);
+    assert.ok(workspace && edge, 'need both a dark workspace and a block edge');
+
+    const onWorkspace = contrast(parse(edge[1]), parse(workspace[1]));
+    assert.ok(onWorkspace >= MINIMUM, `edge on workspace: ${onWorkspace.toFixed(2)}:1`);
+
+    for (const colour of (() => {
+      const hues = [];
+      const walk = (n) => { if (!n || typeof n !== 'object') return;
+        if (n.colour !== undefined) hues.push(Number(n.colour));
+        for (const c of n.contents ?? []) walk(c); };
+      walk(toolbox);
+      return hues.map((h) => Blockly.utils.colour.hueToHex(h));
+    })()) {
+      const onBlock = contrast(parse(edge[1]), parse(colour));
+      assert.ok(onBlock >= MINIMUM, `edge on ${colour}: ${onBlock.toFixed(2)}:1`);
+    }
+  });
+
+  it('and the 3D view agrees with itself in both places it is declared', () => {
+    // CSS cannot reach a WebGL clear colour, so the canvas background is
+    // written twice: once in viewer.css for before three.js loads and where
+    // WebGL is unavailable, once in scene.js for the renderer. Two
+    // declarations of one colour drift unless something checks.
+    const viewer = read('viewer.css').replace(/\/\*[\s\S]*?\*\//g, '');
+    const scene = read('src/viewer/scene.js');
+
+    const cssDark = viewer.match(/@media \(prefers-color-scheme: dark\)\s*\{[^}]*\.scene\s*\{[^}]*background:\s*(#[0-9a-fA-F]{3,6})/);
+    const jsDark = scene.match(/dark:\s*'(#[0-9a-fA-F]{3,6})'/);
+    assert.ok(cssDark && jsDark, 'both halves of the scene background must exist');
+    assert.equal(cssDark[1].toLowerCase(), jsDark[1].toLowerCase(),
+      'the canvas and the renderer disagree about the dark background');
+
+    const cssLight = viewer.match(/\.scene\s*\{[^}]*background:\s*(#[0-9a-fA-F]{3,6})/);
+    const jsLight = scene.match(/light:\s*'(#[0-9a-fA-F]{3,6})'/);
+    assert.equal(cssLight[1].toLowerCase(), jsLight[1].toLowerCase(),
+      'and they disagree about the light one');
+  });
+
+  it('and follows a change of preference while the view is open', () => {
+    // Somebody switching their system to dark should not be left with the one
+    // lit rectangle on the page.
+    assert.match(read('src/viewer/scene.js'), /addEventListener\?\.\('change'/);
+  });
+});
