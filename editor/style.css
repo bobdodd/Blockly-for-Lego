@@ -478,6 +478,60 @@ button[aria-disabled="true"] {
 #commentary-voice { max-width: 18rem; }
 
 /* --------------------------------------------------------------------------
+   Blockly's workspace controls
+   --------------------------------------------------------------------------
+   The zoom buttons and the trashcan are drawn from a sprite sheet whose icons
+   are #888 — 3.5:1 on the white workspace, which would pass. Blockly then
+   renders them at `opacity: .4`, which mixes them towards the background to
+   about #cfcfcf and 1.6:1. WCAG 1.4.11 asks for 3:1 on a user interface
+   component, and these are the controls a student with low vision most needs
+   to find: they are how the blocks get bigger.
+
+   Darkened with a filter rather than by editing the sprite, because the
+   sprite is copied out of node_modules at build time and anything written
+   into it would be overwritten on the next build.
+
+   Hover and focus go darker still. Blockly's own rules take opacity *up* on
+   hover, from .4 to .8, which is the right direction when low opacity is the
+   resting state; once the resting state is opaque, more emphasis has to mean
+   darker, or hover would wash the icon out.
+
+   These selectors match Blockly's own, so they win on source order alone:
+   Blockly injects its stylesheet at the top of <head> and this file is linked
+   below it. No !important, and nothing here reaches into the workspace's
+   behaviour — only how visible its own controls are.
+   -------------------------------------------------------------------------- */
+
+.blocklyZoom > image,
+.blocklyZoom > svg > image,
+.blocklyTrash > image,
+.blocklyTrashLid {
+  opacity: 1;
+  /* #888 -> about #6d6d6d, 5.2:1 on the workspace */
+  filter: brightness(0.8);
+}
+
+.blocklyZoom > image:hover,
+.blocklyZoom > svg > image:hover,
+.blocklyZoom:focus > image,
+.blocklyZoom:focus > svg > image,
+.blocklyTrash:hover > image,
+.blocklyTrash:focus > image,
+.blocklyTrash:hover > .blocklyTrashLid,
+.blocklyTrash:focus > .blocklyTrashLid,
+.blocklyTrash.blocklyTrashFull > image,
+.blocklyTrash.blocklyTrashFull > .blocklyTrashLid {
+  opacity: 1;
+  filter: brightness(0.55);
+}
+
+.blocklyZoom > image:active,
+.blocklyZoom > svg > image:active {
+  opacity: 1;
+  filter: brightness(0.35);
+}
+
+/* --------------------------------------------------------------------------
    More contrast, when the system asks for it
    --------------------------------------------------------------------------
    Last in the file on purpose: these override element rules defined above,

@@ -1,7 +1,7 @@
 # Bugs in the things we build on
 
-Findings in our dependencies that reach the editor's own pages, and that we
-have decided not to work around here.
+Findings in our dependencies that reach the editor's own pages: mostly ones we
+have decided not to work around, and one we did.
 
 Each one is written up because the alternative is worse: an automated audit of
 the editor reports them, they are not our code, and without a record every
@@ -210,6 +210,47 @@ Tested in Chrome 152 by dispatching real key events, not synthetic ones, and by
 reading `document.activeElement` after each. Not tested with an actual screen
 reader, which is the check that would settle whether the intermediate focus is
 ever announced.
+
+---
+
+## Blockly: the workspace controls fail non-text contrast
+
+**Affects:** Blockly 13.3.0. **Fixed here**, in
+[`style.css`](../editor/style.css) and the theme in
+[`src/app.js`](../editor/src/app.js). Not reported upstream yet.
+
+This one is a real WCAG 1.4.11 failure — 3:1 for a user interface component —
+and it is in Blockly's defaults, so every Blockly page has it:
+
+| Control | Blockly's default | Against | Measured |
+| --- | --- | --- | --- |
+| Workspace scrollbar handle | `fill: #ccc` | white workspace | **1.61:1** |
+| Flyout scrollbar handle | `fill: #bbb` | `#ddd` flyout | **1.41:1** |
+| Zoom in / out / reset | `#888` at `opacity: .4` | white workspace | **2.14:1** |
+| Trashcan | `#888` at `opacity: .4` | white workspace | **2.14:1** |
+
+The sprite's own `#888` is 3.54:1 and would pass. It is the `opacity: .4` that
+mixes it towards the background, to roughly `#cfcfcf`. Measured from rendered
+pixels, not computed from the stylesheet.
+
+We fixed this one rather than recording it, because unlike the others it is
+ours to fix without touching a library internal: `scrollbarColour` is a
+supported theme option, and Blockly injects its stylesheet at the *top* of
+`<head>`, so our own rules win on source order with no `!important` and no
+monkey-patching. The result is 4.6:1 and 3.4:1 for the scrollbars and 5.2:1
+for the icons.
+
+It is worth caring about here more than most places. These are the controls
+that make the blocks bigger — the student who needs them most is the one least
+able to find them.
+
+[`test/contrast.test.js`](../editor/test/contrast.test.js) does the WCAG
+arithmetic rather than matching strings, so lightening any of it fails with the
+ratio in the message. Both guards were watched failing before being put back.
+
+Worth reporting upstream, and arguably more so than the `FieldImage` bug above:
+it affects every Blockly consumer by default, and none of them can see it
+without measuring.
 
 ---
 
