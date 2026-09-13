@@ -277,6 +277,63 @@ a defect. They will come back on every audit.
 | Negative tabindex on an interactive element | The unselected tab in the reference panel. That is the roving-tabindex pattern working. |
 | Label in name mismatch on four checkboxes | They carry no `aria-label` at all and are named by their wrapping `<label>`, so name and visible text are identical. The checker compared the visible text of the `<input>`, which has none. |
 | A floating element obscuring 13 controls | The message rendered with its placeholders empty — "obscures  element(s) at px viewport width". The check misfired; on another page it reported footer links as obscured. |
-| Text spacing restricted | The `.visually-hidden` clip technique, on two elements that are meant to be invisible. |
+| Text spacing restricted (1.4.12) | The `.visually-hidden` clip technique. Its own section below — tested by actually applying the spacing. |
 | Zero tabindex on a non-interactive element; custom widget with no ARIA (5 rules) | The toolbox container. Its own section above: the markup reads wrong, the behaviour is right. |
 | Text contrast cannot be calculated (×208) | Almost all Blockly's SVG text. Ours computes: no text of ours falls below AA in light, dark, or high-contrast dark. |
+
+---
+
+## Ours: "text spacing is restricted" on the visually-hidden elements
+
+**Verdict: a false positive, and the pattern stays as it is.** Reported against
+`#status` and `#reference-heading`, both of which carry `.visually-hidden`.
+
+The checker's rule is that text in a fixed-height container with
+`overflow: hidden` will clip when a reader increases spacing. Our snippet is
+the canonical one, and it does match that shape:
+
+```css
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+```
+
+### Tested rather than argued
+
+WCAG 1.4.12 asks that no content be lost when a reader sets line height 1.5,
+letter spacing 0.12em, word spacing 0.16em and paragraph spacing 2em. Applying
+exactly that to the live page and re-measuring every overflow-hidden container:
+
+```
+BEFORE   horizontal page overflow: 0px
+         clipped: #status v+23 h+493   #reference-heading v+24 h+184
+AFTER    horizontal page overflow: 0px
+         clipped: #status v+23 h+652   #reference-heading v+24 h+234
+REAL regressions (visible content newly clipped): none
+```
+
+The two elements were already clipped before the spacing changed, because being
+clipped is the entire point of them. Nothing visible is lost anywhere on the
+page, and nothing starts overflowing horizontally. 1.4.12 is about content a
+reader can see going missing; these are deliberately not seen, and reach a
+screen reader through the accessibility tree rather than through their box.
+
+### Why we do not "fix" it
+
+`overflow: hidden` turns out to be redundant here — `clip-path: inset(50%)`
+clips painting *and* hit-testing on its own. Tested: with `overflow: visible`
+forced on, the box stays 1×1, nothing becomes hit-testable, and the page still
+does not scroll sideways. So the finding could be silenced by deleting one
+line.
+
+It stays because it is a second lock. If `clip-path` is ever unsupported,
+disabled, or overridden by a user stylesheet, `overflow: hidden` still contains
+the text; without it, a long status message would paint across the page for
+everyone. Trading a real safeguard for a clean report is the wrong way round —
+the checker is wrong here, not the snippet, and this is the pattern the
+a11y-project and Bootstrap both ship.
