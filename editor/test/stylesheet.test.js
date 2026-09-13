@@ -164,3 +164,114 @@ describe('more contrast when the system asks for it', () => {
     );
   });
 });
+
+describe('the cursor says what can be pressed', () => {
+  const css = strip(read('style.css'));
+
+  it('on the workspace controls Blockly leaves as an arrow', () => {
+    // No success criterion asks for cursor: pointer. At high magnification the
+    // pointer is doing work it does not do at 100% — the viewport holds a few
+    // controls at a time and hover is how you confirm you are on one.
+    const rule = css.match(/\.blocklyZoom,[\s\S]*?\{([^}]*)\}/);
+    assert.ok(rule, 'no cursor rule for the workspace controls');
+    assert.match(rule[1], /cursor:\s*pointer/);
+
+    const selectors = css.slice(css.indexOf('.blocklyZoom,'), css.indexOf('{', css.indexOf('.blocklyZoom,')));
+    for (const needed of ['.blocklyZoom', '.blocklyTrash', '.blocklyDropdownField']) {
+      assert.ok(selectors.includes(needed), `${needed} should get a pointer`);
+    }
+  });
+
+  it('but leaves the text fields as an I-beam', () => {
+    // An I-beam over a control whose job is editing text is a better answer
+    // than a pointer, not a worse one.
+    const selectors = css.slice(css.indexOf('.blocklyZoom,'), css.indexOf('{', css.indexOf('.blocklyZoom,')));
+    assert.ok(
+      !selectors.includes('blocklyInputField'),
+      'the text fields should keep Blockly\'s cursor: text',
+    );
+  });
+
+  it('on the toolbox categories, which open the flyout', () => {
+    const rule = css.match(/\.blocklyToolbox:not[\s\S]*?\{([^}]*)\}/);
+    assert.ok(rule, 'no cursor rule for the toolbox categories');
+    assert.match(rule[1], /cursor:\s*pointer/);
+  });
+
+  it('but stands down while a block is being dragged over the toolbox', () => {
+    // Dragging a block over the toolbox puts blocklyToolboxDelete or
+    // blocklyToolboxGrab on the toolbox div, and the categories inherit that
+    // cursor — a bin or a closed hand, which answers "what happens if I let
+    // go here". Claiming the cursor unconditionally would replace that answer
+    // with a pointer. Guarded rather than restated, so nothing here repeats
+    // Blockly's cursor asset paths.
+    const selectors = css.slice(css.indexOf('.blocklyToolbox:not'),
+      css.indexOf('{', css.indexOf('.blocklyToolbox:not')));
+    assert.match(selectors, /:not\(\.blocklyToolboxDelete\)/);
+    assert.match(selectors, /:not\(\.blocklyToolboxGrab\)/);
+    assert.ok(
+      !/handdelete|\.cur/.test(css),
+      'do not copy Blockly\'s cursor asset paths; let its own rule win instead',
+    );
+  });
+
+  it('and closes the grab-state gap that exposes', () => {
+    // Blockly gives the label a delete cursor for the delete state but nothing
+    // for the grab state, so it falls back to its resting rule. Harmless while
+    // that was also an arrow; now that it is a pointer, the label would flick
+    // to an arrow mid-drag while the row around it said grabbing.
+    const at = css.indexOf('.blocklyToolboxGrab .blocklyToolboxCategoryLabel');
+    assert.ok(at > 0, 'the grab state needs to reach the label too');
+    assert.match(css.slice(at, css.indexOf('}', at)), /cursor:\s*grabbing/);
+  });
+
+  it('and a drag still says it is a drag', () => {
+    // What would have gone wrong: ours wins on source order, so without
+    // restating Blockly\'s dragging rule *after* it, a field being dragged
+    // would show a pointer the whole way across the workspace.
+    const pointerAt = css.indexOf('.blocklyZoom,');
+    const draggingAt = css.indexOf('.blocklyDragging .blocklyField');
+
+    assert.ok(draggingAt > 0, 'the dragging cursor must be restated');
+    assert.ok(
+      draggingAt > pointerAt,
+      'the dragging rule has to come after the pointer rule to win',
+    );
+    const rule = css.slice(draggingAt, css.indexOf('}', draggingAt));
+    assert.match(rule, /cursor:\s*grabbing/);
+  });
+});
+
+describe('the skip link is hidden the same way everything else is', () => {
+  const css = strip(read('style.css'));
+
+  it('and not with the older left: -9999px', () => {
+    // It was the only thing on the page genuinely outside its container —
+    // 9999px outside it. Nothing behind it can be worked out from there, so a
+    // contrast checker reports it as unverifiable and an overlap checker
+    // reports a 9999px box that overlaps everything. Both were right, and
+    // neither told us anything.
+    assert.ok(!/-9999px/.test(css), 'the off-screen trick should be gone');
+  });
+
+  it('by sharing the visually-hidden rule rather than repeating it', () => {
+    // Two techniques for one job drift apart. One selector cannot.
+    const rule = css.match(/\.visually-hidden,[\s\S]*?\{([^}]*)\}/);
+    assert.ok(rule, '.visually-hidden should carry the skip link too');
+    const selectors = css.slice(css.indexOf('.visually-hidden,'),
+      css.indexOf('{', css.indexOf('.visually-hidden,')));
+    assert.match(selectors, /\.skip-link:not\(:focus\)/);
+    assert.match(rule[1], /clip-path:\s*inset\(50%\)/);
+  });
+
+  it('and is an ordinary visible chip once focused', () => {
+    // The whole point of a skip link is that it appears. Hiding it with
+    // :not(:focus) rather than a blanket rule is what keeps that true.
+    const at = css.indexOf('.skip-link:focus');
+    assert.ok(at > 0, 'there must be a focused state');
+    const rule = css.slice(at, css.indexOf('}', at));
+    assert.match(rule, /background:/);
+    assert.match(rule, /top:/);
+    assert.match(rule, /left:/);
+  });
+});

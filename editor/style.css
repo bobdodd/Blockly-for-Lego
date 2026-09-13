@@ -77,7 +77,22 @@ body {
   outline-offset: 2px;
 }
 
-.visually-hidden {
+/*
+ * One way of hiding something, used twice.
+ *
+ * The skip link is in this list rather than keeping its own `left: -9999px`,
+ * which is the older trick and the only thing on the page that genuinely sat
+ * outside its container — 9999px outside it. Nothing behind it can be worked
+ * out from there, so a contrast checker reports the link as unverifiable, and
+ * an overlap checker reports a 9999px box that overlaps everything. Both were
+ * right, and neither told us anything, because the link is not there to be
+ * seen until it is focused.
+ *
+ * Sharing the selector rather than repeating the declarations keeps it that
+ * way: one technique in this file, not two that drift.
+ */
+.visually-hidden,
+.skip-link:not(:focus) {
   position: absolute;
   width: 1px; height: 1px;
   margin: -1px; padding: 0;
@@ -86,17 +101,15 @@ body {
   white-space: nowrap;
 }
 
-.skip-link {
+/* And on focus it is an ordinary visible chip, in the top corner. */
+.skip-link:focus {
   position: absolute;
-  left: -9999px;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 100;
   background: var(--accent);
   color: var(--accent-ink);
   padding: 0.6rem 1rem;
-  z-index: 100;
-}
-.skip-link:focus {
-  left: 0.5rem;
-  top: 0.5rem;
 }
 
 .app-header { padding: 0.75rem 1rem 0; }
@@ -601,6 +614,66 @@ button[aria-disabled="true"] {
   stroke: #111111;
   stroke-width: 3px;
   filter: drop-shadow(0 0 1.5px #ffffff) drop-shadow(0 0 1.5px #ffffff);
+}
+
+/*
+ * A pointer on the things that can be pressed.
+ *
+ * Blockly leaves the zoom buttons, the trashcan and the dropdown fields on the
+ * default arrow, so the cursor says nothing about whether the thing under it
+ * does anything. There is no success criterion for `cursor: pointer` — but at
+ * high magnification the pointer is doing work it does not do at 100%: the
+ * viewport holds a few controls at a time, hover is how you confirm you have
+ * landed on one, and an arrow that never changes withholds that confirmation
+ * from exactly the people who most need it.
+ *
+ * The text fields are deliberately left alone. Blockly gives them
+ * `cursor: text`, and an I-beam over a control whose job is editing `hello` is
+ * a better answer than a pointer, not a worse one.
+ *
+ * The dragging rules are restated below because ours would otherwise win on
+ * source order and leave a field showing a pointer while it is being dragged.
+ */
+.blocklyZoom,
+.blocklyTrash,
+.blocklyField.blocklyDropdownField {
+  cursor: pointer;
+}
+
+/* Blockly's own, re-asserted after the rule above so a drag still says so. */
+.blocklyDragging .blocklyField.blocklyDropdownField,
+.blocklyDragging .blocklyZoom,
+.blocklyDragging .blocklyTrash {
+  cursor: grabbing;
+}
+
+/*
+ * The toolbox categories, which open the flyout when you press them.
+ *
+ * Guarded rather than restated. Dragging a block over the toolbox puts
+ * `blocklyToolboxDelete` or `blocklyToolboxGrab` on the toolbox div, and the
+ * categories inherit that cursor — a bin or a closed hand, which is the answer
+ * to "what happens if I let go here". Claiming the cursor unconditionally
+ * would replace that answer with a pointer, so instead this rule stops
+ * matching while either state is on and Blockly's own takes over untouched.
+ * That way nothing here repeats Blockly's cursor asset paths, which would rot
+ * the day it renames one.
+ */
+.blocklyToolbox:not(.blocklyToolboxDelete):not(.blocklyToolboxGrab) .blocklyToolboxCategoryContainer,
+.blocklyToolbox:not(.blocklyToolboxDelete):not(.blocklyToolboxGrab) .blocklyToolboxCategoryLabel {
+  cursor: pointer;
+}
+
+/*
+ * One gap of Blockly's that the change above would otherwise expose. It gives
+ * the label a delete cursor while a block is being dragged for deletion, but
+ * nothing for the grab state, so the label falls back to its resting rule.
+ * That was invisible while the resting cursor was also an arrow. Now that it
+ * is a pointer, the label would flick to an arrow mid-drag while the row
+ * around it said grabbing — which reads as a bug rather than as an answer.
+ */
+.blocklyToolboxGrab .blocklyToolboxCategoryLabel {
+  cursor: grabbing;
 }
 
 /* Blockly's tooltip is `font: 9pt sans-serif` — 12px, the smallest text it
