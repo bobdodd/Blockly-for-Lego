@@ -150,6 +150,69 @@ filing.
 
 ---
 
+## Blockly: the toolbox's tab stop is a roleless container
+
+**Affects:** Blockly 13.3.0. **Verdict: the markup reads wrong; the behaviour is
+right.** Not reported upstream, and not worked around here.
+
+Five separate audit rules point at one element:
+
+```html
+<div layout="v" class="blocklyToolbox" dir="LTR" id="blockly-6"
+     style="display: block; left: 0px; height: 100%;" tabindex="0">
+  <div class="blocklyToolboxCategoryGroup" role="tree">
+    <div class="blocklyToolboxCategoryContainer" role="treeitem"
+         tabindex="-1" aria-level="1" aria-labelledby="blockly-7.label">
+```
+
+A container with `tabindex="0"`, no role and no accessible name, while the
+element that actually carries `role="tree"` has no tabindex at all and the
+`treeitem`s are all at `tabindex="-1"`. Read as markup that is backwards: the
+tab stop should be the tree, or the active item, and not a wrapper with no
+semantics. Chrome's accessibility tree agrees that the wrapper is nothing
+much — `role: generic`, `name: ""`, `focusable: true`.
+
+**But focus never rests there.** Blockly's focus manager takes the focus event
+on the container and immediately moves it to a category. Driving a real
+keyboard through the live page:
+
+```
+Tab 11: button#connect-hub                     name="Connect to a hub"
+Tab 12: div#blockly-7  role=treeitem           name="Start"       <- not the container
+  Down 1: div#blockly-8  role=treeitem         name="Movement"
+  Down 2: div#blockly-9  role=treeitem         name="Motors"
+  Down 3: div#blockly-a  role=treeitem         name="Sensors"
+  Up   1: div#blockly-9  role=treeitem         name="Motors"
+Tab 13: path#blockly-48 role=option            name="run motor, A, for, 90, degrees…"
+```
+
+Backwards is the same — the interesting direction, because delegation like this
+usually breaks going the other way. Shift-Tabbing out of the workspace lands on
+`treeitem "Start"`, not on the container. So: one tab stop for the toolbox, a
+named item under focus, arrows moving between categories, Tab continuing into
+the flyout. That is the composite-widget pattern behaving correctly, reached by
+a route that does not look like it.
+
+### Why we leave it
+
+Nothing is broken for a keyboard or a screen reader today, so there is nothing
+to fix for our students, and the container's `tabindex` is not ours to change.
+
+It is worth knowing that the correctness depends on a script, not on markup.
+The container is a trampoline: it is genuinely focused for an instant, and the
+delegation is what makes that invisible. If the focus manager ever fails to run
+— an error during init, or a focus path it does not hook — a keyboard user
+lands on an unnamed generic `<div>` and hears nothing. The ARIA tree pattern
+avoids that by construction, putting `tabindex="0"` on the active `treeitem`
+and roving it, which is most of the way to what Blockly already does.
+
+Tested in Chrome 152 by dispatching real key events, not synthetic ones, and by
+reading `document.activeElement` after each. Not tested with an actual screen
+reader, which is the check that would settle whether the intermediate focus is
+ever announced.
+
+---
+
 ## Findings we checked and dismissed
 
 The same audit reported these against the editor. All were verified against the
@@ -164,4 +227,5 @@ a defect. They will come back on every audit.
 | Label in name mismatch on four checkboxes | They carry no `aria-label` at all and are named by their wrapping `<label>`, so name and visible text are identical. The checker compared the visible text of the `<input>`, which has none. |
 | A floating element obscuring 13 controls | The message rendered with its placeholders empty — "obscures  element(s) at px viewport width". The check misfired; on another page it reported footer links as obscured. |
 | Text spacing restricted | The `.visually-hidden` clip technique, on two elements that are meant to be invisible. |
+| Zero tabindex on a non-interactive element; custom widget with no ARIA (5 rules) | The toolbox container. Its own section above: the markup reads wrong, the behaviour is right. |
 | Text contrast cannot be calculated (×208) | Almost all Blockly's SVG text. Ours computes: no text of ours falls below AA in light, dark, or high-contrast dark. |
