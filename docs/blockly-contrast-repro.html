@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Blockly workspace control contrast</title></head>
+<body>
+<div id="ws" style="height:500px;width:800px"></div>
+<pre id="out">running…</pre>
+
+<script src="https://cdn.jsdelivr.net/npm/blockly@13.3.0/blockly_compressed.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/blockly@13.3.0/blocks_compressed.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/blockly@13.3.0/msg/en.js"></script>
+<script>
+Blockly.setLocale(Blockly.Msg);
+const ws = Blockly.inject('ws', {
+  media: 'https://cdn.jsdelivr.net/npm/blockly@13.3.0/media/',
+  toolbox: { kind: 'categoryToolbox', contents: [
+    { kind: 'category', name: 'Text', contents: [{ kind: 'block', type: 'text' }] } ] },
+  zoom: { controls: true }, trashcan: true, move: { scrollbars: true },
+});
+
+// --- WCAG 2.x relative luminance -------------------------------------------
+const ch = (v) => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; };
+const lum = ([r, g, b]) => 0.2126 * ch(r) + 0.7152 * ch(g) + 0.0722 * ch(b);
+const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m); return (x + 0.05) / (y + 0.05); };
+const rgb = (s) => (s.match(/\d+/g) || []).slice(0, 3).map(Number);
+const over = (fg, bg, a) => fg.map((c, i) => Math.round(a * c + (1 - a) * bg[i]));
+const hex = (p) => '#' + p.map((n) => n.toString(16).padStart(2, '0')).join('');
+
+// The two backgrounds Blockly draws these controls on, read from Blockly itself.
+const WORKSPACE = rgb(getComputedStyle(document.querySelector('.blocklySvg')).backgroundColor);
+const FLYOUT = rgb(getComputedStyle(document.querySelector('.blocklyFlyoutBackground')).fill);
+
+const rows = [];
+const line = (what, colour, bg, note) => {
+  const r = ratio(colour, bg);
+  rows.push(what.padEnd(26) + hex(colour) + ' on ' + hex(bg) + '  ' +
+            r.toFixed(2).padStart(5) + ':1  ' + (r >= 3 ? 'pass' : 'FAIL') + (note ? '   ' + note : ''));
+};
+
+rows.push('workspace background ' + hex(WORKSPACE) + ',  flyout background ' + hex(FLYOUT));
+rows.push('WCAG 1.4.11 requires 3:1 for a user interface component.');
+rows.push('');
+
+for (const el of document.querySelectorAll('.blocklyScrollbarHandle')) {
+  const inFlyout = (el.closest('svg')?.getAttribute('class') || '').includes('Flyout');
+  const cs = getComputedStyle(el);
+  line(inFlyout ? 'flyout scrollbar' : 'workspace scrollbar',
+       rgb(cs.fill), inFlyout ? FLYOUT : WORKSPACE);
+}
+
+// The sprite icons: #888 in the sheet, rendered at opacity .4.
+const zoomImg = document.querySelector('.blocklyZoomIn image');
+const trashImg = document.querySelector('.blocklyTrash > image');
+const SPRITE = [0x88, 0x88, 0x88]; // media/sprites.svg: .trash{fill:#888} .zoom{stroke:#888}
+rows.push('');
+line('sprite colour alone', SPRITE, WORKSPACE, '<- would pass on its own');
+for (const [what, el] of [['zoom button', zoomImg], ['trashcan', trashImg]]) {
+  const a = Number(getComputedStyle(el).opacity);
+  line(what + ' (opacity ' + a + ')', over(SPRITE, WORKSPACE, a), WORKSPACE);
+}
+
+document.getElementById('out').textContent = rows.join('\n');
+</script>
+</body></html>

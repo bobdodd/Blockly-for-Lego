@@ -217,7 +217,7 @@ ever announced.
 
 **Affects:** Blockly 13.3.0. **Fixed here**, in
 [`style.css`](../editor/style.css) and the theme in
-[`src/app.js`](../editor/src/app.js). Not reported upstream yet.
+[`src/app.js`](../editor/src/app.js). Report drafted, not yet filed.
 
 This one is a real WCAG 1.4.11 failure — 3:1 for a user interface component —
 and it is in Blockly's defaults, so every Blockly page has it:
@@ -248,9 +248,19 @@ able to find them.
 arithmetic rather than matching strings, so lightening any of it fails with the
 ratio in the message. Both guards were watched failing before being put back.
 
-Worth reporting upstream, and arguably more so than the `FieldImage` bug above:
-it affects every Blockly consumer by default, and none of them can see it
-without measuring.
+### The report
+
+Drafted in google/blockly's bug-report form:
+[`blockly-contrast-issue.md`](blockly-contrast-issue.md), with a self-contained
+reproduction in [`blockly-contrast-repro.html`](blockly-contrast-repro.html)
+that reads Blockly's own computed styles and does the WCAG arithmetic, so it
+reports whatever version you point it at. **Not yet filed** — put the issue
+number here when it goes up.
+
+Arguably the more important of the two reports on this page. The `FieldImage`
+bug traps a developer who writes alt text; this one ships a failure to every
+Blockly page by default, and no embedder can see it without instrumentation or
+reach it without overriding a stylesheet they do not own.
 
 ---
 
