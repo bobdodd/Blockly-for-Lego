@@ -52,24 +52,33 @@ export function createScene(canvas) {
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
   /*
-   * The colour behind the robot, following the reader's theme.
+   * How the scene answers the reader's theme.
    *
-   * CSS cannot reach a WebGL clear colour, so this is the second half of the
-   * `.scene` rule in viewer.css and has to be changed with it. It listens as
-   * well as reads: someone who switches their system to dark while the view
-   * is open should not be left with the one lit rectangle on the page.
+   * Two things change and one deliberately does not.
+   *
+   * The background changes because CSS cannot reach a WebGL clear colour, so
+   * this is the second half of the `.scene` rule in viewer.css and has to be
+   * kept with it.
+   *
+   * The lights dim, because in dark mode the mat is otherwise a lamp in the
+   * middle of the page — and somebody using dark mode for photophobia turned
+   * it on to avoid exactly that.
+   *
+   * What does not change is the mat. Its colours are not styling: the white
+   * of the surface is WHITE, the number the colour sensor reports when the
+   * robot is over it, and every line and patch is the same. Repainting them
+   * for the theme would make the picture disagree with the program — a
+   * student whose blocks say "drive until the sensor sees white" would watch
+   * a robot crossing a dark mat while the commentary says white. Dimming the
+   * light keeps every colour's identity and every relationship between them:
+   * the same mat, in a dimmer room.
    */
   const SCENE_BACKGROUND = { light: '#dfe6ea', dark: '#1b242a' };
+  const LIGHT_INTENSITY = { light: { sky: 2.0, sun: 2.2 }, dark: { sky: 1.0, sun: 1.1 } };
   const darkQuery = globalThis.matchMedia?.('(prefers-color-scheme: dark)');
+  const theme = () => (darkQuery?.matches ? 'dark' : 'light');
 
   const scene = new THREE.Scene();
-  const paintBackground = () => {
-    scene.background = new THREE.Color(
-      darkQuery?.matches ? SCENE_BACKGROUND.dark : SCENE_BACKGROUND.light,
-    );
-  };
-  paintBackground();
-  darkQuery?.addEventListener?.('change', paintBackground);
 
   const camera = new THREE.PerspectiveCamera(45, 1, 10, 20000);
   camera.up.set(0, 0, 1); // the simulator's world is z-up
@@ -79,9 +88,10 @@ export function createScene(canvas) {
   controls.enableDamping = true;
   controls.maxPolarAngle = Math.PI * 0.49; // stay above the mat
 
-  scene.add(new THREE.HemisphereLight('#ffffff', '#6b7a85', 2.0));
+  const sky = new THREE.HemisphereLight('#ffffff', '#6b7a85', LIGHT_INTENSITY.light.sky);
+  scene.add(sky);
 
-  const sun = new THREE.DirectionalLight('#ffffff', 2.2);
+  const sun = new THREE.DirectionalLight('#ffffff', LIGHT_INTENSITY.light.sun);
   sun.position.set(-800, -600, 1400);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
@@ -92,6 +102,16 @@ export function createScene(canvas) {
   shadow.bottom = -1600;
   shadow.far = 4000;
   scene.add(sun);
+
+  /** Background and lighting together, on load and whenever the theme moves. */
+  const applyTheme = () => {
+    const which = theme();
+    scene.background = new THREE.Color(SCENE_BACKGROUND[which]);
+    sky.intensity = LIGHT_INTENSITY[which].sky;
+    sun.intensity = LIGHT_INTENSITY[which].sun;
+  };
+  applyTheme();
+  darkQuery?.addEventListener?.('change', applyTheme);
 
   const pixelRatio = Math.min(globalThis.devicePixelRatio ?? 1, 2);
 

@@ -445,4 +445,28 @@ describe('dark mode reaches the workspace', () => {
     // lit rectangle on the page.
     assert.match(read('src/viewer/scene.js'), /addEventListener\?\.\('change'/);
   });
+
+  it('dims the lights rather than repainting the mat', () => {
+    // The mat's colours are not styling. Its white is WHITE, the number the
+    // colour sensor reports when the robot is over it, and every line and
+    // patch is the same. Repainting them for the theme would make the picture
+    // disagree with the program — a student whose blocks say "drive until the
+    // sensor sees white" would watch a robot crossing a dark mat while the
+    // commentary says white. Dimming keeps every colour's identity and every
+    // relationship between them.
+    const scene = read('src/viewer/scene.js');
+    const intensity = scene.match(
+      /LIGHT_INTENSITY\s*=\s*\{\s*light:\s*\{\s*sky:\s*([\d.]+),\s*sun:\s*([\d.]+)\s*\},\s*dark:\s*\{\s*sky:\s*([\d.]+),\s*sun:\s*([\d.]+)/,
+    );
+    assert.ok(intensity, 'both themes need a light intensity');
+    const [, lightSky, lightSun, darkSky, darkSun] = intensity.map(Number);
+    assert.ok(darkSky < lightSky && darkSun < lightSun, 'dark mode should be dimmer');
+
+    // and no theme-conditional colour anywhere near the mat's own palette
+    const mat = scene.slice(scene.indexOf('const MAT_COLOURS'), scene.indexOf('}', scene.indexOf('const MAT_COLOURS')));
+    assert.ok(
+      !/dark|prefers-color-scheme/.test(mat),
+      'the sensor colours must not depend on the theme',
+    );
+  });
 });
