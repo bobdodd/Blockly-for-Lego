@@ -242,30 +242,22 @@ let unsaved = false;
 // --------------------------------------------------------------------------
 
 /**
- * Classic, with scrollbars you can see.
+ * Classic, with readable text on the blocks.
  *
- * Blockly draws its scrollbar handles at #ccc, which is 1.6:1 against the
- * white workspace, and #bbb in the flyout, which is 1.4:1 against the grey
- * behind it. A scrollbar is a control, so WCAG 1.4.11 asks for 3:1 — and a
- * control you cannot find is one you cannot aim at, which for a student
- * using a magnifier is the whole difficulty.
- *
- * #6b7681 is 4.6:1 on the workspace and 3.4:1 on the flyout. The flyout is
- * the harder of the two and the one that sets the colour: grey on grey has
- * less room than grey on white.
- *
- * A theme rather than a CSS override because Blockly offers one. Its own
- * stylesheet is injected at the top of <head>, so ours would win anyway —
- * but only until the day it isn't, and `scrollbarColour` is the supported
- * way to say this.
+ * Deliberately carries no componentStyles. The scrollbars need recolouring
+ * too — Blockly draws them at #ccc on the white workspace and #bbb on the
+ * flyout's grey, 1.6:1 and 1.4:1 against the 3:1 a control needs — and
+ * `scrollbarColour` here is the supported way to say so. It is not the one
+ * used, because Blockly applies it by writing `fill:` into the element's
+ * style attribute, and an inline style is the one thing a reader's own
+ * stylesheet cannot override without !important. For a colour whose whole
+ * job is being visible to somebody who may need to change it, that is the
+ * wrong end of the trade, so the scrollbars are coloured from style.css
+ * where an ordinary custom stylesheet beats them.
  */
 const workspaceTheme = Blockly.Theme.defineTheme('spike', {
   name: 'spike',
   base: Blockly.Themes.Classic,
-  componentStyles: {
-    scrollbarColour: '#6b7681',
-    scrollbarOpacity: 1,
-  },
   /*
    * The text on the blocks, at 16px.
    *

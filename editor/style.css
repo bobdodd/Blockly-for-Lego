@@ -608,12 +608,59 @@ button[aria-disabled="true"] {
  * `.geras-renderer.<theme> .blocklySelected > .blocklyPath` without naming a
  * renderer or a theme that a later change would silently rename.
  */
-.injectionDiv .blocklySelected > .blocklyPath.blocklyPath.blocklyPath,
-.injectionDiv .blocklyActiveFocus.blocklyPath.blocklyPath.blocklyPath,
+/*
+ * Which band is the crisp one depends on what it is drawn on.
+ *
+ * The workspace is not one surface. An ordinary block is dark since the
+ * palette was lowered; a shadow block — the `hello` and the `25` that sit
+ * inside other blocks — is pale, and so is a field rect, which is white at
+ * 60% over its block. A ring that suits one is close to invisible on the
+ * other: measured, white reads 5.6:1 on a block and 1.7:1 on a shadow block,
+ * and near-black is the reverse.
+ *
+ * So the crisp band follows the surface and the halo takes the other side.
+ * Both bands exist in every case, which is what stops any of this from being
+ * a single point of failure.
+ */
+.injectionDiv .blocklySelected:not(.blocklyShadow) > .blocklyPath.blocklyPath.blocklyPath,
+.injectionDiv :not(.blocklyShadow) > .blocklyActiveFocus.blocklyPath.blocklyPath.blocklyPath {
+  stroke: #ffffff;
+  stroke-width: 3px;
+  filter: drop-shadow(0 0 1.5px #111111) drop-shadow(0 0 1.5px #111111);
+}
+
+.injectionDiv .blocklySelected.blocklyShadow > .blocklyPath.blocklyPath.blocklyPath,
+.injectionDiv .blocklyShadow > .blocklyActiveFocus.blocklyPath.blocklyPath.blocklyPath,
 .injectionDiv .blocklyActiveFocus.blocklyField > .blocklyFieldRect {
   stroke: #111111;
   stroke-width: 3px;
   filter: drop-shadow(0 0 1.5px #ffffff) drop-shadow(0 0 1.5px #ffffff);
+}
+
+/*
+ * The workspace scrollbars.
+ *
+ * Blockly's are #ccc on the white workspace (1.6:1) and #bbb on the flyout's
+ * grey (1.4:1), against the 3:1 a control needs. This used to go through the
+ * theme's `scrollbarColour`, which works and writes the colour into the
+ * element's style attribute — and an inline style is the one thing a reader's
+ * own stylesheet cannot override without !important.
+ *
+ * The selectors mirror Blockly's exactly, including the odd
+ * `background:hover + handle` pair it uses to catch the whole scrollbar
+ * gutter, so hovering still darkens rather than falling back to the resting
+ * colour.
+ */
+.blocklyScrollbarHandle,
+.blocklyFlyout .blocklyScrollbarHandle {
+  fill: #6b7681;
+}
+
+.blocklyScrollbarBackground:hover + .blocklyScrollbarHandle,
+.blocklyScrollbarHandle:hover,
+.blocklyFlyout .blocklyScrollbarBackground:hover + .blocklyScrollbarHandle,
+.blocklyFlyout .blocklyScrollbarHandle:hover {
+  fill: #4b5560;
 }
 
 /*
@@ -749,5 +796,59 @@ button[aria-disabled="true"] {
 
   :focus-visible {
     outline-width: 4px;
+  }
+
+  /*
+   * The workspace, which otherwise never hears the request.
+   *
+   * prefers-contrast is the only OS-level contrast signal that reaches a
+   * browser on ChromeOS, macOS, iOS or Android — forced-colors answers
+   * Windows and essentially nothing else, so a workspace that responds only
+   * to forced-colors is a workspace that responds to none of the machines
+   * this is used on. Blockly has no opinion about any of it, so the rules
+   * are here.
+   */
+  .blocklyScrollbarHandle,
+  .blocklyFlyout .blocklyScrollbarHandle {
+    fill: #2b3640;
+  }
+
+  /* Blockly writes the category stripe into the element's style attribute, so
+     this is the one place in this file where !important earns its keep: there
+     is no selector that beats an inline declaration without it. */
+  .blocklyToolboxCategory {
+    border-left-color: #12171c !important;
+  }
+
+  /*
+   * Darker blocks still.
+   *
+   * The palette is already darkened for everyone — see setHsvValue in
+   * blockly.js — so this is the extra step for a reader who has asked the
+   * system for more, not the fix for the default. The filter is on the
+   * block's path and not on its group: on the group it would darken the
+   * label along with the block and gain nothing.
+   *
+   * Both focused rules are restated because filter does not accumulate. A
+   * second declaration replaces the first, so without these the ring's halo
+   * would simply vanish exactly where it is needed most.
+   */
+  .blocklyPath {
+    filter: brightness(0.85);
+  }
+
+  .injectionDiv .blocklySelected:not(.blocklyShadow) > .blocklyPath.blocklyPath.blocklyPath,
+  .injectionDiv :not(.blocklyShadow) > .blocklyActiveFocus.blocklyPath.blocklyPath.blocklyPath {
+    filter: brightness(0.85) drop-shadow(0 0 1.5px #111111) drop-shadow(0 0 1.5px #111111);
+  }
+
+  .injectionDiv .blocklySelected.blocklyShadow > .blocklyPath.blocklyPath.blocklyPath,
+  .injectionDiv .blocklyShadow > .blocklyActiveFocus.blocklyPath.blocklyPath.blocklyPath {
+    filter: brightness(0.85) drop-shadow(0 0 1.5px #ffffff) drop-shadow(0 0 1.5px #ffffff);
+  }
+
+  /* A heavier selection and focus ring to go with it. */
+  .injectionDiv.injectionDiv.injectionDiv {
+    --blockly-selection-width: 4px;
   }
 }

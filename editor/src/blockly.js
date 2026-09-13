@@ -37,6 +37,27 @@ const python = interop(PythonNamespace);
 export const pythonGenerator = python.pythonGenerator;
 export const Order = python.Order;
 
+/*
+ * Darker blocks, so the words on them can be read.
+ *
+ * Blockly builds every block colour from a hue plus a fixed saturation and
+ * value, and writes the label on top in white. At its default value of 0.65
+ * that white sits at 2.97:1 on the Sensors green and under 4:1 on three more
+ * of the eight categories — below the 4.5:1 that 16px text needs. The most
+ * read text in the editor, failing on half the palette.
+ *
+ * Lowering the value darkens every category by the same proportion, so the
+ * colours still relate to each other and each block still matches the stripe
+ * on its toolbox category — which a CSS filter over the blocks would not,
+ * since the stripe is drawn from the same hue by a different route. At 0.47
+ * the worst case is 5.27:1, with room to spare rather than a colour sitting
+ * on the line.
+ *
+ * Set here, before any block or category is defined, because the conversion
+ * happens when they are built.
+ */
+Blockly.utils.colour.setHsvValue(0.47);
+
 // Blockly's Python generator indents by two spaces. PEP 8 says four, and the
 // generated program is meant to be read by students moving on to text Python.
 pythonGenerator.INDENT = '    ';

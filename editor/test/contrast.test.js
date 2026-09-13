@@ -65,10 +65,22 @@ describe('the contrast maths agrees with the spec', () => {
 describe('the workspace scrollbars can be seen', () => {
   const app = read('src/app.js');
 
-  it('are set through the theme Blockly offers, not a CSS override', () => {
-    assert.match(app, /Blockly\.Theme\.defineTheme\(/);
-    assert.match(app, /scrollbarColour:/);
-    assert.match(app, /theme: workspaceTheme/, 'the theme must reach inject()');
+  it('are coloured from CSS, not through the theme', () => {
+    // `scrollbarColour` is the supported way to say this and it works — but
+    // Blockly applies it by writing `fill:` into the element's style
+    // attribute, and an inline style is the one thing a reader's own
+    // stylesheet cannot override without !important. For a colour whose whole
+    // job is being visible to somebody who may need to change it, that is the
+    // wrong end of the trade.
+    // Comments stripped: the theme's own comment explains why it is not used,
+    // and naming a thing is not using it.
+    const code = app.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    assert.ok(
+      !/scrollbarColour/.test(code),
+      'the theme would write this inline; colour the scrollbars from style.css',
+    );
+    assert.match(app, /theme: workspaceTheme/, 'the theme is still used for the block font');
+    assert.match(read('style.css'), /\.blocklyScrollbarHandle/);
   });
 
   it('reach 3:1 on the workspace AND on the flyout behind them', () => {
@@ -76,8 +88,11 @@ describe('the workspace scrollbars can be seen', () => {
     // the flyout's grey (1.4:1). The flyout is the harder of the two and the
     // one that decides the colour: grey on grey has less room than grey on
     // white, and a colour chosen against white alone slips through.
-    const found = app.match(/scrollbarColour:\s*'(#[0-9a-fA-F]{3,6})'/);
-    assert.ok(found, 'no scrollbarColour found in the theme');
+    const css = read('style.css').replace(/\/\*[\s\S]*?\*\//g, '');
+    const at = css.indexOf('.blocklyScrollbarHandle,');
+    assert.ok(at > 0, 'no resting rule for the scrollbar handles');
+    const found = css.slice(at, css.indexOf('}', at)).match(/fill:\s*(#[0-9a-fA-F]{3,6})/);
+    assert.ok(found, 'no fill found for the scrollbar handles');
     const colour = parse(found[1]);
 
     for (const [where, background] of [['workspace', WORKSPACE], ['flyout', FLYOUT]]) {
@@ -192,19 +207,38 @@ describe('the keyboard focus ring inside the workspace', () => {
     assert.notEqual(ringColour().toLowerCase(), '#ffcc33');
   });
 
-  it('clears 3:1 on every category colour, not just the ones that are easy', () => {
-    // A colour chosen against the workspace alone passes on white and fails on
-    // a dark block; one chosen against a block fails on white. It has to do
-    // both at once, which is why this walks the whole toolbox rather than
-    // checking a sample.
+  it('clears 3:1 on the light surfaces that actually use it', () => {
+    // --blockly-active-node-color reaches the flyout labels, the workspace
+    // selection ring and the toolbox outline. All of those sit on white or on
+    // the flyout's grey. Blocks no longer use it — they are dark since the
+    // palette was lowered, and have their own rule with the bands the other
+    // way round.
     const ring = parse(ringColour());
+    for (const [what, surface] of [['workspace', '#ffffff'], ['flyout and toolbox', '#dddddd']]) {
+      const ratio = contrast(ring, parse(surface));
+      assert.ok(ratio >= MINIMUM, `${what}: ${ratio.toFixed(2)}:1, needs ${MINIMUM}:1`);
+    }
+  });
+
+  it('and each band clears 3:1 on the surface it is the crisp one for', () => {
+    // Walks the real toolbox rather than a sample: a ring chosen against
+    // one block can be invisible on the next.
+    const WHITE = parse('#ffffff');
+    const DARK = parse(ringColour());
     const failures = [];
 
     for (const colour of categoryColours()) {
-      const ratio = contrast(ring, parse(colour));
-      if (ratio < MINIMUM) failures.push(`${colour} -> ${ratio.toFixed(2)}:1`);
+      const block = parse(colour);
+      // the block itself, where the white band is the crisp one
+      const onBlock = contrast(WHITE, block);
+      if (onBlock < MINIMUM) failures.push(`white on ${colour} -> ${onBlock.toFixed(2)}:1`);
+
+      // a field rect is white at 60% over its block: the dark band's surface
+      const pale = block.map((c) => Math.round(0.6 * 255 + 0.4 * c));
+      const onPale = contrast(DARK, pale);
+      if (onPale < MINIMUM) failures.push(`${ringColour()} on field rect over ${colour} -> ${onPale.toFixed(2)}:1`);
     }
-    assert.deepEqual(failures, [], `the focus ring is invisible on these blocks`);
+    assert.deepEqual(failures, [], 'the focus ring is invisible on these');
   });
 
   it('and on the surfaces Blockly draws that do not change with the theme', () => {
@@ -263,12 +297,20 @@ describe('the focus ring is two bands, and stands off what it encloses', () => {
     assert.match(rule, /transform-box:\s*fill-box/, 'without fill-box the origin is the whole canvas');
   });
 
-  it('gives blocks the light band as a shadow, which follows their shape', () => {
-    // An outline would follow the bounding box and draw a rectangle around a
-    // puzzle piece.
-    const rule = ruleFor('.blocklySelected > .blocklyPath');
-    assert.match(rule, /filter:\s*drop-shadow/);
-    assert.match(rule, /stroke:\s*#111111/);
+  it('puts the crisp band on the side that can be seen', () => {
+    // The workspace is not one surface. An ordinary block is dark; a shadow
+    // block and a field rect are pale. Measured, white reads 5.6:1 on a block
+    // and 1.7:1 on a shadow block, and near-black is the reverse — so the
+    // crisp band follows the surface and the halo takes the other side. An
+    // outline cannot do the halo here: it follows the bounding box and would
+    // draw a rectangle around a puzzle piece.
+    const onBlocks = ruleFor(':not(.blocklyShadow) > .blocklyActiveFocus.blocklyPath');
+    assert.match(onBlocks, /stroke:\s*#ffffff/, 'a dark block needs the white band');
+    assert.match(onBlocks, /drop-shadow\(0 0 [\d.]+px #111111\)/, 'and a dark halo');
+
+    const onPale = ruleFor('.blocklyActiveFocus.blocklyField > .blocklyFieldRect');
+    assert.match(onPale, /stroke:\s*#111111/, 'a pale field rect needs the dark band');
+    assert.match(onPale, /drop-shadow\(0 0 [\d.]+px #ffffff\)/, 'and a light halo');
   });
 
   it("overrides geras's hardcoded selection stroke, not just the focus one", () => {
@@ -277,19 +319,19 @@ describe('the focus ring is two bands, and stands off what it encloses', () => {
     // rule, so it is what actually shows while a block is focused. #fc3 fails
     // 1.4.11 on four of our eight categories.
     const bare = css.replace(/\/\*[\s\S]*?\*\//g, '');
-    assert.match(bare, /\.blocklySelected > \.blocklyPath/,
+    assert.match(bare, /\.blocklySelected[^,{]*> \.blocklyPath/,
       'the selected stroke has to be overridden or the focus colour never shows');
     // and it must out-specify `.geras-renderer.<theme> .blocklySelected > .blocklyPath`,
     // which is four classes. Count only the one selector in the list that
     // targets it — reading the whole comma-separated list would total every
     // class in the rule and always pass.
-    const at = bare.indexOf('.blocklySelected > .blocklyPath');
+    const at = bare.search(/\.blocklySelected[^,{]*> \.blocklyPath/);
     const listStart = bare.lastIndexOf('}', at) + 1;
     const list = bare.slice(listStart, bare.indexOf('{', at));
     const selector = list
       .split(',')
       .map((part) => part.trim())
-      .find((part) => part.includes('.blocklySelected > .blocklyPath'));
+      .find((part) => /\.blocklySelected[^,{]*> \.blocklyPath/.test(part));
 
     assert.ok(selector, 'could not isolate the selector for the selected block');
     const classes = (selector.match(/\./g) || []).length;
