@@ -509,6 +509,100 @@ button[aria-disabled="true"] {
    behaviour — only how visible its own controls are.
    -------------------------------------------------------------------------- */
 
+/* --------------------------------------------------------------------------
+   Blockly's keyboard focus ring
+   --------------------------------------------------------------------------
+   Blockly marks the focused block, field, zoom button and trashcan by
+   stroking them with --blockly-active-node-color, which the geras theme sets
+   to #fc3. Against the white workspace that is 1.51:1, and against the pale
+   field rects on a block it is 1.02:1. WCAG 1.4.11 wants 3:1 for a focus
+   indicator — and this is the indicator for the one navigation mode a blind
+   or low-vision student has no alternative to. A focus ring you cannot see is
+   not a focus ring.
+
+   The ring has to clear 3:1 on every surface it can land on at once, and
+   those span the white workspace, the #ddd flyout, the pale field rects
+   (#bddbd1) and the eight category colours, the darkest of which is #5b67a5.
+   Measured, that leaves no light colour: white itself is only 2.97:1 against
+   the lightest category. A near-black clears all of them — #111 is 3.5:1 on
+   the darkest block and 18.9:1 on the workspace.
+
+   These are literals rather than var(--focus), and that is the dark mode
+   answer rather than an oversight. Blockly's own surfaces do not respond to
+   prefers-color-scheme at all: the workspace stays #fff and the flyout #ddd
+   in both themes — only the page around them changes, and that sits behind
+   the workspace, never behind the ring. A token that flips would be chosen
+   against a backdrop that does not.
+
+   Custom properties, which is Blockly's own mechanism, so nothing here
+   reaches past the API. The tripled class matches the specificity of
+   Blockly's `.geras-renderer.<theme>.injectionDiv` without naming the
+   renderer or the theme, and wins on source order because Blockly injects its
+   stylesheet above ours.
+   -------------------------------------------------------------------------- */
+
+.injectionDiv.injectionDiv.injectionDiv {
+  --blockly-active-node-color: #111111;
+  /* The container outline, on the #ddd toolbox and flyout. Blockly's #1379f6
+     is 3.04:1 there — passing, with nothing left for a rounding error. */
+  --blockly-active-tree-color: #0a5f8a;
+}
+
+/*
+ * Two bands, not one.
+ *
+ * A single dark ring clears 3:1 on every surface here, but only because those
+ * surfaces happen to stay light. One band is a bet that the background will
+ * not change; two is not a bet at all — a dark band and a light band together
+ * cannot both disappear, whatever ends up behind them. It is also what tells
+ * a ring apart from a thicker border at a glance, which is the other half of
+ * the job.
+ *
+ * The zoom buttons and the trashcan own a separate <rect> for this, so theirs
+ * can be pushed off the icon as well: scaled about its own centre rather than
+ * given a fixed inset, because the trashcan's rect is 55x68 and the zoom
+ * buttons' are 40x40 and one number would not suit both. `outline-offset` is
+ * no use — Chrome accepts it on an SVG element and computes it to 0.
+ *
+ * The scale is deliberately modest. Blockly stacks the zoom controls about
+ * 34px apart, so a ring much larger than this starts enclosing its neighbour,
+ * which is worse than a tight ring.
+ */
+.blocklyZoom:focus-visible > .blocklyFocusRing,
+.blocklyTrash:focus-visible > .blocklyFocusRing {
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scale(1.12);
+  stroke: #111111;
+  stroke-width: 2.5px;
+  outline: 2px solid #ffffff;
+}
+
+/*
+ * Blocks and fields get the same two bands, by a different route.
+ *
+ * Their ring is the block's own outline stroke, so there is nothing to push
+ * it away from — a gap would need Blockly to draw a second path, and it draws
+ * one. The light band therefore comes from a drop-shadow, which follows the
+ * block's shape; an outline would follow its bounding box and draw a
+ * rectangle around a puzzle piece.
+ *
+ * The selected rule is here because geras writes `stroke: #fc3` for
+ * `.blocklySelected > .blocklyPath` as a literal, out of reach of the theme,
+ * and at a higher specificity than the focus rule — so it is what actually
+ * shows while a block is focused, and it fails 1.4.11 on four of our eight
+ * categories. Hence the repeated class: enough specificity to beat
+ * `.geras-renderer.<theme> .blocklySelected > .blocklyPath` without naming a
+ * renderer or a theme that a later change would silently rename.
+ */
+.injectionDiv .blocklySelected > .blocklyPath.blocklyPath.blocklyPath,
+.injectionDiv .blocklyActiveFocus.blocklyPath.blocklyPath.blocklyPath,
+.injectionDiv .blocklyActiveFocus.blocklyField > .blocklyFieldRect {
+  stroke: #111111;
+  stroke-width: 3px;
+  filter: drop-shadow(0 0 1.5px #ffffff) drop-shadow(0 0 1.5px #ffffff);
+}
+
 /* Blockly's tooltip is `font: 9pt sans-serif` — 12px, the smallest text it
    draws. Same reason as everything else here: a tooltip explaining a block is
    no use to somebody who has to magnify to read the explanation. */
