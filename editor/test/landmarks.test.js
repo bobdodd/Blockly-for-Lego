@@ -179,6 +179,34 @@ describe('every control has a name', () => {
 
 describe('the picture can be driven without a mouse', () => {
   const scene = read('src/viewer/scene.js');
+  const robotView = read('src/viewer/robot-view.js');
+
+  it('and says so, because choosing a view changes what is worth saying', () => {
+    // Turning the camera is a decision about what to look at, and the next
+    // run describes the scene again so the new point of view is established
+    // before the robot sets off across it. RobotView needs WebGL, so this is
+    // asserted in the source the way the rest of that module is.
+    assert.match(scene, /driveWithKeyboard\(canvas, controls, \{ onHome, onMove \} = \{\}\)/);
+    const handler = scene.slice(scene.indexOf('const onKeyDown'));
+    const body = handler.slice(0, handler.indexOf('\n  };'));
+    assert.ok(body.indexOf('event.preventDefault()') < body.indexOf('onMove?.()'),
+      'reported only for a key that actually moved the camera');
+
+    assert.match(robotView, /onMove: \(\) => \{ this\.#viewChosen = true; \}/,
+      'the keys mark the view as chosen');
+    assert.match(robotView, /resetView\(\) \{\s*this\.#viewChosen = true;/,
+      'and so does putting it back');
+    assert.match(robotView, /if \(Boolean\(value\) !== wasFollowing\) this\.#viewChosen = true;/,
+      'and so does turning following on or off');
+  });
+
+  it('and asking whether it changed clears it', () => {
+    // Once per change, not once for every run after one.
+    const fn = robotView.slice(robotView.indexOf('takeViewChange()'));
+    const body = fn.slice(0, fn.indexOf('\n  }'));
+    assert.match(body, /this\.#viewChosen = false/, 'asking has to clear it');
+    assert.match(body, /return chosen/, 'and still answer truthfully');
+  });
 
   it('so the canvas takes focus', () => {
     for (const [name, markup] of pages) {

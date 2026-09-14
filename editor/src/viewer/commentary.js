@@ -221,7 +221,18 @@ export class Commentary {
     // The mat in full the first time it is seen, and only the robot after
     // that. Hearing the same mat described before every run is the padding
     // that turns a useful brief into something to sit through.
-    const first = scene.world !== this._describedWorld;
+    //
+    // And again when somebody has turned the camera since the last run. What
+    // the mat looks like from here is the thing that changed, and a student
+    // who has just chosen a new view of it should be told what they are now
+    // looking at before the robot sets off across it. Asking clears it, so it
+    // counts once per change rather than for every run after one.
+    //
+    // Only deliberate changes: following the robot moves the camera on its
+    // own, and treating that as a decision would describe the scene before
+    // every run.
+    const viewChosen = Boolean(this.view?.takeViewChange?.());
+    const first = viewChosen || scene.world !== this._describedWorld;
     this._describedWorld = scene.world;
     const { facts } = first ? describeScene(scene) : describeRobot(scene);
 
@@ -374,6 +385,8 @@ export class Commentary {
     }
 
     this._describedWorld = scene.world;
+    // This is that description, so nothing is owed for a view chosen before it.
+    this.view?.takeViewChange?.();
     return this._describe(describeScene(scene).facts, { onDone });
   }
 

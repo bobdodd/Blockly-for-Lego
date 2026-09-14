@@ -61,6 +61,7 @@ export class RobotView {
     // is the "Reset the view" button, so the two agree about where back is.
     this.#releaseKeys = driveWithKeyboard(canvas, this.#view.controls, {
       onHome: () => this.resetView(),
+      onMove: () => { this.#viewChosen = true; },
     });
   }
 
@@ -93,9 +94,26 @@ export class RobotView {
     this.#frame = null;
   }
 
+  /**
+   * Whether somebody has chosen a new view since it was last described.
+   *
+   * Only deliberate changes. Following the robot moves the camera constantly
+   * and on its own, and treating that as a decision would mean describing the
+   * whole scene before every single run.
+   */
+  #viewChosen = false;
+
+  /** Has the view been changed by hand? Asking clears it. */
+  takeViewChange() {
+    const chosen = this.#viewChosen;
+    this.#viewChosen = false;
+    return chosen;
+  }
+
   set follow(value) {
     const wasFollowing = this.following;
     this.following = Boolean(value);
+    if (Boolean(value) !== wasFollowing) this.#viewChosen = true;
     // turning following back on should bring the robot into view now, not
     // drift towards it over the next few seconds
     if (this.following && !wasFollowing) this.resetView();
@@ -103,6 +121,7 @@ export class RobotView {
 
   /** Put the camera back where it can see the robot. */
   resetView() {
+    this.#viewChosen = true;
     const latest = this.#telemetry.latest;
     if (!latest) return;
     this.#view.controls.target.set(latest.pose.x, latest.pose.y, 60);

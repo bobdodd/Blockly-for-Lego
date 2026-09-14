@@ -780,3 +780,105 @@ describe('how the robot is built', () => {
       'today the camera framing is repeated before every run');
   });
 });
+
+/**
+ * Turning the camera changes what is worth saying next.
+ *
+ * The brief before a run describes the robot, not the mat: hearing the table
+ * described before every run is the padding the whole thing is written to
+ * avoid. But a student who has just turned the camera has chosen a new view,
+ * and what the mat looks like from there is precisely what they have not been
+ * told. So the scene is described again, once, before the robot sets off
+ * across it.
+ *
+ * Only for a view somebody chose. Following the robot moves the camera
+ * constantly and on its own; counting that would describe the scene before
+ * every single run, which is where this started.
+ */
+describe('choosing a new view of the mat', () => {
+  /** A view that reports a deliberate camera change, the way RobotView does. */
+  function withChosenView(view) {
+    let chosen = false;
+    view.chooseView = () => { chosen = true; };
+    view.takeViewChange = () => { const was = chosen; chosen = false; return was; };
+    return view;
+  }
+
+  it('describes the scene again at the next Run', async () => {
+    const { commentary, speaker, view, wait } = setup();
+    withChosenView(view);
+
+    commentary.introduce();
+    speaker.said.length = 0;
+    wait(60);
+
+    view.chooseView();
+    const waiting = commentary.beginRun();
+    speaker.finish();
+    await waiting;
+
+    const brief = speaker.said.join(' ');
+    assert.match(brief, /The mat is [\d.]+ metres/,
+      'the mat is laid out again, from the new point of view');
+    assert.match(brief, /looking at the mat from/, 'and the point of view with it');
+  });
+
+  it('but not at the run after that', async () => {
+    // Asking clears it: one description per change, not one for every run
+    // that follows a change.
+    const { commentary, speaker, view, wait } = setup();
+    withChosenView(view);
+
+    commentary.introduce();
+    view.chooseView();
+    wait(60);
+    let waiting = commentary.beginRun();
+    speaker.finish();
+    await waiting;
+    commentary.endRun({});
+    speaker.said.length = 0;
+
+    wait(60);
+    waiting = commentary.beginRun();
+    speaker.finish();
+    await waiting;
+
+    assert.ok(!/The mat is [\d.]+ metres/.test(speaker.said.join(' ')),
+      'the view has not changed again, so the mat is not laid out again');
+  });
+
+  it('and not at all when nobody has touched the camera', async () => {
+    const { commentary, speaker, view, wait } = setup();
+    withChosenView(view);
+
+    commentary.introduce();
+    speaker.said.length = 0;
+    wait(60);
+
+    const waiting = commentary.beginRun();
+    speaker.finish();
+    await waiting;
+
+    assert.ok(!/The mat is [\d.]+ metres/.test(speaker.said.join(' ')),
+      'a run after no change still gets the short brief');
+  });
+
+  it('and a view chosen before the first description is not owed a second', async () => {
+    // introduce() *is* the description of the new view, so nothing is
+    // outstanding once it has run.
+    const { commentary, speaker, view, wait } = setup();
+    withChosenView(view);
+
+    view.chooseView();
+    commentary.introduce();
+    speaker.said.length = 0;
+    wait(60);
+
+    const waiting = commentary.beginRun();
+    speaker.finish();
+    await waiting;
+
+    assert.ok(!/The mat is [\d.]+ metres/.test(speaker.said.join(' ')),
+      'the introduction settled it');
+  });
+});

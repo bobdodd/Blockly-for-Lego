@@ -178,7 +178,7 @@ export function createScene(canvas) {
  * @param {{onHome?: () => void}} [options]
  * @returns {() => void} removes the listener
  */
-export function driveWithKeyboard(canvas, controls, { onHome } = {}) {
+export function driveWithKeyboard(canvas, controls, { onHome, onMove } = {}) {
   // About four degrees a press: fine enough to line a shot up, coarse enough
   // that a quarter turn is a held key rather than a chore.
   const TURN = 0.07;
@@ -213,6 +213,9 @@ export function driveWithKeyboard(canvas, controls, { onHome } = {}) {
     }
     // Only for a key this actually used: anything else is still the page's.
     event.preventDefault();
+    // Somebody has chosen a new view of the mat. What that view is of is the
+    // next thing worth saying; see Commentary.beginRun.
+    onMove?.();
   };
 
   canvas.addEventListener('keydown', onKeyDown);
