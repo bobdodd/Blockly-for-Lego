@@ -30,10 +30,26 @@ const MAX_LOG_ENTRIES = 200;
 /** Event kinds that always get through, however chatty things are. */
 const ALWAYS_ANNOUNCE = new Set(['console', 'error', 'program']);
 
+/**
+ * Roughly how long a screen reader takes to read something.
+ *
+ * An estimate and nothing more — there is no signal to wait for; a screen
+ * reader tells a page nothing about what it is saying or when it has
+ * finished. Used to decide when the page has stopped talking, so the robot
+ * view can start without speaking over it.
+ *
+ * @param {string} text
+ * @returns {number} milliseconds
+ */
+export function readingTime(text) {
+  return Math.min(12000, 900 + String(text ?? '').length * 55);
+}
+
 export class Announcer {
   #log;
   #status;
   #quietMode = false;
+  #quietAt = 0;
 
   /**
    * @param {{log: HTMLElement, status: HTMLElement}} regions
@@ -63,7 +79,19 @@ export class Announcer {
   status(message) {
     this.#status.textContent = message;
     this.#append(message, 'status');
+    this.#quietAt = Date.now() + readingTime(message);
     this.onStatus?.(message);
+  }
+
+  /**
+   * Roughly when the page expects to have finished being read aloud.
+   *
+   * There is nothing exact available here, and there cannot be. It is enough
+   * to keep the robot view from starting a long description over the top of
+   * the page's own announcements — see the scene introduction in app.js.
+   */
+  get quietAt() {
+    return this.#quietAt;
   }
 
   /** Something the robot did. Announced politely, in order. */
@@ -88,10 +116,23 @@ export class Announcer {
     const entry = document.createElement('li');
     entry.className = `entry entry-${kind}`;
     entry.textContent = message;
-    if (silent) {
-      // present for a sighted reader and for the transcript, but not announced
+
+    // Present for a sighted reader and for the transcript, but not announced.
+    //
+    // `data-quiet` alone never did this. Nothing read the attribute — no CSS,
+    // no ARIA — so a "quiet" entry was still a child added to a live log and
+    // was still read out. `aria-hidden` is what actually keeps it out of the
+    // announcement, and textContent still carries it into the transcript.
+    //
+    // A status is the other case. It is already announced by #status, which
+    // is assertive because it changes what the student can do next; adding it
+    // to the log as well had the screen reader read every one of them twice,
+    // which doubles how long the page is talking.
+    if (silent || kind === 'status') {
       entry.setAttribute('data-quiet', 'true');
+      entry.setAttribute('aria-hidden', 'true');
     }
+
     this.#log.append(entry);
 
     while (this.#log.children.length > MAX_LOG_ENTRIES) {

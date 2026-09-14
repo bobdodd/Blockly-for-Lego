@@ -81,7 +81,13 @@
           What the highlight is pointing at. It belongs beside the picture it
           annotates, not in the panel of words.
         -->
-        <p id="focus-label" class="focus-label" role="status" aria-live="polite"></p>
+        <!-- A caption on the picture, not an announcement: it says which part of
+                 the robot the camera has framed itself on, which changes on every
+                 telemetry event and never because the student asked for it. As a
+                 live region it announced "Showing: the whole robot" five times in
+                 two seconds, over the commentary describing what actually
+                 happened. -->
+            <p id="focus-label" class="focus-label"></p>
       </main>
 
       <aside class="commentary-panel" aria-labelledby="commentary-heading">

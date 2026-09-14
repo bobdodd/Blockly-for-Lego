@@ -607,7 +607,12 @@ describe('a new thing to say stops the old one', () => {
     // There is one synthesised voice on this page and it belongs to the robot
     // view. Everything else is a live region, which is the screen reader's to
     // read and the student's to interrupt in the way they already know.
-    assert.match(app, /function silence\(\) \{\s*speaker\.stop\(\);\s*\}/);
+    const body = app.slice(app.indexOf('function silence()'));
+    assert.match(body.slice(0, body.indexOf('\n}')), /speaker\.stop\(\)/);
+
+    // And a description that has not started yet is still about to be said.
+    assert.match(body.slice(0, body.indexOf('\n}')), /cancelPendingIntroduction\(\)/,
+      'silencing must reach the mat description waiting to begin');
   });
 
   it('runs after the guards, so "connect first" is still heard', () => {
@@ -653,3 +658,4 @@ describe('a new thing to say stops the old one', () => {
     }
   });
 });
+

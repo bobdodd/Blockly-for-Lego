@@ -432,6 +432,43 @@ function explainBusy() {
 // connection
 // --------------------------------------------------------------------------
 
+/** A mat description waiting for the page to stop talking. */
+let pendingIntroduction = null;
+
+/**
+ * Describe the mat once the page has finished announcing the connection.
+ *
+ * There is no signal for "the screen reader has finished" — a screen reader
+ * tells a page nothing about what it is saying — so this waits on the
+ * Announcer's own estimate of how long its last status takes to read, and
+ * re-checks, because more statuses arrive while it waits ("Unpacking the
+ * simulator", then "Starting the robot", then "Connected to...").
+ *
+ * Cancelled rather than queued if the student gets there first: pressing Run,
+ * or asking for the scene, or disconnecting, all make an introduction that
+ * has not happened yet the wrong thing to say.
+ */
+function introduceWhenThePageIsQuiet(hello) {
+  cancelPendingIntroduction();
+
+  const tryIt = () => {
+    const wait = announcer.quietAt - Date.now();
+    if (wait > 0) {
+      pendingIntroduction = window.setTimeout(tryIt, wait);
+      return;
+    }
+    pendingIntroduction = null;
+    commentary?.handleMessage(hello);
+  };
+  tryIt();
+}
+
+function cancelPendingIntroduction() {
+  if (pendingIntroduction === null) return;
+  window.clearTimeout(pendingIntroduction);
+  pendingIntroduction = null;
+}
+
 async function connect(transport, description, { quiet = false } = {}) {
   if (client) await disconnect();
 
@@ -466,12 +503,25 @@ async function connect(transport, description, { quiet = false } = {}) {
       // ever been opened — a student who never looks at the picture still
       // needs to hear what the robot did
       sceneSource.handleMessage(payload);
-      commentary?.handleMessage(payload);
+
+      // The mat arrives in the middle of connecting, and describing it is the
+      // longest thing this app says. Said the moment it arrives, it runs
+      // underneath the page still announcing "Unpacking the simulator",
+      // "Starting the robot", "Connected" — measured at 113ms between the
+      // description starting and the page interrupting the screen reader
+      // again, which is two voices at once and exactly what it sounds like.
+      //
+      // So the mat waits for the page to finish. Everything else is passed
+      // straight through: a beat about what the robot just did is no use
+      // late.
+      if (payload.type === 'hello') introduceWhenThePageIsQuiet(payload);
+      else commentary?.handleMessage(payload);
       // And on to a robot view in its own window, if one is open.
       relay.send(payload);
     };
   }
   transport.onClose = () => {
+    cancelPendingIntroduction();
     announcer.status(`Disconnected from ${description}.`);
     setConnected(false);
     lastWorldMessage = null;
@@ -814,6 +864,9 @@ function setRunning(running) {
  * sentence with "4 steps skipped".
  */
 function silence() {
+  // A mat description that has not started yet is still something about to
+  // be said. Silencing has to reach it, or it arrives moments later.
+  cancelPendingIntroduction();
   speaker.stop();
 }
 
