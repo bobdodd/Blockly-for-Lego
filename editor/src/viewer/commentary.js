@@ -107,6 +107,8 @@ export class Commentary {
     this._held = 0;
     /** The mat last described in full. It does not change between runs. */
     this._describedWorld = null;
+    /** How the robot is built, last said. It does not change between runs either. */
+    this._describedBuild = null;
   }
 
   /**
@@ -116,7 +118,7 @@ export class Commentary {
    * worth saying — which is the desirable outcome when nothing has changed.
    */
   _describe(facts, { onDone } = {}) {
-    const worth = this.recent.filter(facts);
+    const worth = this.recent.filter(this._withoutRepeatedBuild(facts));
     this.recent.note(facts);
     if (worth.length === 0) {
       onDone?.();
@@ -125,6 +127,35 @@ export class Commentary {
     const text = joinFacts(worth);
     this.speaker.announce(text, onDone ? { onDone } : undefined);
     return text;
+  }
+
+  /**
+   * Drop what is true of the robot rather than of this moment.
+   *
+   * How the robot is built -- its wheels, the width of its axle -- reads the
+   * same on the twentieth run as on the first. The mat is said once and then
+   * left alone, and this is the same thing for the robot.
+   *
+   * RecentlySaid could not do it. That forgets after fifteen seconds, which
+   * is far less than the time a student spends arranging blocks between two
+   * runs, so the build came round again on nearly every Run -- and it is the
+   * one fact in the brief that can never have changed since the last one.
+   *
+   * Still said again if it *does* change, which is what a different robot, or
+   * the same robot rebuilt, looks like from here.
+   */
+  _withoutRepeatedBuild(facts) {
+    const worth = [];
+    for (const fact of facts) {
+      if (fact.kind !== 'build') {
+        worth.push(fact);
+        continue;
+      }
+      if (fact.text === this._describedBuild) continue;
+      this._describedBuild = fact.text;
+      worth.push(fact);
+    }
+    return worth;
   }
 
   start() {

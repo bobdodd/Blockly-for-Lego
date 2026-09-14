@@ -659,3 +659,124 @@ describe('turning the commentary off', () => {
     assert.deepEqual(speaker.said, [], 'the first tick after switching on is a fresh start');
   });
 });
+
+/**
+ * How the robot is built is said once, not before every run.
+ *
+ * What went wrong: the brief before a run describes the robot, and that
+ * description includes how it is built — "It has 56 millimetre wheels, 11
+ * centimetres apart." That sentence is the same on the twentieth run as on
+ * the first; the robot has not been rebuilt in between.
+ *
+ * RecentlySaid did not stop it. That forgets after fifteen seconds, and
+ * fifteen seconds is less than the time a student spends arranging blocks
+ * between two runs — so it came round again on nearly every Run, in front of
+ * the thing they actually pressed the button to find out.
+ *
+ * The mat has been handled this way from the start: said in full once, and
+ * left alone after that. This is the same rule for the robot.
+ */
+describe('how the robot is built', () => {
+  const CHASSIS = { wheelDiameterMm: 56, axleTrackMm: 112 };
+
+  /** The same view, with a robot that has wheels and an axle. */
+  function withChassis(view, chassis = CHASSIS) {
+    const scene = view.scene.bind(view);
+    view.scene = () => ({ ...scene(), chassis });
+    return view;
+  }
+
+  it('is in the description of the scene', () => {
+    const { commentary, speaker, view } = setup();
+    withChassis(view);
+
+    commentary.introduce();
+    assert.match(speaker.said.join(' '), /millimetre wheels/,
+      'the first description says how it is built');
+  });
+
+  it('is not said again before a run, however long the wait', async () => {
+    const { commentary, speaker, view, wait } = setup();
+    withChassis(view);
+
+    commentary.introduce();
+    speaker.said.length = 0;
+
+    // Long past the fifteen seconds RecentlySaid remembers: a student reading
+    // their blocks, which is the case this kept failing.
+    wait(60);
+    const waiting = commentary.beginRun();
+    speaker.finish();
+    await waiting;
+
+    const brief = speaker.said.join(' ');
+    assert.ok(!/millimetre wheels/.test(brief),
+      `the build must not come round again: ${brief}`);
+    assert.match(brief, /Starting\./,
+      'but the run still says it has started');
+  });
+
+  it('and is said again if the robot is actually different', async () => {
+    // A different robot, or the same one rebuilt. The rule is "do not repeat
+    // yourself", not "never mention it twice".
+    const { commentary, speaker, view, wait } = setup();
+    withChassis(view);
+
+    commentary.introduce();
+    speaker.said.length = 0;
+
+    withChassis(view, { wheelDiameterMm: 43.2, axleTrackMm: 96 });
+    wait(60);
+    const waiting = commentary.beginRun();
+    speaker.finish();
+    await waiting;
+
+    assert.match(speaker.said.join(' '), /millimetre wheels/,
+      'a robot that has changed is described again');
+  });
+
+  it('and the mat itself is still only described once', async () => {
+    // The rule this copies, and the reason it was safe to copy.
+    const { commentary, speaker, view, wait } = setup();
+    withChassis(view);
+
+    commentary.introduce();
+    speaker.said.length = 0;
+
+    wait(60);
+    const waiting = commentary.beginRun();
+    speaker.finish();
+    await waiting;
+
+    const brief = speaker.said.join(' ');
+    for (const mat of [/The mat is [\d.]+ metres/, /A black line runs/, /Coloured squares:/]) {
+      assert.ok(!mat.test(brief), `the mat is not described again: ${brief}`);
+    }
+  });
+
+  it('though the camera angle still comes round again', async () => {
+    // Not fixed here, and recorded rather than left to be rediscovered.
+    //
+    // "You are looking at the mat from the south-west, steeply down at it" is
+    // the same class of thing as the build: it describes the setup rather
+    // than this moment, it has not changed since the last run, and it is only
+    // held back by RecentlySaid's fifteen seconds. It is also the least
+    // useful sentence in the brief to a student who cannot see the picture.
+    //
+    // Left alone because it was not what was asked for. This pins what it
+    // does today so that changing it is a decision rather than a surprise.
+    const { commentary, speaker, view, wait } = setup();
+    withChassis(view);
+
+    commentary.introduce();
+    speaker.said.length = 0;
+
+    wait(60);
+    const waiting = commentary.beginRun();
+    speaker.finish();
+    await waiting;
+
+    assert.match(speaker.said.join(' '), /You are looking at the mat from/,
+      'today the camera framing is repeated before every run');
+  });
+});
