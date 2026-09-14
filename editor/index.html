@@ -37,6 +37,16 @@
         it would say the same thing twice. It exists for the people the status
         region does nothing for.
       -->
+      <!-- A system message, shown because it is spoken.
+
+           The simulator announces itself out loud rather than through a live
+           region, so that the scene description can be chained to the end of
+           the spoken sentence instead of guessing at a delay. A Deaf student
+           gets nothing from a spoken message, so the same words are shown
+           here. aria-hidden because the speech is the announcement: without
+           it a screen reader user would be told twice. -->
+      <p id="system-message" class="system-message" role="presentation" aria-hidden="true" hidden></p>
+
       <p id="busy" class="busy" hidden>
         <progress id="busy-progress" aria-labelledby="busy-label"></progress>
         <span id="busy-label"></span>

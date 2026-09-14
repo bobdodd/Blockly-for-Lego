@@ -98,6 +98,7 @@ const ui = {
   saveProgram: element('save-program'),
   saveAsProgram: element('save-as-program'),
   saveNote: element('save-note'),
+  systemMessage: element('system-message'),
   busy: element('busy'),
   busyLabel: element('busy-label'),
 };
@@ -473,47 +474,93 @@ function explainBusy() {
 // connection
 // --------------------------------------------------------------------------
 
-/** A mat description waiting for the page to stop talking. */
-let pendingIntroduction = null;
+/** How long a system message stays on screen once nothing is happening. */
+const SYSTEM_MESSAGE_MS = 8000;
+let systemMessageTimer = null;
 
 /**
- * Describe the mat once the page has finished announcing the connection.
+ * Something the simulator says about itself: out loud, and on screen.
  *
- * There is no signal for "the screen reader has finished" — a screen reader
- * tells a page nothing about what it is saying — so this waits on the
- * Announcer's own estimate of how long its last status takes to read, and
- * re-checks, because more statuses arrive while it waits ("Unpacking the
- * simulator", then "Starting the robot", then "Connected to...").
+ * Out loud rather than through a live region, and that is the point of it.
+ * A live region is handed to the screen reader and the page is told nothing
+ * more — not what was said, not when it finished — so the scene description
+ * that has to follow "Connected" could only ever be scheduled on a guess. An
+ * utterance ends, and says so. The description is chained to that instead of
+ * to a timer, and the guessing goes away.
  *
- * Cancelled rather than queued if the student gets there first: pressing Run,
- * or asking for the scene, or disconnecting, all make an introduction that
- * has not happened yet the wrong thing to say.
+ * It is also a reasonable thing to say aloud in a club room: a bench full of
+ * students all connecting simulators is a room where "connected" is useful
+ * to everyone, not private business.
+ *
+ * Shown as well, because a Deaf student gets nothing from a spoken message
+ * and this is the only place these words appear. The element is aria-hidden:
+ * the speech is the announcement, and a screen reader reading the text too
+ * would be the same sentence twice from two directions.
+ *
+ * Recorded in the log silently, so the transcript is still complete.
+ *
+ * @param {string} text
+ * @param {{onDone?: () => void}} [options] `onDone` fires when the *speaking*
+ *   finishes — which is what the scene description waits for.
  */
-function introduceWhenThePageIsQuiet(hello) {
-  cancelPendingIntroduction();
+function systemMessage(text, { onDone } = {}) {
+  ui.systemMessage.textContent = text;
+  ui.systemMessage.hidden = false;
+  if (systemMessageTimer) window.clearTimeout(systemMessageTimer);
+  systemMessageTimer = window.setTimeout(() => {
+    systemMessageTimer = null;
+    ui.systemMessage.hidden = true;
+  }, SYSTEM_MESSAGE_MS);
 
-  const tryIt = () => {
-    const wait = announcer.quietAt - Date.now();
-    if (wait > 0) {
-      pendingIntroduction = window.setTimeout(tryIt, wait);
-      return;
-    }
-    pendingIntroduction = null;
-    commentary?.handleMessage(hello);
-  };
-  tryIt();
+  announcer.record(text, 'status');
+  // The Speaker picks its own channel: the voice if there is one, its live
+  // region if the engine is dead or the student has turned speech off. That
+  // fallback is the only case where any of this reaches a live region, and it
+  // is the case where there is no other way to say it at all.
+  speaker.announce(text, { caption: false, onDone });
+}
+
+/**
+ * The mat description, held until the connection has finished announcing.
+ *
+ * Held rather than delayed. It used to wait on an estimate of how long the
+ * page took to be read, because a live region gives no completion signal;
+ * now it waits for "Connected." to actually stop being spoken.
+ *
+ * Dropped rather than queued if the student gets there first: pressing Run,
+ * or asking for the scene, or disconnecting all make an introduction that has
+ * not happened yet the wrong thing to say.
+ */
+let pendingIntroduction = null;
+
+function holdIntroduction(hello) {
+  pendingIntroduction = hello;
+}
+
+function releaseIntroduction() {
+  const hello = pendingIntroduction;
+  pendingIntroduction = null;
+  if (hello) commentary?.handleMessage(hello);
 }
 
 function cancelPendingIntroduction() {
-  if (pendingIntroduction === null) return;
-  window.clearTimeout(pendingIntroduction);
   pendingIntroduction = null;
 }
 
-async function connect(transport, description, { quiet = false } = {}) {
+async function connect(transport, description, { quiet = false, spoken = false } = {}) {
   if (client) await disconnect();
 
-  if (!quiet) announcer.status(`Connecting to ${description}...`);
+  // The simulator says this out loud; a hub is an ordinary page announcement.
+  // See systemMessage: the difference is that speech tells us when it has
+  // finished, which is what the scene description waits for.
+  if (!quiet) {
+    if (spoken) systemMessage(`Connecting to ${description}, please wait.`);
+    else announcer.status(`Connecting to ${description}...`);
+  }
+
+  // Whether this attempt ever became a connection, so a failed one does not
+  // report a disconnection. See onClose below.
+  let everConnected = false;
   const hub = new HubClient(transport);
 
   hub.on('console', (text) => {
@@ -555,7 +602,7 @@ async function connect(transport, description, { quiet = false } = {}) {
       // So the mat waits for the page to finish. Everything else is passed
       // straight through: a beat about what the robot just did is no use
       // late.
-      if (payload.type === 'hello') introduceWhenThePageIsQuiet(payload);
+      if (payload.type === 'hello') holdIntroduction(payload);
       else commentary?.handleMessage(payload);
       // And on to a robot view in its own window, if one is open.
       relay.send(payload);
@@ -563,6 +610,14 @@ async function connect(transport, description, { quiet = false } = {}) {
   }
   transport.onClose = () => {
     cancelPendingIntroduction();
+    // Only if we ever got in. On a local copy the first thing tried is the
+    // simulator you might have started yourself, and when there is none that
+    // attempt fails and closes — which announced "Disconnected from the
+    // simulator" in the same breath as "Connecting to the simulator", about
+    // a thing that was never connected. `quiet` covers the attempt and its
+    // failure; this close arrives outside both.
+    if (!everConnected) return;
+    everConnected = false;
     announcer.status(`Disconnected from ${description}.`);
     setConnected(false);
     lastWorldMessage = null;
@@ -583,14 +638,27 @@ async function connect(transport, description, { quiet = false } = {}) {
 
   clearConnectionNote();
   client = hub;
+  everConnected = true;
   // A transport that can narrate is the simulator; a real hub has no such
   // channel. That is the same test used to decide whether to listen for
   // narration at all, so the two can never disagree about what is connected.
   setConnected(true, transport.onNarration !== undefined ? 'simulator' : 'hub');
   ui.summary.textContent = `Connected to ${hub.name}.`;
-  announcer.status(
-    `Connected to ${hub.name}. Press ${shortcutLabel('run')} to run your program.`,
-  );
+
+  if (spoken) {
+    // Short, because everything said here delays the description of the mat,
+    // which is chained to the end of it. Not so short that the shortcut goes
+    // missing, though: the button is on screen for anyone who can see it, and
+    // this sentence is where a student who cannot learns how to run a
+    // program. Two seconds is worth that.
+    systemMessage(`Connected. Press ${shortcutLabel('run')} to run.`, {
+      onDone: releaseIntroduction,
+    });
+  } else {
+    announcer.status(
+      `Connected to ${hub.name}. Press ${shortcutLabel('run')} to run your program.`,
+    );
+  }
   return true;
 }
 
@@ -620,7 +688,12 @@ async function connectSimulator() {
 
 async function startSimulator() {
   if (isLocalOrigin()) {
-    if (await connect(new SimulatorTransport(), 'the simulator', { quiet: true })) {
+    // `quiet` suppresses the attempt and its failure, because failing here is
+    // normal: it falls through to the built-in one. `spoken` is still on, so
+    // a success says "Connected." — and the mat description is chained to the
+    // end of that, so without it the description would be held for ever.
+    if (await connect(new SimulatorTransport(), 'the simulator',
+      { quiet: true, spoken: true })) {
       simulatorIsBuiltIn = false;
       builtInTransport = null;
       const mat = chosenMat();
@@ -655,7 +728,12 @@ async function startSimulator() {
   // and a spinner says nothing to a screen reader.
   transport.onProgress = ({ stage, detail }) => {
     if (stage === 'error') return;
-    announcer.status(detail ?? stage);
+    // Shown and recorded, not spoken. "Connecting to the simulator, please
+    // wait" has already said what is happening; saying "Downloading Python",
+    // "Unpacking the simulator", "Starting the robot" on top of it is three
+    // more sentences between the student and the mat being described. The
+    // progress bar carries the detail for anyone watching.
+    announcer.record(detail ?? stage, 'status');
     setBusy(detail ?? stage);
   };
 
@@ -665,7 +743,7 @@ async function startSimulator() {
   // loaded; this arrives at the moment it explains something.
   if (!isLocalOrigin()) announcer.status(builtInSimulatorNote());
 
-  await connect(transport, 'the built-in simulator');
+  await connect(transport, 'the simulator', { spoken: true });
 }
 
 /**

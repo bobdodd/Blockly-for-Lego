@@ -19,7 +19,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
 
-import { Announcer, readingTime } from '../src/announcer.js';
+import { Announcer } from '../src/announcer.js';
 
 /** Just enough DOM for the Announcer, recording what reaches the log. */
 function fakeDom() {
@@ -105,44 +105,27 @@ describe('the page says a thing once', () => {
     }
   });
 
-  it('and says when it expects to have been read', () => {
-    const dom = fakeDom();
-    try {
-      const announcer = new Announcer({ log: dom.log, status: dom.status });
-      const before = Date.now();
-      announcer.status('Connected.');
-      assert.ok(announcer.quietAt >= before + readingTime('Connected.') - 50,
-        'quietAt should be about a reading time away');
-    } finally {
-      dom.restore();
-    }
-  });
 
-  it('estimating longer for longer sentences, within reason', () => {
-    assert.ok(readingTime('Go.') < readingTime('Connected to the built-in simulator.'));
-    assert.equal(readingTime('x'.repeat(10000)), 12000, 'and it is capped');
-    assert.ok(readingTime('') > 0, 'even nothing takes a moment');
-  });
 });
 
 describe('the robot view waits for the page to finish', () => {
   const app = readFileSync(fileURLToPath(new URL('../src/app.js', import.meta.url)), 'utf8');
 
   it('holding the mat description rather than speaking over the connection', () => {
-    assert.match(app, /if \(payload\.type === 'hello'\) introduceWhenThePageIsQuiet\(payload\)/,
+    assert.match(app, /if \(payload\.type === 'hello'\) holdIntroduction\(payload\)/,
       'the mat is the one message that waits');
     assert.match(app, /else commentary\?\.handleMessage\(payload\)/,
       'everything else goes straight through — a late beat is no use');
   });
 
-  it('waiting on the page\'s own estimate, and re-checking', () => {
-    // More statuses arrive while it waits: "Unpacking the simulator", then
-    // "Starting the robot", then "Connected to...". A single timer set at the
-    // first one would fire in the middle of the last.
-    const fn = app.slice(app.indexOf('function introduceWhenThePageIsQuiet'));
-    const body = fn.slice(0, fn.indexOf('\n}'));
-    assert.match(body, /announcer\.quietAt/, 'it asks the page when it will be quiet');
-    assert.match(body, /setTimeout\(tryIt/, 'and looks again, because more may arrive');
+  it('and releasing it when "Connected." has finished being said', () => {
+    // Not on a timer. A live region gives no completion signal at all, so the
+    // old version could only guess how long the page took to be read — 4.7s
+    // of estimate. An utterance ends and says so, which is the whole reason
+    // the connection speaks rather than announcing.
+    assert.match(app, /systemMessage\(`Connected\.[^`]*`, \{\s*onDone: releaseIntroduction,?\s*\}\)/,
+      'the description is chained to the end of the spoken message');
+    assert.ok(!/quietAt/.test(app), 'and no longer waits on an estimate');
   });
 
   it('and dropping it if the student gets there first', () => {
@@ -174,5 +157,76 @@ describe('the picture has a caption, not a voice', () => {
       assert.ok(!/aria-live|role="status"|role="log"|role="alert"/.test(tag),
         `${name} still announces the camera framing: ${tag}`);
     }
+  });
+});
+
+/**
+ * A system message from the simulator: said out loud, and shown.
+ *
+ * Not a live region, deliberately. A live region hands the words to a screen
+ * reader and tells the page nothing back — not what was said, not when it
+ * finished — so the mat description that has to follow "Connected" could only
+ * ever be scheduled on a guess at reading speed. An utterance ends and says
+ * so. Speech also suits the message: a bench full of students connecting
+ * simulators is a room where "connected" is useful to everyone.
+ */
+describe('the simulator says the connection out loud', () => {
+  const app = readFileSync(fileURLToPath(new URL('../src/app.js', import.meta.url)), 'utf8');
+  const markup = readFileSync(fileURLToPath(new URL('../index.html', import.meta.url)), 'utf8');
+
+  it('speaking it, showing it, and recording it once each', () => {
+    const fn = app.slice(app.indexOf('function systemMessage('));
+    const body = fn.slice(0, fn.indexOf('\n}'));
+    assert.match(body, /ui\.systemMessage\.textContent = text/, 'shown, for a Deaf student');
+    assert.match(body, /speaker\.announce\(text/, 'and said out loud');
+    assert.match(body, /announcer\.record\(text/, 'and kept in the transcript');
+    assert.ok(!/announcer\.status\(/.test(body),
+      'but never through a live region — that is the whole point of it');
+  });
+
+  it('with a visible element that does not announce itself', () => {
+    // The speech is the announcement. A live region here would be the same
+    // sentence reaching a screen reader user twice from two directions.
+    const at = markup.indexOf('id="system-message"');
+    assert.ok(at > 0, 'index.html has no system message');
+    const tag = markup.slice(markup.lastIndexOf('<', at), markup.indexOf('>', at));
+    assert.match(tag, /aria-hidden="true"/, 'the speech is the announcement');
+    assert.ok(!/aria-live|role="status"|role="log"|role="alert"/.test(tag),
+      `it must not be a live region: ${tag}`);
+  });
+
+  it('keeping the spoken part short, because the mat waits behind it', () => {
+    assert.match(app, /systemMessage\(`Connecting to \$\{description\}, please wait\.`\)/);
+    assert.match(app, /systemMessage\(`Connected\. Press \$\{shortcutLabel\('run'\)\} to run\.`/,
+      'short, but not so short that the shortcut goes missing');
+  });
+
+  it('and showing the stages rather than speaking them', () => {
+    // "please wait" has already said what is happening. Three more spoken
+    // sentences would be three more things between the student and the mat.
+    const fn = app.slice(app.indexOf('transport.onProgress = ({ stage, detail }) =>'));
+    const body = fn.slice(0, fn.indexOf('\n  };'));
+    assert.match(body, /setBusy\(detail/, 'the progress bar carries the detail');
+    assert.match(body, /announcer\.record\(detail/, 'and the transcript keeps it');
+    assert.ok(!/announcer\.status\(|systemMessage\(/.test(body),
+      'but no stage is announced or spoken');
+  });
+
+  it('while a hub stays an ordinary page announcement', () => {
+    // Speech belongs to the simulator. A hub connection is the page talking
+    // about itself, and the screen reader is the right place for that.
+    assert.match(app, /await connect\(new BluetoothTransport\(\), 'a SPIKE Prime hub'\)/,
+      'the hub passes no spoken flag');
+    const connectFn = app.slice(app.indexOf('async function connect(transport'));
+    assert.match(connectFn.slice(0, 1200), /else announcer\.status\(`Connecting to/,
+      'so it announces the ordinary way');
+  });
+
+  it('and a quiet local simulator still says "Connected."', () => {
+    // Otherwise the mat description, chained to the end of that sentence,
+    // would be held for ever.
+    const at = app.indexOf("new SimulatorTransport(), 'the simulator'");
+    assert.ok(at > 0);
+    assert.match(app.slice(at, at + 120), /quiet: true, spoken: true/);
   });
 });

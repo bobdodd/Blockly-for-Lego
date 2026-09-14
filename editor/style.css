@@ -407,6 +407,27 @@ h2 { font-size: 1.05rem; margin: 0 0 0.35rem; }
   cursor: progress;
 }
 
+/* --------------------------------------------------------------------------
+   System messages
+   --------------------------------------------------------------------------
+   The visible half of something the simulator says out loud. It has to be
+   readable at a glance and from across a club room, so it is not muted text:
+   a Deaf student is getting all of this message from the screen. */
+
+.system-message {
+  margin: 0.75rem 0 0;
+  padding: 0.6rem 0.9rem;
+  border: 2px solid var(--ink);
+  border-radius: 0.4rem;
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 600;
+  /* Long enough to read; it is replaced rather than queued, so it never
+     stacks up into a wall of messages. */
+  max-inline-size: 60ch;
+}
+
 .busy {
   display: flex;
   align-items: center;

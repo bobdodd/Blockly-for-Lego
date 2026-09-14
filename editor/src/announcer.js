@@ -30,26 +30,10 @@ const MAX_LOG_ENTRIES = 200;
 /** Event kinds that always get through, however chatty things are. */
 const ALWAYS_ANNOUNCE = new Set(['console', 'error', 'program']);
 
-/**
- * Roughly how long a screen reader takes to read something.
- *
- * An estimate and nothing more — there is no signal to wait for; a screen
- * reader tells a page nothing about what it is saying or when it has
- * finished. Used to decide when the page has stopped talking, so the robot
- * view can start without speaking over it.
- *
- * @param {string} text
- * @returns {number} milliseconds
- */
-export function readingTime(text) {
-  return Math.min(12000, 900 + String(text ?? '').length * 55);
-}
-
 export class Announcer {
   #log;
   #status;
   #quietMode = false;
-  #quietAt = 0;
 
   /**
    * @param {{log: HTMLElement, status: HTMLElement}} regions
@@ -79,19 +63,7 @@ export class Announcer {
   status(message) {
     this.#status.textContent = message;
     this.#append(message, 'status');
-    this.#quietAt = Date.now() + readingTime(message);
     this.onStatus?.(message);
-  }
-
-  /**
-   * Roughly when the page expects to have finished being read aloud.
-   *
-   * There is nothing exact available here, and there cannot be. It is enough
-   * to keep the robot view from starting a long description over the top of
-   * the page's own announcements — see the scene introduction in app.js.
-   */
-  get quietAt() {
-    return this.#quietAt;
   }
 
   /** Something the robot did. Announced politely, in order. */
@@ -101,6 +73,18 @@ export class Announcer {
       return;
     }
     this.#append(message, kind);
+  }
+
+  /**
+   * Put a line in the log without announcing it.
+   *
+   * For something the page has already said another way — a system message
+   * spoken aloud, say. The transcript is what gets pasted into a bug report,
+   * so it should still hold every line; announcing it here as well would be
+   * the same sentence twice.
+   */
+  record(message, kind = 'status') {
+    this.#append(message, kind, { silent: true });
   }
 
   clear() {
