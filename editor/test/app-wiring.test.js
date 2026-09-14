@@ -75,13 +75,11 @@ describe('each connection shows only the panel that has something in it', () => 
     assert.match(app, /connectionKind = connected \? kind : null/);
   });
 
-  it('leaves one voice running, not two', () => {
-    // The narration list has its own browser voice, and the commentary
-    // cancels whatever is speaking before every announcement. Both running
-    // means both cut each other off — and the list's switch is inside the
-    // panel that just went away, so a student could not turn it off.
-    assert.match(app, /if \(listHidden\) announcer\.speechEnabled = false/);
-    assert.match(app, /else if \(ui\.speech\) announcer\.speechEnabled = ui\.speech\.checked/);
+  it('leaves the narration to the screen reader', () => {
+    // The narration list used to have a browser voice of its own. It does
+    // not any more, and that is a rule rather than a tidy-up: see the
+    // "speech synthesis belongs to the robot view" suite below.
+    assert.ok(!/speechEnabled/.test(app), 'the narration must not speak for itself');
   });
 
   it('opens on the robot view, not the generated Python', () => {
@@ -456,7 +454,7 @@ describe('two windows, one voice', () => {
   it('the pop-out claims it on opening', () => {
     // Somebody who has just opened the robot view expects it to be the one
     // talking to them.
-    assert.match(viewer, /baton\.claim\(\);/);
+    assert.match(viewer, /voice\.claim\(\);/);
   });
 
   it('a yielded window still writes its own transcript', () => {
@@ -605,36 +603,11 @@ describe('a new thing to say stops the old one', () => {
   const announcer = read('src/announcer.js');
   const viewer = read('src/viewer/main.js');
 
-  it('stops the one emitter, not each voice separately', () => {
-    // There used to be two, and silencing meant knowing about both. The
-    // announcer is still told, to drop its skip counter — see below.
-    assert.match(app, /function silence\(\) \{[\s\S]*?announcer\.silence\(\)[\s\S]*?voice\.stop\(\)/);
-  });
-
-  it('and the announcer no longer speaks for itself at all', () => {
-    // What went wrong: it had its own speechSynthesis and its own live
-    // regions, so a screen reader read the log and the status while the
-    // commentary spoke. Cancelling stopped one of those and not the other.
-    // Comments stripped first: this file explains the bug it used to have, and
-    // matching that prose would pass or fail on the wording rather than the code.
-    const code = announcer
-      .replace(/\/\*[\s\S]*?\*\//g, '')
-      .replace(/^\s*\/\/.*$/gm, '');
-    assert.ok(!/speechSynthesis/.test(code),
-      'the announcer must not touch the speech engine directly');
-    assert.ok(!/new SpeechSynthesisUtterance/.test(code),
-      'the announcer must not make utterances of its own');
-    assert.match(announcer, /this\.#voice\.say\(/, 'it asks the one emitter instead');
-  });
-
-  it('and the announcer forgets its backlog when silenced', () => {
-    // Cancelling alone leaves the skip counter, so the next thing said opens
-    // with "4 steps skipped" — a report on a run the listener just asked to
-    // stop hearing about.
-    const method = announcer.slice(announcer.indexOf('  silence()'));
-    const body = method.slice(0, method.indexOf('\n  }'));
-    assert.match(body, /#pendingSkipped = 0/);
-    assert.match(body, /#voice\?\.stop\(\)/);
+  it('silences the commentary, which is the only thing that speaks', () => {
+    // There is one synthesised voice on this page and it belongs to the robot
+    // view. Everything else is a live region, which is the screen reader's to
+    // read and the student's to interrupt in the way they already know.
+    assert.match(app, /function silence\(\) \{\s*speaker\.stop\(\);\s*\}/);
   });
 
   it('runs after the guards, so "connect first" is still heard', () => {
@@ -663,7 +636,7 @@ describe('a new thing to say stops the old one', () => {
     // in. speechSynthesis belongs to a document, so silencing the editor
     // while the robot view talked on a projector silenced nothing anybody in
     // the room could hear. Either window's Escape has to stop both.
-    assert.match(app, /function silenceEverywhere\(\) \{[\s\S]*?silence\(\)[\s\S]*?baton\.silence\(\)/,
+    assert.match(app, /function silenceEverywhere\(\) \{[\s\S]*?silence\(\)[\s\S]*?voice\.silence\(\)/,
       'the editor asks the other windows as well as itself');
 
     const handler = app.slice(app.indexOf("if (action === 'silence')"));
@@ -671,7 +644,7 @@ describe('a new thing to say stops the old one', () => {
       "the editor's Escape goes everywhere");
 
     const popout = viewer.slice(viewer.indexOf("matchShortcut(event) !== 'silence'"));
-    assert.match(popout.slice(0, popout.indexOf('});') + 3), /baton\.silence\(\)/,
+    assert.match(popout.slice(0, popout.indexOf('});') + 3), /voice\.silence\(\)/,
       "and so does the pop-out's");
 
     for (const [where, source] of [['editor', app], ['pop-out', viewer]]) {
