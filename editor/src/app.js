@@ -609,9 +609,9 @@ async function connect(transport, description, { quiet = false, spoken = false }
     if (spoken) systemMessage(`Connecting to ${description}, please wait.`);
     else announcer.status(`Connecting to ${description}...`);
   }
-  // From here until the mat has been described, the connect buttons hold
-  // still. See settleConnectControls.
-  if (spoken) announcingConnection = true;
+  // From here until this connection has finished announcing itself, the
+  // connect buttons hold still. See settleConnectControls.
+  announcingConnection = true;
 
   // Whether this attempt ever became a connection, so a failed one does not
   // report a disconnection. See onClose below.
@@ -693,6 +693,11 @@ async function connect(transport, description, { quiet = false, spoken = false }
   try {
     await hub.connect();
   } catch (error) {
+    // Nothing more is coming, so stop holding the buttons still. Without this
+    // a failed connection leaves them held and the next successful one never
+    // dims the right button.
+    announcingConnection = false;
+    refreshConnectControls();
     if (!quiet) explainConnection(describeConnectionFailure(error, description));
     return false;
   }
@@ -707,18 +712,21 @@ async function connect(transport, description, { quiet = false, spoken = false }
   ui.summary.textContent = `Connected to ${hub.name}.`;
 
   if (spoken) {
-    // Short, because everything said here delays the description of the mat,
-    // which is chained to the end of it. Not so short that the shortcut goes
-    // missing, though: the button is on screen for anyone who can see it, and
-    // this sentence is where a student who cannot learns how to run a
-    // program. Two seconds is worth that.
-    systemMessage(`Connected. Press ${shortcutLabel('run')} to run.`, {
-      onDone: releaseIntroduction,
-    });
+    // One word. It used to add "Press Ctrl+G to run", which was how a student
+    // who could not see the button learned the shortcut -- but focus now
+    // lands on Run when the connection has finished talking, so they are told
+    // where they are by being put there. Saying it as well is a direction to
+    // somewhere they have already arrived.
+    systemMessage('Connected.', { onDone: releaseIntroduction });
   } else {
     announcer.status(
       `Connected to ${hub.name}. Press ${shortcutLabel('run')} to run your program.`,
     );
+    // A hub has no spoken connection to wait for, so this is the end of it.
+    // It still has to go through settleConnectControls rather than dimming
+    // where it stands: this button is a real `disabled` now, and disabling
+    // the element that has focus drops that focus to the body.
+    settleConnectControls();
   }
   return true;
 }

@@ -123,7 +123,7 @@ describe('the robot view waits for the page to finish', () => {
     // old version could only guess how long the page took to be read — 4.7s
     // of estimate. An utterance ends and says so, which is the whole reason
     // the connection speaks rather than announcing.
-    assert.match(app, /systemMessage\(`Connected\.[^`]*`, \{\s*onDone: releaseIntroduction,?\s*\}\)/,
+    assert.match(app, /systemMessage\('Connected\.', \{ onDone: releaseIntroduction \}\)/,
       'the description is chained to the end of the spoken message');
     assert.ok(!/quietAt/.test(app), 'and no longer waits on an estimate');
   });
@@ -143,13 +143,32 @@ describe('the robot view waits for the page to finish', () => {
     // "Connecting to the simulator, please wait." began.
     assert.match(app, /const unavailable = connectionKind === kind && !announcingConnection;/,
       'nothing is dimmed while the connection is still talking');
-    assert.match(app, /if \(spoken\) announcingConnection = true;/,
-      'the quiet period starts when the connection starts speaking');
+    assert.match(app, /\n  announcingConnection = true;/,
+      'the quiet period starts with the connection, on every path');
+    assert.ok(!/if \(spoken\) announcingConnection = true;/.test(app),
+      'including a hub, which has a focused button to disable just the same');
     const settle = app.slice(app.indexOf('function settleConnectControls()'));
     assert.match(settle.slice(0, settle.indexOf('\n}')), /announcingConnection = false/,
       'and ends when it has finished');
     assert.match(app, /commentary\.introduce\(\{ onDone: settleConnectControls \}\)/,
       'which is when the mat has been described, the last thing it says');
+  });
+
+  it('and lets go of them again when a connection fails', () => {
+    // Held for ever otherwise, so the next successful connection never dims
+    // the right button.
+    const at = app.indexOf('await hub.connect();');
+    const body = app.slice(at, app.indexOf('return false;', at));
+    assert.match(body, /announcingConnection = false/, 'a failure releases the hold');
+  });
+
+  it('and settles a hub connection, which has nothing spoken to wait for', () => {
+    // The button is a real `disabled` now, and disabling the element holding
+    // focus drops that focus to the body — so a hub has to go through the
+    // same settling, not dim where it stands.
+    const at = app.indexOf("Press ${shortcutLabel('run')} to run your program.");
+    const body = app.slice(at, at + 500);
+    assert.match(body, /settleConnectControls\(\)/);
   });
 
   it('but not when an attempt that never connected closes', () => {
@@ -228,8 +247,8 @@ describe('the simulator says the connection out loud', () => {
 
   it('keeping the spoken part short, because the mat waits behind it', () => {
     assert.match(app, /systemMessage\(`Connecting to \$\{description\}, please wait\.`\)/);
-    assert.match(app, /systemMessage\(`Connected\. Press \$\{shortcutLabel\('run'\)\} to run\.`/,
-      'short, but not so short that the shortcut goes missing');
+    assert.match(app, /systemMessage\('Connected\.'/,
+      'one word: focus lands on Run, so naming the shortcut sends them where they are');
   });
 
   it('and showing the stages rather than speaking them', () => {
