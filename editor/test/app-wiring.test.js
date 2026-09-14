@@ -411,7 +411,38 @@ describe('running the program from the pop-out', () => {
 
   it('shows the answer where the person who pressed it is looking', () => {
     assert.match(app, /announcer\.onStatus = \(text\) => relay\.tell\(text\)/);
-    assert.match(viewer, /\(text\) => \{ ui\.status\.textContent = text; \}/);
+    assert.match(viewer, /\(text\) => \{ setStatus\(text, \{ say: true \}\); \}/,
+      'spoken, because it answers something the student pressed');
+  });
+
+  it('and says it through the one voice the window has, not a live region', () => {
+    // What went wrong: #viewer-status was a polite live region and the robot
+    // view speaks, so a screen reader read the status while the commentary
+    // was talking. Measured on opening the pop-out: the scene description
+    // starting and "Loading the robot…" reaching the screen reader in the
+    // same millisecond — two voices at once out of one window.
+    const at = markup.indexOf('id="viewer-status"');
+    assert.ok(at > 0, 'the status should exist');
+    const tag = markup.slice(markup.lastIndexOf('<', at), markup.indexOf('>', at));
+    assert.ok(!/aria-live|role="status"|role="log"|role="alert"/.test(tag),
+      `it must not announce itself as well: ${tag}`);
+
+    const fn = viewer.slice(viewer.indexOf('function setStatus('));
+    assert.match(fn.slice(0, fn.indexOf('\n}')), /if \(say\) speaker\.announce\(text/,
+      'it goes through the speaker, which replaces rather than races');
+
+    // Progress is shown and no more. An announcement replaces whatever was
+    // being said, so speaking these cut the scene description in half from
+    // both ends: "Loading the robot…" before it and "Watching Driving Base:
+    // 56mm wheels" 1.2 seconds into it.
+    for (const progress of ['Loading', 'Watching the simulated robot', 'Connecting to the simulator at']) {
+      const at = viewer.indexOf(progress);
+      if (at < 0) continue;
+      const line = viewer.slice(viewer.lastIndexOf('\n', at), viewer.indexOf('\n', at));
+      assert.ok(!/say: true/.test(line), `${progress} must not interrupt: ${line.trim()}`);
+    }
+    assert.ok(!/ui\.status\.textContent = (?!text;)/.test(viewer),
+      'and nothing writes the status any other way');
   });
 
   it('offers the buttons only when there is an editor behind it', () => {

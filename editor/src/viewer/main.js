@@ -47,8 +47,30 @@ const ui = {
   stop: element('stop'),
 };
 
+/**
+ * Say what this window is doing: shown, and spoken.
+ *
+ * The robot view has a voice of its own and it is the only thing here that
+ * should be making a sound. #viewer-status used to be a polite live region as
+ * well, so a screen reader read it while the commentary spoke — measured, the
+ * scene description beginning and "Loading the robot…" arriving in the same
+ * millisecond, which is two voices at once out of one window.
+ *
+ * `say` is the same division the editor makes about connecting: a problem or
+ * an answer to something the student pressed is worth interrupting for;
+ * progress is worth showing and no more. Said through the speaker an
+ * announcement replaces whatever was being said, so speaking "Loading the
+ * robot…" and "Watching Driving Base: 56mm wheels" cut the description of the
+ * scene in half from both ends. Those are captions on a picture; the
+ * description is the thing somebody came here for.
+ */
+function setStatus(text, { say = false } = {}) {
+  ui.status.textContent = text;
+  if (say) speaker.announce(text, { caption: false });
+}
+
 const view = new RobotView(ui.canvas, robotDescription, {
-  onStatus: (message) => { ui.status.textContent = message; },
+  onStatus: (message) => { setStatus(message); },
   onPose: (text) => { ui.pose.textContent = text; },
   onFocus: (label) => { ui.focusLabel.textContent = label ? `Showing: ${label}` : ''; },
 });
@@ -155,21 +177,20 @@ function followProgramState(payload) {
  */
 function watchTheEditor() {
   if (!relaySupported()) {
-    ui.status.textContent =
-      'This browser cannot pass the robot between windows. Use the robot view '
-      + 'inside the editor instead.';
+    setStatus('This browser cannot pass the robot between windows. Use the robot '
+      + 'view inside the editor instead.', { say: true });
     return;
   }
 
-  ui.status.textContent = 'Waiting for the editor to connect to a robot…';
+  setStatus('Waiting for the editor to connect to a robot…', { say: true });
   const relay = listen(
     (payload) => {
-      if (payload.type === 'hello') ui.status.textContent = 'Watching the simulated robot.';
+      if (payload.type === 'hello') setStatus('Watching the simulated robot.');
       receive(payload);
     },
     // Whatever the editor says about itself. Somebody watching this window
     // pressed the button; the answer has to arrive here, not only there.
-    (text) => { ui.status.textContent = text; },
+    (text) => { setStatus(text, { say: true }); },
   );
 
   // Only with an editor behind us. Opened on its own this window is watching a
@@ -205,22 +226,21 @@ async function connect() {
 
   transport.onNarration = receive;
   transport.onClose = () => {
-    ui.status.textContent = 'The simulator disconnected. Start it again and reload this page.';
+    setStatus('The simulator disconnected. Start it again and reload this page.', { say: true });
     view.clear();
     // A run cut off by the socket closing never gets its "finished" event.
     commentary.endRun({ stopped: true });
     commentary.stop();
   };
 
-  ui.status.textContent = `Connecting to the simulator at ${base}…`;
+  setStatus(`Connecting to the simulator at ${base}…`);
   try {
     await transport.connect();
   } catch (error) {
-    ui.status.textContent =
-      `${error.message} This page only watches — it needs the simulator running.`;
+    setStatus(`${error.message} This page only watches — it needs the simulator running.`, { say: true });
     return;
   }
-  ui.status.textContent = 'Watching the simulated robot.';
+  setStatus('Watching the simulated robot.');
 }
 
 ui.follow.addEventListener('change', (event) => { view.follow = event.target.checked; });

@@ -10,7 +10,12 @@
   <body class="viewer-body">
     <header class="app-header">
       <h1>Robot view</h1>
-      <p id="viewer-status" class="connection-summary" role="status" aria-live="polite">
+      <!-- Shown, not announced. This window has a voice of its own — the
+           commentary — and a live region here talked over it: measured, the
+           scene description starting and "Loading the robot…" reaching the
+           screen reader in the same millisecond. Everything written here
+           goes through that voice instead. See setStatus in viewer/main.js. -->
+      <p id="viewer-status" class="connection-summary">
         Starting up…
       </p>
     </header>
