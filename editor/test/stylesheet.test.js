@@ -78,15 +78,37 @@ describe('waiting is visible as well as spoken', () => {
     assert.ok(!/aria-live/.test(upToClose), 'the busy panel must not be a live region');
   });
 
-  it('marks a working button aria-disabled, never disabled', () => {
-    // The button that started the wait usually has focus, and disabling a
-    // focused element drops focus to the body in several browsers.
+  it('shows a working button as busy without saying so', () => {
+    // What went wrong: busy was marked with aria-disabled, and the button it
+    // was marked on is the one that was just pressed, so it is the one
+    // holding focus. A state change on the focused element is read out —
+    // measured, six writes to it during one connection, the first six
+    // milliseconds before "Connecting to the simulator, please wait." began.
+    // A screen reader user heard "unavailable" across the announcement.
     const app = read('src/app.js');
-    assert.match(app, /setAttribute\('aria-disabled', 'true'\)/);
-    assert.ok(
-      !/connectSimulator\.disabled\s*=|connectHub\.disabled\s*=/.test(app),
-      'connect buttons must not use the disabled property while working',
-    );
+    const css = read('style.css');
+
+    assert.match(app, /classList\.toggle\('is-working', busy\)/,
+      'busy is a class, so it is seen and not announced');
+    assert.ok(!/setAttribute\('aria-disabled'/.test(app),
+      'nothing may put an ARIA state on the button that was just pressed');
+    assert.match(css, /button\.is-working/, 'and it still looks unavailable');
+  });
+
+  it('and only really disables it once focus has been moved off it', () => {
+    // Being connected is a lasting state, so it deserves a real `disabled` —
+    // no useless tab stop. Safe only because focus goes to Run first: setting
+    // it on the focused button is the same interruption by another route, and
+    // disabling a focused element also drops focus to the body.
+    const app = read('src/app.js');
+    const fn = app.slice(app.indexOf('function settleConnectControls()'));
+    const body = fn.slice(0, fn.indexOf('\n}'));
+
+    assert.ok(body.indexOf('ui.run.focus()') < body.indexOf('refreshConnectControls()'),
+      'focus moves before the state changes');
+    assert.match(body, /document\.activeElement/,
+      'and only if the student is still on the button they pressed');
+    assert.match(app, /control\.disabled = unavailable/, 'a real disabled in the end');
   });
 });
 

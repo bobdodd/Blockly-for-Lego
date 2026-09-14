@@ -332,13 +332,18 @@ export class Commentary {
    * Nothing waits on this: the student has just connected and is not being
    * held up by anything, so a long description costs them nothing.
    */
-  introduce() {
+  introduce({ onDone } = {}) {
     const scene = this.view?.scene?.();
-    if (!scene || !this.enabled) return null;
-    if (scene.world === this._describedWorld) return null;
+    // `onDone` fires whatever happens, including the cases where there is
+    // nothing to say. A caller waiting for the talking to stop is waiting for
+    // silence, and silence arrives early here rather than not at all.
+    if (!scene || !this.enabled || scene.world === this._describedWorld) {
+      onDone?.();
+      return null;
+    }
 
     this._describedWorld = scene.world;
-    return this._describe(describeScene(scene).facts);
+    return this._describe(describeScene(scene).facts, { onDone });
   }
 
   /** One look at the scene, for the things no event reports. */

@@ -431,11 +431,22 @@ h2 { font-size: 1.05rem; margin: 0 0 0.35rem; }
   block-size: 0.6rem;
 }
 
-/* A control that is temporarily unavailable, marked with aria-disabled rather
-   than disabled so it keeps focus and stays reachable while it is working. */
-button[aria-disabled="true"] {
+/* A control that is busy.
+   Shown, not stated: marking it in ARIA is a state change on whichever button
+   was just pressed, and a screen reader reads that out over the top of the
+   connection announcing itself. Pressing it while it works is answered in
+   words instead, by explainBusy(). */
+button.is-working {
   opacity: 0.55;
   cursor: progress;
+}
+
+/* A control that is genuinely unavailable, which for the connect buttons means
+   you are already connected to that thing. A real `disabled`, so it leaves the
+   tab order and is announced properly to somebody who tabs onto it later --
+   safe because focus is moved to Run before it is set. */
+button:disabled {
+  opacity: 0.55;
 }
 
 /* --------------------------------------------------------------------------

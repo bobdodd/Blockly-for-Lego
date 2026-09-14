@@ -430,9 +430,53 @@ function setBusy(label) {
 function refreshConnectControls() {
   const busy = isBusy();
   for (const [control, kind] of [[ui.connectSimulator, 'simulator'], [ui.connectHub, 'hub']]) {
-    if (busy || connectionKind === kind) control.setAttribute('aria-disabled', 'true');
-    else control.removeAttribute('aria-disabled');
+    // Busy is shown, not stated. Marking it in ARIA is a state change on a
+    // control that is usually the one holding focus -- it is the button that
+    // was just pressed -- and a screen reader reads that out as "unavailable"
+    // over the top of the connection announcing itself. Pressing it while it
+    // is working is answered by explainBusy(), which is the part that has to
+    // be right; the dimming is only there to be seen.
+    control.classList.toggle('is-working', busy);
+
+    // Being connected is a real, lasting state, so it is a real `disabled`:
+    // no useless tab stop, and announced properly when somebody tabs onto it
+    // later. Held back while the connection is still talking, though -- see
+    // settleConnectControls. Changing it now would land on the focused
+    // button mid-sentence, which is the same interruption by another route.
+    const unavailable = connectionKind === kind && !announcingConnection;
+    if (control.disabled !== unavailable) control.disabled = unavailable;
   }
+}
+
+/**
+ * True while the connection is still announcing itself.
+ *
+ * The connect buttons keep still until it is over. Nothing is lost by
+ * waiting: pressing the button for a connection you already have is refused
+ * by connectSimulator/connectHub, which check connectionKind rather than the
+ * button, so the dimming has never been what protects anything.
+ */
+let announcingConnection = false;
+
+/**
+ * The connection has finished saying everything it has to say.
+ *
+ * Move to Run first, then dim. The button that was pressed is the one holding
+ * focus, and a state change on the focused element is read out; once focus is
+ * somewhere else, the same change is silent. Run is where the student was
+ * being sent anyway -- it is what the spoken message just told them to press.
+ *
+ * Only if focus is still on the button they pressed. Somebody who has tabbed
+ * away in the meantime has gone somewhere deliberately, and dragging them
+ * back would be worse than the announcement this avoids.
+ */
+function settleConnectControls() {
+  announcingConnection = false;
+
+  const pressed = CONNECT_CONTROLS().find((control) => control === document.activeElement);
+  if (pressed && !ui.run.disabled) ui.run.focus();
+
+  refreshConnectControls();
 }
 
 const isBusy = () => document.body.classList.contains('is-busy');
@@ -540,11 +584,19 @@ function holdIntroduction(hello) {
 function releaseIntroduction() {
   const hello = pendingIntroduction;
   pendingIntroduction = null;
-  if (hello) commentary?.handleMessage(hello);
+  if (!hello || !commentary) {
+    settleConnectControls();
+    return;
+  }
+  // The description of the mat is the last thing this connection says, so the
+  // buttons settle when it stops -- not before, or the state change lands on
+  // the focused button in the middle of it.
+  commentary.introduce({ onDone: settleConnectControls });
 }
 
 function cancelPendingIntroduction() {
   pendingIntroduction = null;
+  settleConnectControls();
 }
 
 async function connect(transport, description, { quiet = false, spoken = false } = {}) {
@@ -557,6 +609,9 @@ async function connect(transport, description, { quiet = false, spoken = false }
     if (spoken) systemMessage(`Connecting to ${description}, please wait.`);
     else announcer.status(`Connecting to ${description}...`);
   }
+  // From here until the mat has been described, the connect buttons hold
+  // still. See settleConnectControls.
+  if (spoken) announcingConnection = true;
 
   // Whether this attempt ever became a connection, so a failed one does not
   // report a disconnection. See onClose below.
@@ -609,7 +664,6 @@ async function connect(transport, description, { quiet = false, spoken = false }
     };
   }
   transport.onClose = () => {
-    cancelPendingIntroduction();
     // Only if we ever got in. On a local copy the first thing tried is the
     // simulator you might have started yourself, and when there is none that
     // attempt fails and closes — which announced "Disconnected from the
@@ -618,6 +672,13 @@ async function connect(transport, description, { quiet = false, spoken = false }
     // failure; this close arrives outside both.
     if (!everConnected) return;
     everConnected = false;
+    // After the guard, not before it. On a local copy the first thing tried
+    // is a simulator you might have started yourself, and when there is none
+    // that attempt closes — which used to cancel the introduction and settle
+    // the connect buttons for a connection that had not happened yet, so the
+    // button was disabled while it still held focus and focus fell to the
+    // body. The very thing the settling exists to avoid.
+    cancelPendingIntroduction();
     announcer.status(`Disconnected from ${description}.`);
     setConnected(false);
     lastWorldMessage = null;

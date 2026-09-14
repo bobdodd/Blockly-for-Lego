@@ -129,14 +129,45 @@ describe('the robot view waits for the page to finish', () => {
   });
 
   it('and dropping it if the student gets there first', () => {
-    // Run, or disconnecting, makes an introduction that has not happened yet
-    // the wrong thing to say.
-    for (const where of ['function silence()', 'transport.onClose = () => {']) {
-      const at = app.indexOf(where);
-      assert.ok(at > 0, `${where} should exist`);
-      const body = app.slice(at, app.indexOf('\n  };', at) + 5 || at + 400);
-      assert.match(body.slice(0, 400), /cancelPendingIntroduction\(\)/, where);
-    }
+    // Run makes an introduction that has not happened yet the wrong thing to
+    // say.
+    const silence = app.slice(app.indexOf('function silence()'));
+    assert.match(silence.slice(0, silence.indexOf('\n}')), /cancelPendingIntroduction\(\)/);
+  });
+
+  it('and the buttons keep still until it has all been said', () => {
+    // Setting a state on the button that was just pressed is a state change
+    // on the focused element, and a screen reader reads that out — which is
+    // the "unavailable" heard across the announcement. Measured before this:
+    // six writes during one connection, the first six milliseconds before
+    // "Connecting to the simulator, please wait." began.
+    assert.match(app, /const unavailable = connectionKind === kind && !announcingConnection;/,
+      'nothing is dimmed while the connection is still talking');
+    assert.match(app, /if \(spoken\) announcingConnection = true;/,
+      'the quiet period starts when the connection starts speaking');
+    const settle = app.slice(app.indexOf('function settleConnectControls()'));
+    assert.match(settle.slice(0, settle.indexOf('\n}')), /announcingConnection = false/,
+      'and ends when it has finished');
+    assert.match(app, /commentary\.introduce\(\{ onDone: settleConnectControls \}\)/,
+      'which is when the mat has been described, the last thing it says');
+  });
+
+  it('but not when an attempt that never connected closes', () => {
+    // On a local copy the first thing tried is a simulator you might have
+    // started yourself; when there is none, that attempt closes. Cancelling
+    // on it settled the connect buttons for a connection that had not
+    // happened, so the button was disabled while it still held focus — and
+    // focus fell to the body, which is the thing the settling exists to
+    // avoid. The cancel has to sit behind the guard.
+    const at = app.indexOf('transport.onClose = () => {');
+    assert.ok(at > 0);
+    const body = app.slice(at, app.indexOf('\n  };', at));
+
+    const guard = body.indexOf('if (!everConnected) return;');
+    const cancel = body.indexOf('cancelPendingIntroduction()');
+    assert.ok(guard > -1, 'the guard must be there at all');
+    assert.ok(cancel > -1, 'and so must the cancel');
+    assert.ok(guard < cancel, 'the guard comes first');
   });
 });
 
