@@ -336,10 +336,23 @@ describe('reporting a run', () => {
     assert.match(body, /else announcer\.status\(message\);/);
   });
 
+  it('but not the window that asked for the run', () => {
+    // What went wrong: the robot view briefs as it asks — the view it is
+    // showing is what a student needs before the robot sets off across it —
+    // and the editor then silenced every window, cutting that description off
+    // one millisecond after it began. Measured: spoken at 10664ms, cancelled
+    // at 10665ms, so nothing of it was heard.
+    assert.match(app, /if \(action === 'run'\) run\(\{ askedFromAnotherWindow: true \}\)/,
+      'the relay says where the run came from');
+    const body = app.slice(app.indexOf('async function run('), app.indexOf('async function stop('));
+    assert.match(body, /if \(askedFromAnotherWindow\) silence\(\);\s*\n\s*else silenceEverywhere\(\);/,
+      'a run asked for elsewhere silences only here');
+  });
+
   it('and the guards that explain why nothing ran are untouched', () => {
     // "Connect to a hub or the simulator first." is not a report on a run, it
     // is the reason there is not one, and there is no commentary to say it.
-    const body = app.slice(app.indexOf('async function run()'), app.indexOf('async function stop()'));
+    const body = app.slice(app.indexOf('async function run('), app.indexOf('async function stop()'));
     assert.match(body, /announcer\.status\(\s*'Connect to a hub or the simulator first\.'/,
       'the guards still announce');
   });

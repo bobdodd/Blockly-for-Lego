@@ -475,11 +475,20 @@ describe('running the program from the pop-out', () => {
     // description of where the robot was starting from was spoken alongside
     // the first beats instead of before them. The editor's own Run describes
     // the starting state first; pressing Run here should do the same.
-    assert.match(viewer, /function askToRun\(relay\)/);
-    const fn = viewer.slice(viewer.indexOf('function askToRun(relay)'));
+    assert.match(viewer, /async function askToRun\(relay\)/);
+    const fn = viewer.slice(viewer.indexOf('async function askToRun(relay)'));
     const body = fn.slice(0, fn.indexOf('\n}'));
     assert.ok(body.indexOf('commentary.beginRun()') < body.indexOf("relay.ask('run')"),
       'the brief comes before the ask');
+
+    // And is waited on. The program must not start until the description has
+    // finished playing: said over a robot already driving, it describes
+    // somewhere the robot has left. The editor's own Run has always awaited
+    // its brief; this window did not.
+    assert.match(body, /await commentary\.beginRun\(\)/,
+      'the ask waits for the description to finish');
+    assert.match(body, /if \(asking\) return;/,
+      'and a second press does not describe it over itself');
   });
 
   it('and does not then brief a second time when the run starts', () => {
@@ -698,7 +707,7 @@ describe('a new thing to say stops the old one', () => {
   it('runs after the guards, so "connect first" is still heard', () => {
     // Silencing before the early returns would cut off the one sentence that
     // explains why nothing happened.
-    const body = app.slice(app.indexOf('async function run()'), app.indexOf('async function stop()'));
+    const body = app.slice(app.indexOf('async function run('), app.indexOf('async function stop()'));
     assert.ok(body.indexOf('Connect to a hub or the simulator first') < body.indexOf('silenceEverywhere()'),
       'the guards speak before the silence');
     assert.ok(body.indexOf('silenceEverywhere()') < body.indexOf('beginRun'),
@@ -749,6 +758,38 @@ describe('a new thing to say stops the old one', () => {
  * something you are already connected to. setConnected() managed Run, Stop
  * and Read sensors and never touched the connect buttons at all.
  */
+/**
+ * The wrapper the editor gives its commentary has to answer everything.
+ *
+ * What went wrong: the editor does not hand its RobotView to the Commentary.
+ * It hands a small object that forwards scene(), so the commentary works
+ * before three.js has been downloaded. takeViewChange was added to RobotView
+ * and the wrapper was not told about it, so on this page turning the camera
+ * and pressing Run described nothing at all — the question was being asked of
+ * an object with no answer to it. The pop-out passes its view directly and
+ * worked, which is what made it look like a pop-out-only problem.
+ */
+describe('what the editor lets its commentary ask the view', () => {
+  const app = read('src/app.js');
+
+  it('forwards the camera question, not only the scene', () => {
+    const at = app.indexOf('commentary = new Commentary({');
+    assert.ok(at > 0, 'the commentary should be built here');
+    const body = app.slice(at, app.indexOf('});', at));
+    assert.match(body, /scene: \(\) => robotView\?\.scene\(\)/, 'the scene, as before');
+    assert.match(body, /takeViewChange: \(\) => Boolean\(robotView\?\.takeViewChange\?\.\(\)\)/,
+      'and whether somebody has turned the camera');
+  });
+
+  it('and answers no when there is no 3D view to turn', () => {
+    // The commentary runs without three.js ever being downloaded. There is no
+    // camera in that case, so nothing can have been chosen.
+    const at = app.indexOf('takeViewChange: () =>');
+    const line = app.slice(at, app.indexOf('\n', at));
+    assert.match(line, /Boolean\(/, 'a missing view reads as false, not undefined');
+  });
+});
+
 describe('a connect button for a connection you already have', () => {
   const app = read('src/app.js');
 

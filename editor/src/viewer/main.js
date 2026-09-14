@@ -247,15 +247,32 @@ function watchTheEditor() {
 let weAskedToRun = false;
 let askedTimer = null;
 
-function askToRun(relay) {
+let asking = false;
+
+async function askToRun(relay) {
+  // A second press while the first is still being described would describe it
+  // again, over itself.
+  if (asking) return;
+  asking = true;
+
   weAskedToRun = true;
   if (askedTimer) clearTimeout(askedTimer);
   askedTimer = setTimeout(() => { weAskedToRun = false; askedTimer = null; }, 5000);
 
-  // Not awaited. The editor has its own brief to say nothing about — it is
-  // yielded while this window holds the voice — so waiting on the round trip
-  // would only add the upload to the silence before anything is said.
-  commentary.beginRun();
+  try {
+    // Waited on, the way the editor's own Run waits on its brief. Where the
+    // robot is starting from — and, when the camera has been turned, what it
+    // is starting from the look of — has to be finished before it moves.
+    // Said over a robot already driving it describes somewhere it has left.
+    //
+    // This window is the one speaking: pressing Run here means focus is here,
+    // and focus is what holds the voice. So waiting here is waiting for the
+    // description a student is actually hearing.
+    await commentary.beginRun();
+  } finally {
+    asking = false;
+  }
+
   relay.ask('run');
 }
 

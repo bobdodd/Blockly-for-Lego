@@ -206,7 +206,7 @@ const relay = broadcast(
     // A robot view on a projector can start the program, because the blocks
     // are here and it has none. It asks; this decides, with exactly the
     // guards the editor's own buttons go through.
-    if (action === 'run') run();
+    if (action === 'run') run({ askedFromAnotherWindow: true });
     else if (action === 'stop') stop();
   },
 );
@@ -1124,7 +1124,13 @@ function silenceEverywhere() {
   voice.silence();
 }
 
-async function run() {
+/**
+ * @param {{askedFromAnotherWindow?: boolean}} [options] set when the robot
+ *   view asked for this run rather than a button here being pressed. Also
+ *   receives a click Event when wired straight to the button, which has no
+ *   such property and so reads as false.
+ */
+async function run({ askedFromAnotherWindow = false } = {}) {
   if (!client) {
     announcer.status('Connect to a hub or the simulator first.');
     return;
@@ -1146,7 +1152,14 @@ async function run() {
   //
   // Everywhere, because the window describing the mat may well be the pop-out
   // rather than this one.
-  silenceEverywhere();
+  //
+  // Except when that window is the one that asked. It briefs as it asks — the
+  // view it is showing is what a student needs before the robot sets off
+  // across it — and silencing everywhere cut that off one millisecond after
+  // it started, measured. What it has only just begun saying is about this
+  // run, not left over from the last one.
+  if (askedFromAnotherWindow) silence();
+  else silenceEverywhere();
 
   for (const warning of warnings) announcer.narrate(warning, 'warning');
 
@@ -1216,7 +1229,17 @@ function wireRobotView() {
     // The 3D view when it exists, because it can also say where the camera is
     // looking; the plain scene otherwise. The commentary must not be the one
     // feature you have to download three.js to hear.
-    view: { scene: () => robotView?.scene() ?? sceneSource.scene() },
+    //
+    // Everything the commentary asks of a view has to be forwarded here, not
+    // only scene(). takeViewChange was added to RobotView and this wrapper
+    // did not pass it on, so on this page turning the camera and pressing Run
+    // described nothing: the question was asked of an object that had no
+    // answer to it. Without the 3D view there is no camera to turn, so the
+    // answer is no.
+    view: {
+      scene: () => robotView?.scene() ?? sceneSource.scene(),
+      takeViewChange: () => Boolean(robotView?.takeViewChange?.()),
+    },
     speaker,
   });
   commentary.start();
