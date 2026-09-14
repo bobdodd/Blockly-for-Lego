@@ -280,3 +280,144 @@ describe('silencing every window at once', () => {
     }
   });
 });
+
+/**
+ * The browser keeps the count, not a message.
+ *
+ * What went wrong: both robot views talked at once, and the claim is a
+ * message — a window says "I am speaking now" and every other window is
+ * trusted to hear it and go quiet. Nothing verifies that it arrived, and a
+ * window that never learns it has been taken over stays certain it holds the
+ * voice. Two certain windows both talk.
+ *
+ * A Web Lock is the same idea with the browser enforcing it: exactly one
+ * holder, `steal` hands it over, and the previous holder's request *rejects*
+ * — so losing the voice is something a window is told rather than something
+ * it has to infer from a message going missing.
+ */
+describe('holding the voice with a lock', () => {
+  /**
+   * navigator.locks, modelling the two parts this depends on: only one holder
+   * at a time, and `steal` rejecting whoever held it before.
+   */
+  function fakeLocks() {
+    const held = new Map();
+    return {
+      api: {
+        request(name, options, callback) {
+          const previous = held.get(name);
+          if (previous && !options?.steal) {
+            // Queued behind the holder, which for this is the same as never.
+            return new Promise(() => {});
+          }
+          if (previous) previous.reject(new Error('AbortError'));
+          return new Promise((resolve, reject) => {
+            held.set(name, { reject });
+            Promise.resolve(callback()).then(resolve, reject);
+          });
+        },
+      },
+    };
+  }
+
+  /**
+   * Channels that carry nothing.
+   *
+   * The failure this is all for: a window says "I am speaking now" and the
+   * message does not arrive, so the other window never learns it has been
+   * taken over and both of them talk. With the lock, the handover happens
+   * anyway — which is the only thing worth asserting here.
+   */
+  function deafChannels() {
+    const previous = globalThis.BroadcastChannel;
+    globalThis.BroadcastChannel = class {
+      constructor(name) { this.name = name; this.onmessage = null; }
+      postMessage() {}
+      close() {}
+    };
+    return { restore() { globalThis.BroadcastChannel = previous; } };
+  }
+
+  function windowWithLocks(locks) {
+    const listeners = {};
+    return {
+      navigator: { locks: locks.api },
+      addEventListener(type, fn) { (listeners[type] ??= []).push(fn); },
+      removeEventListener(type, fn) {
+        listeners[type] = (listeners[type] ?? []).filter((other) => other !== fn);
+      },
+      focus() { for (const fn of listeners.focus ?? []) fn(); },
+    };
+  }
+
+  it('takes the lock as well as saying so', async () => {
+    const channels = stubChannels();
+    const locks = fakeLocks();
+    try {
+      const only = takeTheVoice({ window: windowWithLocks(locks) });
+      await Promise.resolve();
+      assert.equal(only.hasTheLock(), true, 'a lone window holds the voice for real');
+    } finally {
+      channels.restore();
+    }
+  });
+
+  it('and a second window stealing it tells the first, without a message', async () => {
+    // With every message dropped. The first window finds out because its own
+    // request rejected, which is the whole point: it does not depend on
+    // anything arriving.
+    const channels = deafChannels();
+    const locks = fakeLocks();
+    try {
+      const lost = [];
+      const editor = takeTheVoice({
+        window: windowWithLocks(locks), onLost: () => lost.push('editor'),
+      });
+      await Promise.resolve();
+      assert.equal(editor.hasTheLock(), true);
+
+      const popout = takeTheVoice({ window: windowWithLocks(locks) });
+      await Promise.resolve();
+      await Promise.resolve();
+
+      assert.deepEqual(lost, ['editor'], 'the editor was told it lost the voice');
+      assert.equal(editor.holding(), false);
+      assert.equal(popout.holding(), true);
+    } finally {
+      channels.restore();
+    }
+  });
+
+  it('and releases it when the window goes away', async () => {
+    // A message never did this: closing the robot view left the editor
+    // waiting for a window that no longer existed.
+    const channels = stubChannels();
+    const locks = fakeLocks();
+    try {
+      const popout = takeTheVoice({ window: windowWithLocks(locks) });
+      await Promise.resolve();
+      assert.equal(popout.hasTheLock(), true);
+
+      popout.close();
+      assert.equal(popout.hasTheLock(), false, 'closing lets the voice go');
+    } finally {
+      channels.restore();
+    }
+  });
+
+  it('and still works in a browser with no locks at all', async () => {
+    // Older browsers fall back to the message, which is what it always was.
+    const channels = stubChannels();
+    try {
+      const editor = takeTheVoice({ window: fakeWindow() });
+      const popout = takeTheVoice({ window: fakeWindow() });
+      popout.claim();
+
+      assert.equal(editor.holding(), false);
+      assert.equal(popout.holding(), true);
+      assert.equal(editor.hasTheLock(), false, 'no lock to hold');
+    } finally {
+      channels.restore();
+    }
+  });
+});

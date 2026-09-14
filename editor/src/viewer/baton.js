@@ -79,17 +79,57 @@ export function takeTheVoice({ onLost, onTaken, onSilence, window: win } = {}) {
     onLost?.();
   };
 
+  /**
+   * Hold the voice by holding a lock on it.
+   *
+   * The claim used to be a message and nothing more: a window said "I am
+   * speaking now" and every other window was trusted to hear it and go quiet.
+   * That works until a message is missed or a window never learns it has been
+   * taken over — and then two windows are both certain they hold the voice
+   * and both talk, which is the failure it exists to prevent. A message that
+   * has to arrive for the page to behave is a poor thing to hang this on.
+   *
+   * A Web Lock is the same idea with the browser keeping the count. Exactly
+   * one window can hold a named lock; `steal` hands it over and *rejects the
+   * previous holder's request*, so losing it is something a window is told
+   * rather than something it has to infer. A window that closes releases it
+   * without having to say so, which the message never did: closing the robot
+   * view used to leave the editor waiting for a window that was gone.
+   *
+   * The message is still sent, for browsers without locks and because it
+   * costs nothing.
+   */
+  const locks = host?.navigator?.locks ?? globalThis.navigator?.locks;
+  let release = null;
+
+  const holdTheLock = () => {
+    if (!locks) return;
+    locks.request(CHANNEL, { steal: true }, () => {
+      holding = true;
+      onTaken?.();
+      // Held until somebody steals it; that is what releases this.
+      return new Promise((resolve) => { release = resolve; });
+    }).catch(() => {
+      // Stolen. The only way out of that promise is another window taking it.
+      if (!holding) return;
+      holding = false;
+      onLost?.();
+    });
+  };
+
   const claim = () => {
     if (holding) return;
     holding = true;
     onTaken?.();
     channel.postMessage({ id });
+    holdTheLock();
   };
 
   // Claim on arrival, and again whenever this window is the one being looked
   // at. A window opened second takes the voice, which is what somebody who
   // just opened it expects.
   channel.postMessage({ id });
+  holdTheLock();
   host?.addEventListener?.('focus', claim);
 
   return {
@@ -99,6 +139,9 @@ export function takeTheVoice({ onLost, onTaken, onSilence, window: win } = {}) {
       holding = false;
       claim();
     },
+
+    /** Whether the browser agrees this window holds the voice. */
+    hasTheLock: () => Boolean(release),
 
     /**
      * Ask every other window to stop talking.
@@ -115,6 +158,8 @@ export function takeTheVoice({ onLost, onTaken, onSilence, window: win } = {}) {
     holding: () => holding,
     close() {
       host?.removeEventListener?.('focus', claim);
+      release?.();
+      release = null;
       channel.close();
     },
   };
