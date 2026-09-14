@@ -388,6 +388,57 @@ describe('holding the voice with a lock', () => {
     }
   });
 
+  it('and claiming twice does not take it away from itself', async () => {
+    // What went wrong: the robot view claims on arrival and again because
+    // opening it is itself a claim. The second request stole the lock from
+    // the window that already held it, and a steal rejects the previous
+    // request — its own — which reads exactly like another window taking the
+    // voice. It yielded to itself and went mute: pressing Run in that window
+    // then said nothing at all, in either window.
+    const channels = deafChannels();
+    const locks = fakeLocks();
+    try {
+      const lost = [];
+      const popout = takeTheVoice({
+        window: windowWithLocks(locks), onLost: () => lost.push('popout'),
+      });
+      await Promise.resolve();
+      assert.equal(popout.holding(), true, 'it holds the voice on arrival');
+
+      popout.claim();                       // viewer/main.js does exactly this
+      await Promise.resolve();
+      await Promise.resolve();
+
+      assert.deepEqual(lost, [], 'claiming again is not losing it');
+      assert.equal(popout.holding(), true, 'and it still holds the voice');
+      assert.equal(popout.hasTheLock(), true);
+    } finally {
+      channels.restore();
+    }
+  });
+
+  it('and a focus after claiming leaves it holding too', async () => {
+    // The same shape, arriving the other way: every focus is a claim.
+    const channels = deafChannels();
+    const locks = fakeLocks();
+    try {
+      const lost = [];
+      const host = windowWithLocks(locks);
+      const editor = takeTheVoice({ window: host, onLost: () => lost.push('editor') });
+      await Promise.resolve();
+
+      host.focus();
+      host.focus();
+      await Promise.resolve();
+      await Promise.resolve();
+
+      assert.deepEqual(lost, []);
+      assert.equal(editor.holding(), true);
+    } finally {
+      channels.restore();
+    }
+  });
+
   it('and releases it when the window goes away', async () => {
     // A message never did this: closing the robot view left the editor
     // waiting for a window that no longer existed.

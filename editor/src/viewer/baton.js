@@ -101,15 +101,30 @@ export function takeTheVoice({ onLost, onTaken, onSilence, window: win } = {}) {
    */
   const locks = host?.navigator?.locks ?? globalThis.navigator?.locks;
   let release = null;
+  let request = 0;
 
   const holdTheLock = () => {
     if (!locks) return;
+
+    // Already holding it. Asking again would steal it from ourselves, and a
+    // steal rejects the previous request -- our own -- which reads exactly
+    // like another window taking the voice. The robot view claims once on
+    // arrival and once more when it is opened deliberately, so it did that
+    // to itself and went mute.
+    if (release) return;
+
+    // And if a later request does supersede this one, its rejection is not
+    // news either. Only the newest request speaks for this window.
+    const mine = ++request;
     locks.request(CHANNEL, { steal: true }, () => {
+      if (mine !== request) return Promise.resolve();
       holding = true;
       onTaken?.();
       // Held until somebody steals it; that is what releases this.
       return new Promise((resolve) => { release = resolve; });
     }).catch(() => {
+      if (mine !== request) return;
+      release = null;
       // Stolen. The only way out of that promise is another window taking it.
       if (!holding) return;
       holding = false;
