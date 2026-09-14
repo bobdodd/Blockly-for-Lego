@@ -54,12 +54,12 @@ describe('nothing substantive sits outside a landmark', () => {
   it('because everything above the workspace is in the banner', () => {
     // A <p> that is a direct child of <body> belongs to no landmark and a
     // screen reader moving by landmark never reaches it. The status region,
-    // the progress caption and both connection notes were all out here.
+    // the progress caption and the connection note were all out here.
     const markup = code('index.html');
     const body = markup.slice(markup.indexOf('<body>'), markup.indexOf('</body>'));
     const banner = markup.slice(markup.indexOf('<header'), markup.indexOf('</header>'));
 
-    for (const id of ['status', 'busy', 'connect-note', 'hosted-note']) {
+    for (const id of ['status', 'busy', 'connect-note']) {
       assert.ok(banner.includes(`id="${id}"`), `#${id} should be in the banner`);
     }
 

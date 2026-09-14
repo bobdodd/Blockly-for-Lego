@@ -44,19 +44,3 @@ export function isLocalOrigin(location = globalThis.location ?? {}) {
   return hostname.endsWith('.localhost');
 }
 
-/**
- * What to tell someone about the simulator on a hosted copy.
- *
- * The simulator is not unavailable — it runs here, in this browser, compiled
- * to WebAssembly. What is unavailable is reaching one on their own machine,
- * and the difference worth stating is the one-off download, so the first
- * connection does not look like a hang.
- */
-export function builtInSimulatorNote() {
-  return (
-    'This copy runs the simulator inside your browser, because a website is ' +
-    'not allowed to reach a program on your own computer. The first time you ' +
-    'connect it downloads Python, which takes a moment; after that it is ' +
-    'stored and starts straight away.'
-  );
-}

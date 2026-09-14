@@ -10,7 +10,7 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
-import { builtInSimulatorNote, isLocalOrigin, REPO_URL } from '../src/environment.js';
+import { isLocalOrigin, REPO_URL } from '../src/environment.js';
 
 describe('is the simulator reachable from here', () => {
   it('says yes for the ways a local copy gets opened', () => {
@@ -50,26 +50,7 @@ describe('is the simulator reachable from here', () => {
   });
 });
 
-describe('what a hosted copy says about the simulator', () => {
-  const message = builtInSimulatorNote();
-
-  it('says the simulator works, not that it is missing', () => {
-    // It runs here, in a worker. Calling it unavailable would send a student
-    // looking for something that is not the problem.
-    assert.ok(/inside your browser/i.test(message));
-    assert.ok(!/unavailable|cannot use|not available/i.test(message));
-  });
-
-  it('warns about the one-off download, so a wait is not a hang', () => {
-    assert.ok(/first time/i.test(message));
-    assert.ok(/downloads Python/i.test(message));
-    assert.ok(/starts straight away|stored/i.test(message));
-  });
-
-  it('does not blame the student or the simulator', () => {
-    assert.ok(!/error|fail|not running/i.test(message));
-  });
-
+describe('where the project lives', () => {
   it('points at somewhere real', () => {
     assert.match(REPO_URL, /^https:\/\/github\.com\/[\w-]+\/[\w-]+$/);
   });

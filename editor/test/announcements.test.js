@@ -212,6 +212,16 @@ describe('the simulator says the connection out loud', () => {
       'but no stage is announced or spoken');
   });
 
+  it('and nothing explains the hosting while connecting', () => {
+    // There used to be a note on the page saying the simulator runs in the
+    // browser because a website cannot reach your computer, and a second copy
+    // of the same words announced into the status region the moment you
+    // pressed Connect. Both are gone. "Please wait" is the whole of what a
+    // student waiting needs to be told.
+    assert.ok(!/builtInSimulatorNote|hosted-note/.test(app),
+      'no hosting explanation belongs in the connection');
+  });
+
   it('while a hub stays an ordinary page announcement', () => {
     // Speech belongs to the simulator. A hub connection is the page talking
     // about itself, and the screen reader is the right place for that.

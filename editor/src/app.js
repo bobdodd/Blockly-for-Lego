@@ -30,7 +30,7 @@ import { broadcast } from './viewer/relay.js';
 import { Speaker } from './viewer/speaker.js';
 import { createTabs } from './tabs.js';
 import { matchShortcut, shortcutLabel } from './shortcuts.js';
-import { builtInSimulatorNote, isLocalOrigin } from './environment.js';
+import { isLocalOrigin } from './environment.js';
 import { InBrowserSimulatorTransport, isSupported as builtInSupported } from './transport/in-browser.js';
 import * as files from './files.js';
 import {
@@ -737,12 +737,6 @@ async function startSimulator() {
     setBusy(detail ?? stage);
   };
 
-  // On a hosted copy this is the first anyone *hears* of why the simulator is
-  // in the browser rather than on their own machine. The note at the top of
-  // the page says the same thing and has been sitting there unread since it
-  // loaded; this arrives at the moment it explains something.
-  if (!isLocalOrigin()) announcer.status(builtInSimulatorNote());
-
   await connect(transport, 'the simulator', { spoken: true });
 }
 
@@ -1433,13 +1427,6 @@ function start() {
   wireControls();
   wireRobotView();
 
-  if (!isLocalOrigin()) {
-    // Said on arrival rather than when the first connection seems to hang.
-    // The note says what the tooltip on the button used to say, and says it
-    // to everyone; builtInSimulatorNote is the same words for the status
-    // region when a connection is actually attempted.
-    element('hosted-note').hidden = false;
-  }
   announcer.status(
     'Ready. Connect to the simulator to try your program without a robot.',
   );
