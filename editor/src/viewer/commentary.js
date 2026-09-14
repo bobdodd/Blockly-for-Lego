@@ -117,8 +117,16 @@ export class Commentary {
    * Returns the text actually spoken, or null when there was nothing left
    * worth saying — which is the desirable outcome when nothing has changed.
    */
-  _describe(facts, { onDone } = {}) {
-    const worth = this.recent.filter(this._withoutRepeatedBuild(facts));
+  _describe(facts, { onDone, force = false } = {}) {
+    // `force` is for a description somebody has effectively asked for. "I
+    // have just told you that" is the right answer to a repeated question
+    // and the wrong one to "I have changed where I am looking from": the
+    // sentences may be the same words, but they are being heard for a new
+    // reason and against a new picture.
+    //
+    // The build is still dropped, because that really has not changed.
+    const said = this._withoutRepeatedBuild(facts);
+    const worth = force ? said : this.recent.filter(said);
     this.recent.note(facts);
     if (worth.length === 0) {
       onDone?.();
@@ -243,7 +251,7 @@ export class Commentary {
     facts.push({ kind: 'go', text: 'Starting.', always: true });
 
     if (!this.speaker.willSpeak) {
-      this._describe(facts);
+      this._describe(facts, { force: viewChosen });
       return Promise.resolve();
     }
 
@@ -258,7 +266,7 @@ export class Commentary {
       // first beat is along in a moment. A word of filler here would be the
       // padding this whole mechanism exists to remove.
       this.window.setTimeout(done, BRIEF_CAP_MS);
-      this._describe(facts, { onDone: done });
+      this._describe(facts, { onDone: done, force: viewChosen });
     });
   }
 

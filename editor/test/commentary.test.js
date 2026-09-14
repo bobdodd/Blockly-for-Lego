@@ -823,6 +823,29 @@ describe('choosing a new view of the mat', () => {
     assert.match(brief, /looking at the mat from/, 'and the point of view with it');
   });
 
+  it('even when it was described moments ago', async () => {
+    // The case that made this look broken: open the window, hear the scene,
+    // turn the camera, tab to Run, press it — all inside the fifteen seconds
+    // RecentlySaid holds a sentence for, so every fact was dropped as
+    // something the listener had just been told and only "Starting." came
+    // out. "I have just said that" is the wrong answer to "I have changed
+    // where I am looking from".
+    const { commentary, speaker, view } = setup();
+    withChosenView(view);
+
+    commentary.introduce();
+    speaker.said.length = 0;
+    // No wait at all: the description is still ringing in the ears.
+    view.chooseView();
+    const waiting = commentary.beginRun();
+    speaker.finish();
+    await waiting;
+
+    const brief = speaker.said.join(' ');
+    assert.match(brief, /The mat is [\d.]+ metres/, 'the mat is laid out again');
+    assert.match(brief, /looking at the mat from/, 'and so is the point of view');
+  });
+
   it('but not at the run after that', async () => {
     // Asking clears it: one description per change, not one for every run
     // that follows a change.
