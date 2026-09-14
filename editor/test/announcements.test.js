@@ -290,3 +290,57 @@ describe('the simulator says the connection out loud', () => {
     assert.match(app.slice(at, at + 120), /quiet: true, spoken: true/);
   });
 });
+
+/**
+ * A run is reported by whichever channel is carrying the run.
+ *
+ * What went wrong: pressing Run with the simulator connected produced two
+ * announcements at once. The commentary speaks about the run — "Starting." as
+ * the program goes, and where the robot ended up when it stops — while the
+ * status region announced the same events to the screen reader. Measured, the
+ * spoken summary and "The program has finished." landed in the same
+ * millisecond.
+ *
+ * Two assertive announcements were also arriving 2ms apart: "Sending your
+ * program to the robot." was cut off by "The program is running." before it
+ * could be read. Sending to a real hub takes long enough to be worth saying;
+ * sending to a simulator in the same browser does not.
+ */
+describe('reporting a run', () => {
+  const app = readFileSync(fileURLToPath(new URL('../src/app.js', import.meta.url)), 'utf8');
+
+  it('goes through one place that knows which channel is carrying it', () => {
+    const fn = app.slice(app.indexOf('function runStatus('));
+    const body = fn.slice(0, fn.indexOf('\n}'));
+    assert.match(body, /connectionKind === 'simulator'/, 'it depends on what is connected');
+    assert.match(body, /announcer\.record\(message/, 'the simulator keeps it to the transcript');
+    assert.match(body, /announcer\.status\(message\)/, 'a hub announces it as always');
+  });
+
+  it('and every run event goes through it', () => {
+    for (const message of ['Sending your program to the robot.',
+                           "running ? 'The program is running.' : 'The program has finished.'"]) {
+      const at = app.indexOf(message);
+      assert.ok(at > 0, `${message} should exist`);
+      const line = app.slice(app.lastIndexOf('\n', at), at);
+      assert.match(line, /runStatus\(/, `${message} must not go straight to the status region`);
+    }
+  });
+
+  it('but a hub still says all of it, because nothing else does', () => {
+    // There is no commentary on a hub: these announcements are the only
+    // account of the run there is.
+    const fn = app.slice(app.indexOf('function runStatus('));
+    const body = fn.slice(0, fn.indexOf('\n}'));
+    assert.ok(!/else\s*$/.test(body.trim()), 'the hub branch is not empty');
+    assert.match(body, /else announcer\.status\(message\);/);
+  });
+
+  it('and the guards that explain why nothing ran are untouched', () => {
+    // "Connect to a hub or the simulator first." is not a report on a run, it
+    // is the reason there is not one, and there is no commentary to say it.
+    const body = app.slice(app.indexOf('async function run()'), app.indexOf('async function stop()'));
+    assert.match(body, /announcer\.status\(\s*'Connect to a hub or the simulator first\.'/,
+      'the guards still announce');
+  });
+});

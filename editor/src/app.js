@@ -624,7 +624,7 @@ async function connect(transport, description, { quiet = false, spoken = false }
   });
   hub.on('program', ({ running }) => {
     setRunning(running);
-    announcer.status(running ? 'The program is running.' : 'The program has finished.');
+    runStatus(running ? 'The program is running.' : 'The program has finished.');
   });
   hub.on('telemetry', (devices) => {
     latestTelemetry = devices;
@@ -1028,6 +1028,30 @@ function applyConnectionLayout() {
   // all there to read when the simulator disconnects.
 }
 
+/**
+ * Say how the run is going, through whichever channel is carrying the run.
+ *
+ * With the simulator, the commentary is already speaking about this run: it
+ * says "Starting." as the program goes and describes where the robot ended up
+ * when it stops. Announcing the same events again into the status region puts
+ * a screen reader and the browser voice on top of each other -- measured, the
+ * spoken summary and "The program has finished." landed in the same
+ * millisecond -- and the two say the same thing anyway.
+ *
+ * It also stops two assertive announcements arriving 2ms apart. Sending a
+ * program to a real hub takes long enough to be worth reporting; sending it
+ * to a simulator in the same browser does not, so "Sending your program to
+ * the robot." was cut off by "The program is running." before it was read.
+ *
+ * With a hub there is no commentary, so these are the only account of the run
+ * there is and they are announced as they always were. Either way the line
+ * goes into the log, so the transcript is the same.
+ */
+function runStatus(message) {
+  if (connectionKind === 'simulator') announcer.record(message, 'status');
+  else announcer.status(message);
+}
+
 function setRunning(running) {
   ui.stop.disabled = !running;
   ui.run.disabled = running || !client;
@@ -1100,7 +1124,7 @@ async function run() {
   // resolves at once when nothing is going to be spoken.
   await commentary?.beginRun();
 
-  announcer.status('Sending your program to the robot.');
+  runStatus('Sending your program to the robot.');
   try {
     await client.run(code);
   } catch (error) {
