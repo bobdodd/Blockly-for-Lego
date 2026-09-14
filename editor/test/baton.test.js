@@ -313,7 +313,10 @@ describe('holding the voice with a lock', () => {
           if (previous) previous.reject(new Error('AbortError'));
           return new Promise((resolve, reject) => {
             held.set(name, { reject });
-            Promise.resolve(callback()).then(resolve, reject);
+            // Granted on a later turn, as the real one is. Granting inside
+            // this call would hide the window between asking and holding,
+            // which is the window two voices used to fit through.
+            Promise.resolve().then(() => Promise.resolve(callback()).then(resolve, reject));
           });
         },
       },
@@ -350,12 +353,41 @@ describe('holding the voice with a lock', () => {
     };
   }
 
+  /** Let the lock be granted, as a tick of the event loop would. */
+  const settle = async () => { for (let i = 0; i < 4; i++) await Promise.resolve(); };
+
+  it('starts quiet, and speaks only once the browser has agreed', async () => {
+    // The hole this closes: claim() used to call onTaken immediately, so a
+    // window declared itself the speaker before it held anything. For as long
+    // as the steal took to land, two windows were both certain they had the
+    // voice — and both talked. Holding the lock is now the only thing that
+    // makes a window the one that speaks.
+    const channels = deafChannels();
+    const locks = fakeLocks();
+    try {
+      const events = [];
+      const only = takeTheVoice({
+        window: windowWithLocks(locks),
+        onTaken: () => events.push('taken'),
+        onLost: () => events.push('lost'),
+      });
+      assert.deepEqual(events, ['lost'], 'quiet before the browser has answered');
+      assert.equal(only.holding(), false);
+
+      await settle();
+      assert.deepEqual(events, ['lost', 'taken'], 'and speaking once it has');
+      assert.equal(only.holding(), true);
+    } finally {
+      channels.restore();
+    }
+  });
+
   it('takes the lock as well as saying so', async () => {
     const channels = stubChannels();
     const locks = fakeLocks();
     try {
       const only = takeTheVoice({ window: windowWithLocks(locks) });
-      await Promise.resolve();
+      await settle();
       assert.equal(only.hasTheLock(), true, 'a lone window holds the voice for real');
     } finally {
       channels.restore();
@@ -373,12 +405,12 @@ describe('holding the voice with a lock', () => {
       const editor = takeTheVoice({
         window: windowWithLocks(locks), onLost: () => lost.push('editor'),
       });
-      await Promise.resolve();
+      await settle();
       assert.equal(editor.hasTheLock(), true);
+      lost.length = 0;                       // the quiet start is not a loss
 
       const popout = takeTheVoice({ window: windowWithLocks(locks) });
-      await Promise.resolve();
-      await Promise.resolve();
+      await settle();
 
       assert.deepEqual(lost, ['editor'], 'the editor was told it lost the voice');
       assert.equal(editor.holding(), false);
@@ -402,12 +434,12 @@ describe('holding the voice with a lock', () => {
       const popout = takeTheVoice({
         window: windowWithLocks(locks), onLost: () => lost.push('popout'),
       });
-      await Promise.resolve();
+      await settle();
       assert.equal(popout.holding(), true, 'it holds the voice on arrival');
+      lost.length = 0;
 
       popout.claim();                       // viewer/main.js does exactly this
-      await Promise.resolve();
-      await Promise.resolve();
+      await settle();
 
       assert.deepEqual(lost, [], 'claiming again is not losing it');
       assert.equal(popout.holding(), true, 'and it still holds the voice');
@@ -425,15 +457,50 @@ describe('holding the voice with a lock', () => {
       const lost = [];
       const host = windowWithLocks(locks);
       const editor = takeTheVoice({ window: host, onLost: () => lost.push('editor') });
-      await Promise.resolve();
+      await settle();
+      lost.length = 0;
 
       host.focus();
       host.focus();
-      await Promise.resolve();
-      await Promise.resolve();
+      await settle();
 
       assert.deepEqual(lost, []);
       assert.equal(editor.holding(), true);
+    } finally {
+      channels.restore();
+    }
+  });
+
+  it('and taking it back waits for the browser too', async () => {
+    // The path the others miss: a window that has *lost* the voice and is
+    // then focused. claim() used to call onTaken there and then, so between
+    // the focus and the steal landing both windows were certain they had the
+    // voice — and both of them described the scene.
+    const channels = deafChannels();
+    const locks = fakeLocks();
+    try {
+      const events = [];
+      const host = windowWithLocks(locks);
+      const editor = takeTheVoice({
+        window: host,
+        onTaken: () => events.push('taken'),
+        onLost: () => events.push('lost'),
+      });
+      await settle();
+
+      const popout = takeTheVoice({ window: windowWithLocks(locks) });
+      await settle();
+      assert.equal(editor.holding(), false, 'the pop-out has it');
+      events.length = 0;
+
+      host.focus();
+      assert.deepEqual(events, [], 'not the speaker yet — it has only asked');
+      assert.equal(editor.holding(), false);
+
+      await settle();
+      assert.deepEqual(events, ['taken'], 'and now it is');
+      assert.equal(editor.holding(), true);
+      assert.equal(popout.holding(), false, 'and only it');
     } finally {
       channels.restore();
     }
@@ -446,7 +513,7 @@ describe('holding the voice with a lock', () => {
     const locks = fakeLocks();
     try {
       const popout = takeTheVoice({ window: windowWithLocks(locks) });
-      await Promise.resolve();
+      await settle();
       assert.equal(popout.hasTheLock(), true);
 
       popout.close();

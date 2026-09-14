@@ -134,24 +134,44 @@ export function takeTheVoice({ onLost, onTaken, onSilence, window: win } = {}) {
 
   const claim = () => {
     if (holding) return;
+
+    // With a lock, holding it is the only thing that makes this window the
+    // one that speaks. Saying so before the browser has agreed is how two
+    // windows both end up speaking: each declares itself, optimistically, and
+    // for as long as it takes the steal to land they are both certain. The
+    // grant calls onTaken; nothing else does.
+    if (locks) {
+      channel.postMessage({ id });
+      holdTheLock();
+      return;
+    }
+
     holding = true;
     onTaken?.();
     channel.postMessage({ id });
-    holdTheLock();
   };
 
   // Claim on arrival, and again whenever this window is the one being looked
   // at. A window opened second takes the voice, which is what somebody who
   // just opened it expects.
   channel.postMessage({ id });
+
+  // Quiet until the browser says this window has the voice. A window that
+  // assumes it has it is a window that will talk over whoever really does.
+  if (locks) {
+    holding = false;
+    onLost?.();
+  }
   holdTheLock();
+
   host?.addEventListener?.('focus', claim);
 
   return {
     claim() {
       // Forced, for a window that has just been opened and has not been
-      // focused yet — opening it is the claim.
-      holding = false;
+      // focused yet — opening it is the claim. With a lock there is nothing
+      // to force: the request is already in flight and the grant decides.
+      if (!locks) holding = false;
       claim();
     },
 
