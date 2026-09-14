@@ -179,6 +179,22 @@ function chosenMat() {
 /** Says the 3D view out loud. See src/viewer/commentary.js. */
 const speaker = new Speaker({ regionId: 'commentary-region' });
 
+
+/*
+ * Moving focus cuts the speech off.
+ *
+ * What is being spoken is about the moment before the move. A student who has
+ * tabbed somewhere has finished with it, and a sentence that carries on after
+ * them is describing where they no longer are.
+ *
+ * Truncated, not paused: there is nothing to come back to. The next thing
+ * worth saying will be said when there is something to say.
+ *
+ * `focusin` rather than `focus`, because focus does not bubble and this has
+ * to hear about every control on the page, including the ones Blockly makes.
+ */
+document.addEventListener('focusin', () => speaker.stop());
+
 /**
  * Only the window being looked at speaks.
  *

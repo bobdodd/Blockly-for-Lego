@@ -81,6 +81,22 @@ const view = new RobotView(ui.canvas, robotDescription, {
 // the view — for a blind student it *is* the view.
 const speaker = new Speaker({ regionId: 'commentary-region' });
 
+
+/*
+ * Moving focus cuts the speech off.
+ *
+ * What is being spoken is about the moment before the move. A student who has
+ * tabbed somewhere has finished with it, and a sentence that carries on after
+ * them is describing where they no longer are.
+ *
+ * Truncated, not paused: there is nothing to come back to. The next thing
+ * worth saying will be said when there is something to say.
+ *
+ * `focusin` rather than `focus`, because focus does not bubble and this has
+ * to hear about every control on the page, including the picture itself.
+ */
+document.addEventListener('focusin', () => speaker.stop());
+
 // Only the window being looked at speaks; see baton.js. Opening this window
 // is itself a claim, because that is what somebody who just opened it expects.
 const voice = takeTheVoice({

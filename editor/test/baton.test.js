@@ -356,27 +356,37 @@ describe('holding the voice with a lock', () => {
   /** Let the lock be granted, as a tick of the event loop would. */
   const settle = async () => { for (let i = 0; i < 4; i++) await Promise.resolve(); };
 
-  it('starts quiet, and speaks only once the browser has agreed', async () => {
-    // The hole this closes: claim() used to call onTaken immediately, so a
-    // window declared itself the speaker before it held anything. For as long
-    // as the steal took to land, two windows were both certain they had the
-    // voice — and both talked. Holding the lock is now the only thing that
-    // makes a window the one that speaks.
+  it('speaks from the start, and stops the moment it is taken over', async () => {
+    // It asks for the lock straight away, but a grant is a turn of the event
+    // loop away and a window says its first words before that — the robot
+    // view announces itself as it opens, and starting quiet swallowed those
+    // entirely: measured, that window opened saying nothing at all, even as
+    // the only window on the screen.
+    //
+    // So it starts holding and the lock corrects it. The race that leaves is
+    // a few milliseconds at a window's birth; the one that mattered was
+    // claim() declaring itself the speaker on every focus, which lasts as
+    // long as a person takes to look away and back.
     const channels = deafChannels();
     const locks = fakeLocks();
     try {
       const events = [];
-      const only = takeTheVoice({
+      const editor = takeTheVoice({
         window: windowWithLocks(locks),
         onTaken: () => events.push('taken'),
         onLost: () => events.push('lost'),
       });
-      assert.deepEqual(events, ['lost'], 'quiet before the browser has answered');
-      assert.equal(only.holding(), false);
+      assert.equal(editor.holding(), true, 'able to speak from the first moment');
+      assert.deepEqual(events, [], 'and not told anything it did not need to be');
 
       await settle();
-      assert.deepEqual(events, ['lost', 'taken'], 'and speaking once it has');
-      assert.equal(only.holding(), true);
+      assert.equal(editor.holding(), true, 'still holding once the lock lands');
+
+      const popout = takeTheVoice({ window: windowWithLocks(locks) });
+      await settle();
+      assert.equal(editor.holding(), false, 'and it stops when another window takes it');
+      assert.ok(events.includes('lost'), 'having been told so');
+      assert.equal(popout.holding(), true);
     } finally {
       channels.restore();
     }

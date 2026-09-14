@@ -769,6 +769,32 @@ describe('a new thing to say stops the old one', () => {
  * an object with no answer to it. The pop-out passes its view directly and
  * worked, which is what made it look like a pop-out-only problem.
  */
+/**
+ * Moving focus cuts the speech off.
+ *
+ * What is being spoken is about the moment before the move. A student who has
+ * tabbed somewhere has finished with it, and a sentence that carries on after
+ * them is describing where they no longer are.
+ */
+describe('focus moving stops what is being said', () => {
+  for (const [name, source] of [['the editor', read('src/app.js')],
+                                ['the robot view', read('src/viewer/main.js')]]) {
+    it(`in ${name}`, () => {
+      assert.match(source, /document\.addEventListener\('focusin', \(\) => speaker\.stop\(\)\)/,
+        `${name} should truncate on a focus change`);
+    });
+  }
+
+  it('and listens for the event that bubbles', () => {
+    // `focus` does not bubble, so a listener on the document would never hear
+    // about most of the page — including every control Blockly makes.
+    for (const source of [read('src/app.js'), read('src/viewer/main.js')]) {
+      assert.ok(!/addEventListener\('focus', \(\) => speaker\.stop/.test(source),
+        'focus does not bubble; focusin does');
+    }
+  });
+});
+
 describe('what the editor lets its commentary ask the view', () => {
   const app = read('src/app.js');
 

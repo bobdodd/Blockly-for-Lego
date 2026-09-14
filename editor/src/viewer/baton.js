@@ -156,12 +156,15 @@ export function takeTheVoice({ onLost, onTaken, onSilence, window: win } = {}) {
   // just opened it expects.
   channel.postMessage({ id });
 
-  // Quiet until the browser says this window has the voice. A window that
-  // assumes it has it is a window that will talk over whoever really does.
-  if (locks) {
-    holding = false;
-    onLost?.();
-  }
+  // The lock is asked for straight away, but a grant is a turn of the event
+  // loop away and a window says its first words before that — the robot view
+  // announces itself as it opens. Starting quiet swallowed those: the window
+  // was still waiting to be told it could speak. So it starts holding, as it
+  // always did, and the lock corrects it the moment another window takes it.
+  //
+  // The race that leaves is a few milliseconds at a window's birth. The one
+  // that mattered was claim() declaring itself the speaker on every focus,
+  // which is as long as a person takes to look away and back.
   holdTheLock();
 
   host?.addEventListener?.('focus', claim);
