@@ -45,14 +45,43 @@ describe('saying why a connection did not happen', () => {
   it('routes every connection answer through the one function', () => {
     // Including the one that fires when the browser cannot do Bluetooth at
     // all, which is the case that looked like a dead button.
-    assert.match(app, /function explainConnection\(message\)/);
+    assert.match(app, /function explainConnection\(message, \{ takeFocus = false \} = \{\}\)/);
     assert.match(app, /ui\.connectNote\.hidden = false/);
     assert.match(
       app,
       /if \(!bluetoothSupported\(\)\) \{\s*explainConnection\(/,
       'the unsupported-browser path must be visible, not spoken only',
     );
-    assert.match(app, /explainConnection\(describeConnectionFailure\(error, description\)\)/);
+    assert.match(app, /explainConnection\(describeConnectionFailure\(error, description\), \{ takeFocus: true \}\)/);
+  });
+
+  it('and moves to a failed attempt rather than only announcing it', () => {
+    // What went wrong: "No SPIKE Prime hub was found" was written to the
+    // assertive status region and went unheard. The failure arrives as the
+    // browser's own Bluetooth chooser closes, and until that moment the page
+    // is not the focused document — a live region that changes in the instant
+    // focus returns is easy for a screen reader to miss. Focus is not.
+    const markup = read('index.html');
+    const at = markup.indexOf('id="connect-note"');
+    assert.ok(at > 0, 'the note should exist');
+    assert.match(markup.slice(markup.lastIndexOf('<', at), markup.indexOf('>', at)),
+      /tabindex="-1"/, 'the note has to be focusable to be moved to');
+
+    const fn = app.slice(app.indexOf('function explainConnection('));
+    const body = fn.slice(0, fn.indexOf('\n}'));
+    assert.match(body, /ui\.connectNote\.focus\(\)/, 'and focus moves to it');
+    assert.match(body, /announcer\.record\(message/,
+      'read by being focused, so not announced as well — that is the same sentence twice');
+  });
+
+  it('but answers a refusal without dragging focus off the button', () => {
+    // "You are already connected" and "a connection is already being made"
+    // reply to a press with focus still on the button that made it. There is
+    // no chooser involved and nothing to miss, so they are announced.
+    const fn = app.slice(app.indexOf('function explainConnection('));
+    const body = fn.slice(0, fn.indexOf('\n}'));
+    assert.match(body, /if \(!takeFocus\) \{\s*announcer\.status\(message\);/,
+      'without takeFocus it is an announcement, as before');
   });
 
   it('takes the note away once it no longer applies', () => {

@@ -698,7 +698,7 @@ async function connect(transport, description, { quiet = false, spoken = false }
     // dims the right button.
     announcingConnection = false;
     refreshConnectControls();
-    if (!quiet) explainConnection(describeConnectionFailure(error, description));
+    if (!quiet) explainConnection(describeConnectionFailure(error, description), { takeFocus: true });
     return false;
   }
 
@@ -965,11 +965,43 @@ async function disconnect() {
  * and never visible. Any answer to pressing a connect button goes through
  * here.
  */
-function explainConnection(message) {
-  announcer.status(message);
-  if (!ui.connectNote) return;
+/**
+ * Say why a connection did not happen.
+ *
+ * `takeFocus` is for a failure that arrives as the browser's own Bluetooth
+ * chooser closes. Up to that moment the page is not the focused document --
+ * the chooser is browser furniture, outside the page -- and a live region
+ * that changes in the instant focus comes back is easy for a screen reader
+ * to miss entirely. "No SPIKE Prime hub was found" was reaching an assertive
+ * region and going unheard.
+ *
+ * Moving to the message instead of announcing it does not depend on that
+ * timing: a screen reader reads what it is given focus on. It is also where
+ * the student wants to be — the message says what to do next.
+ *
+ * Only for a failed attempt. The refusals (already connected, still
+ * connecting) answer a press with focus still on the button that made it,
+ * and dragging focus away from that button would be worse than the reply.
+ */
+function explainConnection(message, { takeFocus = false } = {}) {
+  if (!ui.connectNote) {
+    announcer.status(message);
+    return;
+  }
+
   ui.connectNote.textContent = message;
   ui.connectNote.hidden = false;
+
+  if (!takeFocus) {
+    announcer.status(message);
+    return;
+  }
+
+  // Read by being focused, so it is not also announced: that would be the
+  // same sentence twice, which is what the rest of this app has spent a long
+  // time getting rid of.
+  announcer.record(message, 'status');
+  ui.connectNote.focus();
 }
 
 /**

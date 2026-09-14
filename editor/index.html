@@ -61,7 +61,11 @@
         like a dead button. Deliberately NOT a live region — the status region
         has already said it, and two would say it twice.
       -->
-      <p id="connect-note" class="connect-note" hidden></p>
+      <!-- Focusable, so a failed connection can be *moved to* rather than
+           only announced. A live region change that happens as the browser's
+           own Bluetooth chooser closes is easy for a screen reader to miss;
+           focus is not. See explainConnection. -->
+      <p id="connect-note" class="connect-note" tabindex="-1" hidden></p>
 
       <!--
         Shown only when this copy is served from the web. Browsers refuse a
