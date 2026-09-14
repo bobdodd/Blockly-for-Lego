@@ -15,7 +15,15 @@
  * transcript, because two people reading two screens is not a duplication of
  * anything.
  *
- * Its own channel rather than the telemetry one: this is a question about
+ * The same channel also carries **silence**. Pressing Escape has to stop the
+ * talking, and `speechSynthesis.cancel()` reaches only the document that
+ * calls it — but the speakers are the room's, not the window's. A student who
+ * silences the editor while the projector is mid-sentence has not silenced
+ * anything they can hear. So the key is handled wherever it is pressed and
+ * the request goes to every window, which is the same shape of problem as the
+ * voice itself: one set of speakers, several windows.
+ *
+ * Its own channel rather than the telemetry one: these are questions about
  * windows, not about the robot, and mixing them would mean every viewer had
  * to filter messages meant for nobody.
  */
@@ -35,18 +43,20 @@ const nextId = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;
  * Take the voice, and be told when another window takes it.
  *
  * @param {object} options
- * @param {() => void} [options.onLost]  another window is speaking now
- * @param {() => void} [options.onTaken] this window is speaking now
- * @param {object} [options.window]      injectable for tests
- * @returns {{claim: () => void, holding: () => boolean, close: () => void}}
+ * @param {() => void} [options.onLost]    another window is speaking now
+ * @param {() => void} [options.onTaken]   this window is speaking now
+ * @param {() => void} [options.onSilence] another window asked for quiet
+ * @param {object} [options.window]        injectable for tests
+ * @returns {{claim: () => void, silence: () => void, holding: () => boolean,
+ *            close: () => void}}
  */
-export function takeTheVoice({ onLost, onTaken, window: win } = {}) {
+export function takeTheVoice({ onLost, onTaken, onSilence, window: win } = {}) {
   const host = win ?? (typeof window !== 'undefined' ? window : null);
 
   // Without the channel there is no second window to clash with, as far as
   // this can tell, so the safe answer is to carry on speaking.
   if (typeof BroadcastChannel !== 'function') {
-    return { claim() {}, holding: () => true, close() {} };
+    return { claim() {}, silence() {}, holding: () => true, close() {} };
   }
 
   const channel = new BroadcastChannel(CHANNEL);
@@ -54,7 +64,16 @@ export function takeTheVoice({ onLost, onTaken, window: win } = {}) {
   let holding = true;
 
   channel.onmessage = ({ data }) => {
-    if (data?.id === id) return;
+    if (!data || data.id === id) return;
+
+    // Silence is delivered whether or not this window holds the voice. A
+    // window that yielded a moment ago can still have a sentence playing out
+    // of the same speakers, and that sentence is the one being silenced.
+    if (data.silence) {
+      onSilence?.();
+      return;
+    }
+
     if (!holding) return;
     holding = false;
     onLost?.();
@@ -79,6 +98,19 @@ export function takeTheVoice({ onLost, onTaken, window: win } = {}) {
       // focused yet — opening it is the claim.
       holding = false;
       claim();
+    },
+
+    /**
+     * Ask every other window to stop talking.
+     *
+     * Only the asking: the window that calls this silences itself directly,
+     * because a channel does not deliver to its own sender and because a
+     * round trip is the wrong way to answer a key the user just pressed.
+     * Keeping the two apart is also what stops a silence from echoing back
+     * and forth between windows.
+     */
+    silence() {
+      channel.postMessage({ id, silence: true });
     },
     holding: () => holding,
     close() {

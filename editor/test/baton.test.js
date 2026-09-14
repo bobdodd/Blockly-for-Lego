@@ -175,3 +175,108 @@ describe('handing the voice between windows', () => {
     }
   });
 });
+
+/**
+ * Silencing across windows.
+ *
+ * What went wrong: Escape cancelled speech in the window it was pressed in,
+ * and `speechSynthesis` belongs to a document — so a student silencing the
+ * editor while the robot view talked on a projector had silenced nothing they
+ * could hear. One room, one set of speakers, several windows.
+ */
+describe('silencing every window at once', () => {
+  it('reaches the window that is doing the talking', () => {
+    const channels = stubChannels();
+    try {
+      const quiet = [];
+      const editor = takeTheVoice({ window: fakeWindow() });
+      takeTheVoice({ window: fakeWindow(), onSilence: () => quiet.push('popout') }).claim();
+
+      editor.silence();
+      assert.deepEqual(quiet, ['popout'], 'the window with the voice is the one to stop');
+    } finally {
+      channels.restore();
+    }
+  });
+
+  it('reaches a window that has yielded', () => {
+    // Yielding is not the same as being quiet: a window that lost the voice a
+    // moment ago can still have a sentence coming out of the same speakers.
+    const channels = stubChannels();
+    try {
+      const quiet = [];
+      const editor = takeTheVoice({ window: fakeWindow(), onSilence: () => quiet.push('editor') });
+      const popout = takeTheVoice({ window: fakeWindow() });
+      popout.claim();
+      assert.equal(editor.holding(), false, 'the editor has yielded');
+
+      popout.silence();
+      assert.deepEqual(quiet, ['editor'], 'and is still told to stop');
+    } finally {
+      channels.restore();
+    }
+  });
+
+  it('does not come back to the window that asked', () => {
+    // That window silences itself directly. Hearing its own request would
+    // silence it twice, and is the first half of an echo.
+    const channels = stubChannels();
+    try {
+      const quiet = [];
+      const editor = takeTheVoice({ window: fakeWindow(), onSilence: () => quiet.push('editor') });
+      takeTheVoice({ window: fakeWindow(), onSilence: () => quiet.push('popout') });
+
+      editor.silence();
+      assert.deepEqual(quiet, ['popout']);
+    } finally {
+      channels.restore();
+    }
+  });
+
+  it('tells each of several windows exactly once', () => {
+    // A projector and a second screen can both be watching. Nothing here
+    // repeats the request, so it cannot bounce between them.
+    const channels = stubChannels();
+    try {
+      const quiet = [];
+      const editor = takeTheVoice({ window: fakeWindow() });
+      for (const name of ['projector', 'second screen']) {
+        takeTheVoice({ window: fakeWindow(), onSilence: () => quiet.push(name) });
+      }
+
+      editor.silence();
+      assert.deepEqual(quiet.sort(), ['projector', 'second screen']);
+    } finally {
+      channels.restore();
+    }
+  });
+
+  it('costs nobody the voice', () => {
+    // Silence is not a claim. Asking for quiet must not also make the asking
+    // window the one that speaks next, or Escape would move the commentary to
+    // whichever screen the student happened to press it on.
+    const channels = stubChannels();
+    try {
+      const editor = takeTheVoice({ window: fakeWindow() });
+      const popout = takeTheVoice({ window: fakeWindow() });
+      popout.claim();
+
+      editor.silence();
+      assert.equal(popout.holding(), true, 'still the window being looked at');
+      assert.equal(editor.holding(), false);
+    } finally {
+      channels.restore();
+    }
+  });
+
+  it('is harmless in a browser with no channel', () => {
+    const previous = globalThis.BroadcastChannel;
+    globalThis.BroadcastChannel = undefined;
+    try {
+      const baton = takeTheVoice({ window: fakeWindow() });
+      assert.doesNotThrow(() => baton.silence());
+    } finally {
+      globalThis.BroadcastChannel = previous;
+    }
+  });
+});

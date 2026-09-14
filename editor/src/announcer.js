@@ -112,6 +112,24 @@ export class Announcer {
     this.#log.scrollTop = this.#log.scrollHeight;
   }
 
+  /**
+   * Stop talking and forget the backlog.
+   *
+   * Cancelling alone is not enough: the skip counter would survive and the
+   * next thing said would open with "4 steps skipped", which is a report on a
+   * run the listener has just asked to stop hearing about.
+   */
+  silence() {
+    this.#pendingSkipped = 0;
+    this.#lastSpokenAt = 0;
+    if (!globalThis.speechSynthesis) return;
+    try {
+      globalThis.speechSynthesis.cancel();
+    } catch {
+      // Some engines throw on cancel when nothing is speaking.
+    }
+  }
+
   #speak(message, interrupt) {
     if (!this.#speechEnabled || !globalThis.speechSynthesis) return;
 

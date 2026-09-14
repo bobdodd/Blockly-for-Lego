@@ -599,3 +599,70 @@ describe('labels stay with the controls they label', () => {
     assert.match(css, /\.commentary-field \{[^}]*flex:/);
   });
 });
+
+describe('a new thing to say stops the old one', () => {
+  const app = read('src/app.js');
+  const announcer = read('src/announcer.js');
+  const viewer = read('src/viewer/main.js');
+
+  it('silences both voices, because neither knows about the other', () => {
+    // The narration log speaks through the Announcer and the commentary
+    // through the Speaker, and both reach the one speechSynthesis the browser
+    // has. Cancelling is global so either would stop the sound, but each
+    // keeps state the other cannot see.
+    assert.match(app, /function silence\(\) \{[\s\S]*?announcer\.silence\(\)[\s\S]*?speaker\.stop\(\)/);
+  });
+
+  it('and the announcer forgets its backlog, not just its voice', () => {
+    // Cancelling alone leaves the skip counter, so the next thing said opens
+    // with "4 steps skipped" — a report on a run the listener just asked to
+    // stop hearing about.
+    const method = announcer.slice(announcer.indexOf('  silence()'));
+    const body = method.slice(0, method.indexOf('\n  }'));
+    assert.match(body, /#pendingSkipped = 0/);
+    assert.match(body, /speechSynthesis\.cancel\(\)/);
+  });
+
+  it('runs after the guards, so "connect first" is still heard', () => {
+    // Silencing before the early returns would cut off the one sentence that
+    // explains why nothing happened.
+    const body = app.slice(app.indexOf('async function run()'), app.indexOf('async function stop()'));
+    assert.ok(body.indexOf('Connect to a hub or the simulator first') < body.indexOf('silenceEverywhere()'),
+      'the guards speak before the silence');
+    assert.ok(body.indexOf('silenceEverywhere()') < body.indexOf('beginRun'),
+      'and the silence comes before the run starts talking');
+  });
+
+  it('and Escape is not consumed, in either window', () => {
+    // Blockly uses Escape to leave the block menu. A student pressing it
+    // inside the blocks wants the menu closed and the talking stopped, not
+    // one at the cost of the other.
+    const handler = app.slice(app.indexOf("if (action === 'silence')"));
+    const block = handler.slice(0, handler.indexOf('}') + 1);
+    assert.ok(!/preventDefault/.test(block), 'Escape must not be swallowed');
+    assert.match(viewer, /matchShortcut\(event\) !== 'silence'\) return;/,
+      'the pop-out needs it too');
+  });
+
+  it('and it reaches the other window, because the speakers are the room\'s', () => {
+    // What went wrong: Escape cancelled speech in the window it was pressed
+    // in. speechSynthesis belongs to a document, so silencing the editor
+    // while the robot view talked on a projector silenced nothing anybody in
+    // the room could hear. Either window's Escape has to stop both.
+    assert.match(app, /function silenceEverywhere\(\) \{[\s\S]*?silence\(\)[\s\S]*?voice\.silence\(\)/,
+      'the editor asks the other windows as well as itself');
+
+    const handler = app.slice(app.indexOf("if (action === 'silence')"));
+    assert.match(handler.slice(0, handler.indexOf('}') + 1), /silenceEverywhere\(\)/,
+      "the editor's Escape goes everywhere");
+
+    const popout = viewer.slice(viewer.indexOf("matchShortcut(event) !== 'silence'"));
+    assert.match(popout.slice(0, popout.indexOf('});') + 3), /voice\.silence\(\)/,
+      "and so does the pop-out's");
+
+    for (const [where, source] of [['editor', app], ['pop-out', viewer]]) {
+      assert.match(source, /takeTheVoice\(\{[\s\S]*?onSilence:/,
+        `the ${where} listens for another window's silence`);
+    }
+  });
+});

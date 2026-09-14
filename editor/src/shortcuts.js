@@ -20,9 +20,16 @@
  *
  * Control+G is "go". Control+S is save, which browsers claim for "save page"
  * and every web application overrides.
+ *
+ * **Escape is the exception to both rules**, and to the modifier rule above:
+ * it is the one binding here with no modifier at all, because silencing is
+ * the thing you want when you cannot wait for a sentence to end, and a
+ * two-key combination is no use to somebody who wants quiet now. Blockly also
+ * uses Escape to leave the block menu, so the caller must not consume it —
+ * a student pressing Escape inside the blocks wants both things.
  */
 
-/** @typedef {'run'|'stop'|'save'|'saveAs'|null} Shortcut */
+/** @typedef {'run'|'stop'|'save'|'saveAs'|'silence'|null} Shortcut */
 
 const BINDINGS = [
   { key: 'g', shift: false, action: 'run' },
@@ -40,6 +47,15 @@ const BINDINGS = [
  */
 export function matchShortcut(event) {
   if (!event || typeof event.key !== 'string') return null;
+
+  // The only binding with no modifier. Checked before the modifier rule
+  // below, and still refused when one is held so it cannot fire in the middle
+  // of a screen reader's own Escape.
+  if (event.key === 'Escape') {
+    return event.ctrlKey || event.metaKey || event.altKey || event.shiftKey
+      ? null
+      : 'silence';
+  }
 
   // Control on Windows and Linux, Command on a Mac.
   if (!(event.ctrlKey || event.metaKey)) return null;

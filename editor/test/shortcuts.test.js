@@ -142,3 +142,24 @@ describe('telling people which keys to press', () => {
     assert.equal(shortcutLabel('nonexistent', 'Win32'), '');
   });
 });
+
+describe('Escape asks for silence', () => {
+  it('with no modifier at all, unlike every other binding here', () => {
+    // Silencing is what you want when you cannot wait for a sentence to end.
+    // A two-key combination is no use to somebody who wants quiet now.
+    assert.equal(matchShortcut({ key: 'Escape' }), 'silence');
+  });
+
+  it('but not while a modifier is held', () => {
+    // Control+Option is VoiceOver's, and a screen reader's own Escape should
+    // not be turned into ours.
+    for (const held of [{ altKey: true }, { ctrlKey: true }, { metaKey: true }, { shiftKey: true }]) {
+      assert.equal(matchShortcut({ key: 'Escape', ...held }), null, JSON.stringify(held));
+    }
+  });
+
+  it('and does not disturb the bindings that need one', () => {
+    assert.equal(matchShortcut({ key: 'g', ctrlKey: true }), 'run');
+    assert.equal(matchShortcut({ key: 'g', ctrlKey: true, shiftKey: true }), 'stop');
+  });
+});

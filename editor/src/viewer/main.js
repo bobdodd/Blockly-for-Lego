@@ -63,9 +63,31 @@ const speaker = new Speaker({ regionId: 'commentary-region' });
 const voice = takeTheVoice({
   onLost: () => speaker.setYielded(true),
   onTaken: () => speaker.setYielded(false),
+  onSilence: () => speaker.stop(),
 });
 voice.claim();
 const commentary = new Commentary({ view, speaker });
+
+/*
+ * Escape silences, here as well as in the editor.
+ *
+ * Bound at the top level rather than inside wireRunControls, which only runs
+ * when the editor opened this window: a projector watching a simulator
+ * somebody else started is exactly the case where you most want to be able to
+ * stop the talking, and it is the case that would have had no key for it.
+ *
+ * Not consumed — nothing else in this window wants Escape today, but the
+ * browser and a screen reader both might, and silencing is not a reason to
+ * take a key away from them.
+ *
+ * It silences the editor too. Whichever window is speaking, the speakers are
+ * the same ones, so the key has to mean the same thing in both.
+ */
+document.addEventListener('keydown', (event) => {
+  if (matchShortcut(event) !== 'silence') return;
+  speaker.stop();
+  voice.silence();
+});
 
 speaker.caption = mountCommentaryControls({
   toggle: ui.commentaryOn,

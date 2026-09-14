@@ -189,6 +189,7 @@ const speaker = new Speaker({ regionId: 'commentary-region' });
 const voice = takeTheVoice({
   onLost: () => speaker.setYielded(true),
   onTaken: () => speaker.setYielded(false),
+  onSilence: () => silence(),
 });
 const sceneSource = new SceneSource();
 
@@ -811,6 +812,35 @@ function setRunning(running) {
 // running
 // --------------------------------------------------------------------------
 
+/**
+ * Stop every voice on the page and drop what was queued behind it.
+ *
+ * There are two of them and they do not know about each other: the narration
+ * log speaks through the Announcer, the commentary through the Speaker, and
+ * both reach the one speechSynthesis the browser has. Cancelling is global,
+ * so either would silence the sound — but each keeps state the other cannot
+ * see, and leaving that behind is how a silenced page starts its next
+ * sentence with "4 steps skipped".
+ */
+function silence() {
+  announcer.silence();
+  speaker.stop();
+}
+
+/**
+ * Silence this window and every other one.
+ *
+ * The robot view can be open in its own window on a projector, and cancelling
+ * speech reaches only the document that asks — but there is one set of
+ * speakers in the room. Silencing here and leaving that window talking is not
+ * silence to anybody listening, so the request goes out on the voice channel
+ * as well. See baton.js.
+ */
+function silenceEverywhere() {
+  silence();
+  voice.silence();
+}
+
 async function run() {
   if (!client) {
     announcer.status('Connect to a hub or the simulator first.');
@@ -824,6 +854,17 @@ async function run() {
     );
     return;
   }
+
+  // Whatever is being said now is about to be about the wrong moment. A
+  // description of where the robot is standing, read over a robot that has
+  // started driving, is worse than silence — and the narration log queues
+  // rather than interrupts, so without this the run's own first words wait
+  // behind the end of a sentence nobody needs any more.
+  //
+  // Everywhere, because the window describing the mat may well be the pop-out
+  // rather than this one.
+  silenceEverywhere();
+
   for (const warning of warnings) announcer.narrate(warning, 'warning');
 
   // Describe the starting state *before* the program goes, and wait for it to
@@ -1205,6 +1246,14 @@ function wireControls() {
   document.addEventListener('keydown', (event) => {
     const action = matchShortcut(event);
     if (!action) return;
+
+    // Escape is not consumed. Blockly uses it to leave the block menu, and a
+    // student pressing it inside the blocks wants the menu closed *and* the
+    // talking stopped, not one at the cost of the other.
+    if (action === 'silence') {
+      silenceEverywhere();
+      return;
+    }
 
     // Every one of these is free of Blockly's own bindings, so they work
     // inside the blocks too -- which is where a student spends their time,
