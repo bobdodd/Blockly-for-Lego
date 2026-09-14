@@ -240,13 +240,19 @@
               canvas takes focus and the same four arrows do the same job, and the
               keys are written down beside it rather than left to be discovered.
 
-              role="img" with a name and a description: the picture is a picture,
-              and the sentence under it is what it is a picture of.
+              role="application", not role="img". The arrows are the whole point
+              of focusing this, and a screen reader in its reading mode keeps the
+              arrow keys for moving through the page — so the camera never heard
+              them, and the one control a keyboard user has over the picture did
+              nothing for the people most likely to need it. `application` is how
+              a page says "the keys are mine while focus is in here". Deliberately
+              only the canvas: the sentence underneath and the list of keys stay
+              ordinary text, readable the ordinary way.
             -->
             <canvas
               id="scene"
               class="scene"
-              role="img"
+              role="application"
               tabindex="0"
               aria-label="The robot on its mat"
               aria-describedby="scene-keys"

@@ -116,6 +116,38 @@ describe('every control has a name', () => {
     }
   });
 
+  it('and is an application, so the arrow keys reach it', () => {
+    // The arrows turn the camera, and they are the reason this takes focus at
+    // all. A screen reader in its reading mode keeps the arrow keys for
+    // moving through the page, so with role="img" they never arrived — the
+    // one control a keyboard user has over the picture did nothing for the
+    // people most likely to need it. role="application" is how a page says
+    // the keys are its own while focus is in here.
+    for (const [name, markup] of pages) {
+      const canvas = markup.slice(markup.indexOf('<canvas'));
+      const tag = canvas.slice(0, canvas.indexOf('>'));
+      assert.match(tag, /role="application"/, `${name}: the canvas has to release the keys`);
+      assert.match(tag, /tabindex="0"/, `${name}: and be reachable to do it`);
+    }
+  });
+
+  it('but only the canvas, not the words around it', () => {
+    // Everything inside an application region stops being ordinary text to a
+    // screen reader. The pose and the list of keys are prose and have to stay
+    // readable the ordinary way, so the role goes on the picture alone.
+    for (const [name, markup] of pages) {
+      const applications = [...markup.matchAll(/role="application"/g)];
+      assert.equal(applications.length, 1, `${name}: exactly one application region`);
+
+      for (const id of ['pose', 'scene-keys']) {
+        const at = markup.indexOf(`id="${id}"`);
+        if (at < 0) continue;
+        const tag = markup.slice(markup.lastIndexOf('<', at), markup.indexOf('>', at));
+        assert.ok(!/role="application"/.test(tag), `${name}: #${id} must stay prose`);
+      }
+    }
+  });
+
   it('and described by something that holds still', () => {
     // What went wrong: the description was "pose scene-keys", and the pose
     // changes as telemetry arrives. The description of the focused element
