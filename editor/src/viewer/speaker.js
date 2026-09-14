@@ -410,9 +410,7 @@ export class Speaker {
     }
 
     this._toRegion(text);
-    // A screen reader gives no end signal at all, so this is an estimate of
-    // reading time and nothing more.
-    if (finish) this.window?.setTimeout(finish, Math.min(12000, 900 + text.length * 55));
+    this._finishAfterReading(text, finish);
   }
 
   /**
@@ -449,7 +447,9 @@ export class Speaker {
       }
 
       let settled = false;
+      let stopWatching = null;
       const giveUp = (reason) => {
+        stopWatching?.();
         if (settled || token !== this._token) return;
         settled = true;
         this.lastError = reason;
@@ -458,7 +458,14 @@ export class Speaker {
         if (this._failures >= FAILURES_BEFORE_FALLBACK) this.speechBroken = true;
         this.onChannelChange?.(this.channel);
         this._toRegion(text);
-        finish?.();
+        // Not straight away, even though this one failed. The words have gone
+        // to the live region and a screen reader is about to read them, so
+        // "done" is when that has had time to happen -- the same estimate the
+        // planned fallback uses. Finishing immediately let whatever was
+        // waiting on this start on top of it: a dead engine made "Connected."
+        // resolve in a millisecond, and the description of the mat replaced
+        // it in the region before it had been read at all.
+        this._finishAfterReading(text, finish);
       };
 
       utterance.onstart = () => {
@@ -479,7 +486,14 @@ export class Speaker {
         giveUp(reason);
       };
 
-      if (finish) this._watchForEnd(utterance, finish);
+      // Watching for the end must not take the error with it. This used to
+      // set its own `utterance.onerror`, which overwrote the one above --
+      // so any announcement a caller was waiting on lost its fallback
+      // altogether: the engine refused, nothing reached the live region, and
+      // the caller was told it had finished a millisecond later. On a machine
+      // with no voices that meant "Connected." was never said at all, by any
+      // route, and the description of the mat began in its place.
+      stopWatching = finish ? this._watchForEnd(utterance, finish) : null;
 
       // A paused engine accepts an utterance, queues it, and never starts it:
       // no sound, no `start`, no `error`. Nothing in this code pauses it, but
@@ -644,10 +658,25 @@ export class Speaker {
         finish();
       }
     };
-    utterance.onerror = () => {
-      this.window.clearInterval(poll);
-      finish();
-    };
+
+    // No `onerror` here: it belongs to _speak, which needs the reason so it
+    // can fall back to the live region. This hands back a way to stop
+    // watching instead, for _speak to call once it has dealt with the error.
+    return () => this.window.clearInterval(poll);
+  }
+
+  /**
+   * Call back once the live region has had time to be read.
+   *
+   * A screen reader gives no end signal at all -- it tells a page nothing
+   * about what it is saying or when it stops -- so this is an estimate and
+   * nothing more. It is the honest best available, and it is only ever used
+   * on the region path; when the engine speaks, the utterance says when it
+   * ended and that is what gets waited on.
+   */
+  _finishAfterReading(text, finish) {
+    if (!finish) return;
+    this.window?.setTimeout(finish, Math.min(12000, 900 + String(text ?? '').length * 55));
   }
 
   /** Write to the polite live region, latest-wins. */

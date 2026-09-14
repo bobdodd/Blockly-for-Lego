@@ -718,3 +718,67 @@ describe('how fast it reads', () => {
     assert.equal(speaker.diagnose().rate, 1.75);
   });
 });
+
+/**
+ * An announcement somebody is waiting on must still fall back.
+ *
+ * What went wrong: `_watchForEnd` set its own `utterance.onerror`, which
+ * overwrote the one `_speak` had just installed — the one that reads the
+ * browser's reason and falls back to the live region. So any announcement
+ * with a completion callback lost its fallback entirely. On a machine with no
+ * voices, "Connected." was never said by any route: the engine refused, the
+ * words never reached the region, and the caller was told it had finished a
+ * millisecond later, so the description of the mat began in its place.
+ *
+ * Both halves matter. The words have to arrive somewhere, and "finished" has
+ * to mean finished, because the mat description is chained to it.
+ */
+describe('an announcement being waited on, when the engine refuses', () => {
+  /** An engine that takes the utterance and then errors, as a dead one does. */
+  const refusingSynth = () => {
+    const synth = fakeSynth({ works: false });
+    synth.speak = function speak(utterance) {
+      this.spoken.push(utterance);
+      utterance.onerror?.({ error: 'not-allowed' });
+    };
+    return synth;
+  };
+
+  it('still puts the words in the live region', () => {
+    const win = fakeWindow({ synth: refusingSynth() });
+    const speaker = speakerIn(win);
+
+    speaker.announce('Connected.', { caption: false, onDone: () => {} });
+    win.flush();
+
+    assert.equal(win.region.textContent, 'Connected.',
+      'the one channel left has to carry it');
+  });
+
+  it('and does not report finishing before it has been read', () => {
+    // The mat description is chained to this. Finishing at once let it start
+    // on top of the message it was supposed to follow.
+    const win = fakeWindow({ synth: refusingSynth() });
+    const speaker = speakerIn(win);
+
+    let done = false;
+    speaker.announce('Connected.', { caption: false, onDone: () => { done = true; } });
+    assert.equal(done, false, 'not in the same tick as the refusal');
+
+    win.flush();
+    assert.equal(done, true, 'but it does finish, once reading time has passed');
+  });
+
+  it('and the reason still reaches the channel report', () => {
+    // giveUp is what records why the browser would not speak. Losing the
+    // error handler lost that too, which is the fact that identifies a
+    // machine with no voices in a minute rather than an afternoon.
+    const win = fakeWindow({ synth: refusingSynth() });
+    const speaker = speakerIn(win);
+
+    speaker.announce('Connected.', { caption: false, onDone: () => {} });
+    win.flush();
+
+    assert.equal(speaker.lastError, 'not-allowed');
+  });
+});
