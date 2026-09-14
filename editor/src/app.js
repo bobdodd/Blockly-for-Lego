@@ -1276,11 +1276,20 @@ function wireRobotView() {
     // simulator of its own — the built-in one has no socket to find.
     const opened = window.open('viewer.html?relay=1', 'blockly-for-lego-robot',
       'width=1000,height=760');
-    announcer.status(
-      opened
-        ? 'The robot view opened in its own window.'
-        : 'The browser blocked the new window. Allow pop-ups for this page and try again.',
-    );
+
+    if (!opened) {
+      // Nothing opened, so nothing else is going to say so.
+      announcer.status('The browser blocked the new window. Allow pop-ups for '
+        + 'this page and try again.');
+      return;
+    }
+
+    // Recorded, not announced. The window that just opened introduces itself
+    // — it takes focus, names what it is showing, and then describes the mat
+    // — and this was announced into the assertive region at the same moment,
+    // so a screen reader read it over the top of the new window talking. The
+    // window opening is its own confirmation.
+    announcer.record('The robot view opened in its own window.', 'status');
   });
 }
 

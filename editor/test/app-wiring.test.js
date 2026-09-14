@@ -415,6 +415,30 @@ describe('running the program from the pop-out', () => {
       'spoken, because it answers something the student pressed');
   });
 
+  it('and the editor keeps quiet while the new window introduces itself', () => {
+    // What went wrong: opening the robot view announced "The robot view
+    // opened in its own window." into the editor's assertive region at the
+    // same moment the new window took focus and started speaking. Two audio
+    // streams, from the one action. A window opening is its own confirmation.
+    const handler = app.slice(app.indexOf("ui.popOut.addEventListener('click'"));
+    const body = handler.slice(0, handler.indexOf('\n  });'));
+    assert.match(body, /announcer\.record\('The robot view opened/,
+      'the success is recorded, not announced');
+    assert.match(body, /announcer\.status\('The browser blocked the new window/,
+      'but a window that never opened is announced — nothing else will say so');
+  });
+
+  it('and the new window lands focus somewhere', () => {
+    // window.open leaves focus on nothing: no focus ring, and no answer to
+    // "where am I" for a screen reader beyond the window title. The canvas is
+    // what this window is for and what the arrow keys drive.
+    assert.match(viewer, /ui\.canvas\?\.focus\?\.\(/, 'focus goes into the window');
+    const at = markup.indexOf('id="scene"');
+    assert.ok(at > 0, 'the canvas should exist');
+    assert.match(markup.slice(at, markup.indexOf('>', at)), /tabindex="0"/,
+      'and it has to be focusable to receive it');
+  });
+
   it('and says it through the one voice the window has, not a live region', () => {
     // What went wrong: #viewer-status was a polite live region and the robot
     // view speaks, so a screen reader read the status while the commentary

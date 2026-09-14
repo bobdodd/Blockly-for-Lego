@@ -249,6 +249,20 @@ ui.reset.addEventListener('click', () => view.resetView());
 view.start();
 commentary.start();
 
+/*
+ * Land somewhere, rather than nowhere.
+ *
+ * A window opened with window.open starts with focus on nothing at all: no
+ * focus ring for anybody looking, and for a screen reader user no answer to
+ * "where am I" beyond the window's title. Tabbing gets there eventually,
+ * which is a poor welcome to a window that was opened deliberately.
+ *
+ * The canvas is where it belongs. It is the first focusable thing here, it is
+ * what this window is for, and it is the thing the arrow keys drive — so
+ * focus and the keys that do something are in the same place from the start.
+ */
+ui.canvas?.focus?.({ preventScroll: true });
+
 // Opened by the editor's "Open in its own window" button, or on its own
 // against a simulator someone started. The two need different pipes and the
 // flag says which, rather than trying one and guessing from the silence.
