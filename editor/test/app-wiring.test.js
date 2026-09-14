@@ -469,6 +469,31 @@ describe('running the program from the pop-out', () => {
       'and nothing writes the status any other way');
   });
 
+  it('and its Run briefs before the program goes, like the editor\'s does', () => {
+    // What went wrong: this window briefed on the simulator's "started"
+    // event, which arrives after the program is already running — so the
+    // description of where the robot was starting from was spoken alongside
+    // the first beats instead of before them. The editor's own Run describes
+    // the starting state first; pressing Run here should do the same.
+    assert.match(viewer, /function askToRun\(relay\)/);
+    const fn = viewer.slice(viewer.indexOf('function askToRun(relay)'));
+    const body = fn.slice(0, fn.indexOf('\n}'));
+    assert.ok(body.indexOf('commentary.beginRun()') < body.indexOf("relay.ask('run')"),
+      'the brief comes before the ask');
+  });
+
+  it('and does not then brief a second time when the run starts', () => {
+    // beginRun has no guard of its own — it resets and briefs every time it
+    // is called — so the "started" event would describe the starting state
+    // again, over the first beats.
+    const at = viewer.indexOf('if (startedElsewhere(payload))');
+    assert.ok(at > 0);
+    const body = viewer.slice(at, viewer.indexOf('followProgramState', at));
+    assert.match(body, /weAskedToRun/, 'the window that asked skips it');
+    assert.match(viewer, /askedTimer = setTimeout/,
+      'and lets go of that after a while, for a Run the editor refused');
+  });
+
   it('offers the buttons only when there is an editor behind it', () => {
     // Opened on its own it watches a simulator somebody else started, and
     // there is no program here to run.

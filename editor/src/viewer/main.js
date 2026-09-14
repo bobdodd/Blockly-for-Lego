@@ -42,6 +42,7 @@ const ui = {
   commentaryChannel: element('commentary-channel'),
   testVoice: element('test-voice'),
   commentaryVoice: element('commentary-voice'),
+  sceneKeys: element('scene-keys'),
   runControls: element('run-controls'),
   run: element('run'),
   stop: element('stop'),
@@ -137,11 +138,41 @@ speaker.caption = mountCommentaryControls({
 const startedElsewhere = (payload) => payload?.type === 'event'
   && payload.kind === 'program' && payload.data?.phase === 'started';
 
+/**
+ * How to drive the camera, said once, after the mat has been described.
+ *
+ * It used to be part of the canvas's accessible description, which is read
+ * when the canvas takes focus — so opening this window said the keys, then
+ * described the mat, then said the keys again when the description was
+ * re-read. `aria-describedby` also pointed at the pose, which changes as
+ * telemetry arrives, so the description of the focused element kept changing
+ * underneath a screen reader and kept being announced again.
+ *
+ * Said at the end instead, where it belongs: here is the mat, and here is how
+ * to look around it. The same words are still on the page for anyone reading.
+ */
+let keysSaid = false;
+
+function sayTheKeys() {
+  if (keysSaid) return;
+  keysSaid = true;
+  const keys = ui.sceneKeys?.textContent?.trim();
+  if (keys) speaker.announce(keys, { caption: false });
+}
+
 /** Everything that arrives, whichever pipe it came down. */
 function receive(payload) {
   view.handleMessage(payload);
-  if (startedElsewhere(payload)) commentary.beginRun();
-  commentary.handleMessage(payload);
+  if (startedElsewhere(payload)) {
+    // Briefed already if this window is what asked; see askToRun.
+    if (weAskedToRun) weAskedToRun = false;
+    else commentary.beginRun();
+  }
+
+  // The mat is the one message with something to follow it.
+  if (payload?.type === 'hello') commentary.introduce({ onDone: sayTheKeys });
+  else commentary.handleMessage(payload);
+
   followProgramState(payload);
 }
 
@@ -201,9 +232,39 @@ function watchTheEditor() {
 }
 
 /** Ask the editor to run or stop, by button or by the same keys it uses. */
+/**
+ * Whether this window is the one that asked for the run about to start.
+ *
+ * It briefs when it asks, so the description of where the robot is starting
+ * from comes before it moves — the way the editor's own Run does. The
+ * "started" event would otherwise brief it a second time, alongside the first
+ * beats, which is both a repetition and the wrong moment.
+ *
+ * Cleared on the event, and on a timer in case the run never starts at all:
+ * the editor refuses a Run with no blocks in it, and no event ever arrives to
+ * say so.
+ */
+let weAskedToRun = false;
+let askedTimer = null;
+
+function askToRun(relay) {
+  weAskedToRun = true;
+  if (askedTimer) clearTimeout(askedTimer);
+  askedTimer = setTimeout(() => { weAskedToRun = false; askedTimer = null; }, 5000);
+
+  // Not awaited. The editor has its own brief to say nothing about — it is
+  // yielded while this window holds the voice — so waiting on the round trip
+  // would only add the upload to the silence before anything is said.
+  commentary.beginRun();
+  relay.ask('run');
+}
+
 function wireRunControls(relay) {
   for (const [element, action] of [[ui.run, 'run'], [ui.stop, 'stop']]) {
-    element.addEventListener('click', () => relay.ask(action));
+    element.addEventListener('click', () => {
+      if (action === 'run') askToRun(relay);
+      else relay.ask(action);
+    });
     const hint = element.querySelector('.shortcut');
     if (hint) hint.textContent = shortcutLabel(action);
   }
@@ -212,7 +273,8 @@ function wireRunControls(relay) {
     const action = matchShortcut(event);
     if (action !== 'run' && action !== 'stop') return;
     event.preventDefault();
-    relay.ask(action);
+    if (action === 'run') askToRun(relay);
+    else relay.ask(action);
   });
 }
 

@@ -108,13 +108,40 @@ describe('every control has a name', () => {
     assert.match(markup, /<label for="python"[^>]*>[^<]*\S/);
   });
 
-  it('including the picture, which is named and described separately', () => {
+  it('including the picture, which is named', () => {
     for (const [name, markup] of pages) {
       const canvas = markup.slice(markup.indexOf('<canvas'));
       const tag = canvas.slice(0, canvas.indexOf('>'));
       assert.match(tag, /aria-label="[^"]+"/, `${name}: the canvas needs a name`);
-      assert.match(tag, /aria-describedby="pose scene-keys"/, `${name}: and the words under it`);
     }
+  });
+
+  it('and described by something that holds still', () => {
+    // What went wrong: the description was "pose scene-keys", and the pose
+    // changes as telemetry arrives. The description of the focused element
+    // kept changing underneath a screen reader, so it kept being read again —
+    // and it carried the camera keys with it every time.
+    const editor = code('index.html');
+    const canvas = editor.slice(editor.indexOf('<canvas'));
+    const tag = canvas.slice(0, canvas.indexOf('>'));
+    assert.match(tag, /aria-describedby="scene-keys"/, 'the keys, which do not change');
+    assert.ok(!/aria-describedby="[^"]*pose/.test(tag), 'and not the pose, which does');
+  });
+
+  it('and in the robot view, not described at all — it is said instead', () => {
+    // That window speaks: opening it said the keys, described the mat, then
+    // said the keys again. They are spoken once now, after the description,
+    // which is the order somebody arriving wants them in.
+    const viewer = code('viewer.html');
+    const canvas = viewer.slice(viewer.indexOf('<canvas'));
+    const tag = canvas.slice(0, canvas.indexOf('>'));
+    assert.ok(!/aria-describedby/.test(tag), `the viewer canvas must not repeat them: ${tag}`);
+
+    const main = read('src/viewer/main.js');
+    assert.match(main, /commentary\.introduce\(\{ onDone: sayTheKeys \}\)/,
+      'the keys follow the description of the mat');
+    const fn = main.slice(main.indexOf('function sayTheKeys()'));
+    assert.match(fn.slice(0, fn.indexOf('\n}')), /keysSaid/, 'and only once');
   });
 });
 
