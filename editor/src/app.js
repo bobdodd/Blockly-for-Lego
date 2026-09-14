@@ -405,8 +405,31 @@ function setBusy(label) {
   ui.busy.hidden = !busy;
   ui.busyLabel.textContent = label ?? '';
 
-  for (const control of CONNECT_CONTROLS()) {
-    if (busy) control.setAttribute('aria-disabled', 'true');
+  refreshConnectControls();
+}
+
+/**
+ * Which connection buttons are worth pressing.
+ *
+ * Two reasons one is not: a connection is already being made, or you are
+ * already connected to that thing. The second was missed, so "Connect to
+ * simulator" stayed live the whole time you were connected to the simulator
+ * and, pressed, silently tore the connection down and built it again —
+ * measured at a full disconnect, re-download and restart, for a button whose
+ * label promises to connect you to something you are already connected to.
+ *
+ * Both reasons are computed here rather than set at each site, because they
+ * overlap: clearing the busy flag used to clear the connected state's mark
+ * along with it, since both were the same attribute set from two places.
+ *
+ * `aria-disabled` rather than `disabled`, for the reason in setBusy: this can
+ * become true on the press that connected you, and the button is holding
+ * focus at that moment. `disabled` would drop that focus to the body.
+ */
+function refreshConnectControls() {
+  const busy = isBusy();
+  for (const [control, kind] of [[ui.connectSimulator, 'simulator'], [ui.connectHub, 'hub']]) {
+    if (busy || connectionKind === kind) control.setAttribute('aria-disabled', 'true');
     else control.removeAttribute('aria-disabled');
   }
 }
@@ -420,6 +443,24 @@ const isBusy = () => document.body.classList.contains('is-busy');
  * nothing is indistinguishable from a button with no code behind it, which is
  * exactly the confusion that sent us looking here in the first place.
  */
+/**
+ * Answer a press for the thing you are already connected to.
+ *
+ * The button is marked unavailable, but `aria-disabled` is a statement rather
+ * than a barrier — it keeps focus where it is, and a press still arrives. It
+ * used to reconnect, which meant losing the running simulator and everything
+ * the robot had done, from a button that said "connect".
+ *
+ * Says what to do instead, because "nothing happened" is the confusion this
+ * whole area keeps producing.
+ */
+function explainAlreadyConnected(what) {
+  explainConnection(
+    `You are already connected to ${what}. To use the other one, press its `
+      + 'button; to start the simulator again, change the mat or reload the page.',
+  );
+}
+
 function explainBusy() {
   explainConnection(
     `${ui.busyLabel?.textContent || 'A connection is already being made'}. `
@@ -567,6 +608,7 @@ async function connect(transport, description, { quiet = false } = {}) {
  */
 async function connectSimulator() {
   if (isBusy()) return explainBusy();
+  if (connectionKind === 'simulator') return explainAlreadyConnected('the simulator');
 
   setBusy('Looking for a simulator…');
   try {
@@ -813,6 +855,7 @@ function setConnected(connected, kind = null) {
   ui.run.disabled = !connected;
   ui.readSensors.disabled = !connected;
   connectionKind = connected ? kind : null;
+  refreshConnectControls();
   applyConnectionLayout();
   if (!connected) {
     ui.stop.disabled = true;
@@ -1222,6 +1265,7 @@ function wireProgramControls() {
 
 async function connectHub() {
   if (isBusy()) return explainBusy();
+  if (connectionKind === 'hub') return explainAlreadyConnected('a hub');
   setBusy('Connecting to the hub…');
   try {
     await connect(new BluetoothTransport(), 'a SPIKE Prime hub');

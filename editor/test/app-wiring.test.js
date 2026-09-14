@@ -659,3 +659,49 @@ describe('a new thing to say stops the old one', () => {
   });
 });
 
+/**
+ * The button for what you are already connected to.
+ *
+ * What went wrong: "Connect to simulator" stayed live for the whole time you
+ * were connected to the simulator, and pressing it silently disconnected,
+ * re-downloaded and restarted — losing the running simulator and everything
+ * the robot had done, from a button whose label promises to connect you to
+ * something you are already connected to. setConnected() managed Run, Stop
+ * and Read sensors and never touched the connect buttons at all.
+ */
+describe('a connect button for a connection you already have', () => {
+  const app = read('src/app.js');
+
+  it('is marked unavailable while that thing is connected', () => {
+    const fn = app.slice(app.indexOf('function refreshConnectControls()'));
+    const body = fn.slice(0, fn.indexOf('\n}'));
+    assert.match(body, /connectionKind === kind/, 'the connected one is unavailable');
+    assert.match(body, /isBusy\(\)|busy/, 'and so is either while connecting');
+  });
+
+  it('deciding both reasons in one place, so neither clears the other', () => {
+    // They used to be the same attribute set from two places: clearing the
+    // busy flag cleared the connected state's mark along with it, which is
+    // why the button came back to life the moment the connection succeeded.
+    assert.ok(!/for \(const control of CONNECT_CONTROLS\(\)\)/.test(app),
+      'setBusy must not set the attribute itself any more');
+    const setBusy = app.slice(app.indexOf('function setBusy('));
+    assert.match(setBusy.slice(0, setBusy.indexOf('\n}')), /refreshConnectControls\(\)/);
+    const setConnected = app.slice(app.indexOf('function setConnected('));
+    assert.match(setConnected.slice(0, setConnected.indexOf('\n}')), /refreshConnectControls\(\)/);
+  });
+
+  it('and a press that arrives anyway says so instead of reconnecting', () => {
+    // aria-disabled is a statement, not a barrier: it keeps focus where it is
+    // — this can become true on the very press that connected you — so the
+    // press still arrives and has to be answered.
+    for (const [fn, kind] of [['async function connectSimulator()', "'simulator'"],
+                              ['async function connectHub()', "'hub'"]]) {
+      const at = app.indexOf(fn);
+      assert.ok(at > 0, `${fn} should exist`);
+      const head = app.slice(at, at + 260);
+      assert.match(head, new RegExp(`connectionKind === ${kind}`), fn);
+      assert.match(head, /explainAlreadyConnected\(/, fn);
+    }
+  });
+});
