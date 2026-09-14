@@ -10,7 +10,7 @@
   <body class="viewer-body">
     <header class="app-header">
       <h1>Robot view</h1>
-      <p id="viewer-status" class="connection-summary" role="status" aria-live="polite">
+      <p id="viewer-status" class="connection-summary" aria-live="off">
         Starting up…
       </p>
     </header>
@@ -81,7 +81,7 @@
           What the highlight is pointing at. It belongs beside the picture it
           annotates, not in the panel of words.
         -->
-        <p id="focus-label" class="focus-label" role="status" aria-live="polite"></p>
+        <p id="focus-label" class="focus-label" aria-live="off"></p>
       </main>
 
       <aside class="commentary-panel" aria-labelledby="commentary-heading">
@@ -150,7 +150,7 @@
           has an engine but no voices. The transcript below is deliberately NOT a
           live region: two of them saying the same thing is worse than one.
         -->
-        <p id="commentary-region" class="visually-hidden" role="status" aria-live="polite"></p>
+        <p id="commentary-region" class="visually-hidden" role="status" aria-live="assertive"></p>
 
         <ul id="commentary-transcript" class="commentary-transcript" aria-label="What has been said"></ul>
       </aside>

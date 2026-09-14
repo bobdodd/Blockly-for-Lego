@@ -4,20 +4,23 @@
  * The robot's behaviour is the output of this whole project, so how it is
  * delivered is a feature, not chrome around one.
  *
- * Three channels, because they need different urgency:
+ * This used to have three channels of its own — an assertive status region,
+ * a polite `role="log"` list, and its own `speechSynthesis` calls — and that
+ * was the bug. A screen reader reads live regions, so the log and the status
+ * were a second voice nothing could stop, talking over the commentary. See
+ * voice.js: there is now one emitter for the whole page and this is a source
+ * feeding it, not a channel of its own.
  *
- *  - **status** (assertive): connected, running, stopped, errors. These
- *    interrupt, because they change what the student can do next.
- *  - **narration** (a polite log): what the robot is doing. Screen readers
- *    announce additions to `role="log"` without stealing focus.
- *  - **speech** (optional, off by default): the Web Speech API, for students
- *    who are not running a screen reader. It is off by default precisely
- *    because a screen reader user would otherwise hear everything twice.
+ * What is left here is what the log is genuinely for:
  *
- * The rate limiting is the part that took listening to get right. A robot
- * generates far more events than anyone can absorb spoken aloud, and an
- * announcement queue that runs behind real time is worse than silence --
- * it describes a robot that has already moved on.
+ *  - **the visible transcript** — every line, kept, scrollable, copyable. It
+ *    is not announced, so a screen reader user can read back through it
+ *    without being read at.
+ *  - **deciding what is worth saying**, which is the part that took listening
+ *    to get right. A robot generates far more events than anyone can absorb
+ *    spoken aloud, so a line that arrives while the last one is still being
+ *    said is dropped and counted rather than queued. Status always
+ *    interrupts; narration waits its turn or is skipped.
  */
 
 import { COLOR_NAMES, PORT_LETTERS } from './protocol/messages.js';
@@ -30,22 +33,41 @@ const ALWAYS_ANNOUNCE = new Set(['console', 'error', 'program']);
 export class Announcer {
   #log;
   #status;
-  #speechEnabled = false;
+  #speechEnabled = true;
   #quietMode = false;
   #lastSpokenAt = 0;
   #pendingSkipped = 0;
 
+  #voice = null;
+
   /**
-   * @param {{log: HTMLElement, status: HTMLElement}} regions
+   * @param {{log: HTMLElement, status: HTMLElement, voice?: object}} regions
    */
-  constructor({ log, status }) {
+  constructor({ log, status, voice = null }) {
     this.#log = log;
     this.#status = status;
+    this.#voice = voice;
   }
 
+  /** The page's one emitter. Set once, during wiring. */
+  set voice(value) {
+    this.#voice = value;
+    this.#voice?.setSource('narration', this.#speechEnabled);
+  }
+
+  /**
+   * Whether what the robot is doing joins the spoken stream.
+   *
+   * On by default now, which is the opposite of before and is not a change of
+   * mind: it used to be off because the log was a live region, so a screen
+   * reader user already heard all of this and speech would have been the
+   * second copy. The log no longer announces itself, so this is how that
+   * student hears it at all.
+   */
   set speechEnabled(value) {
     this.#speechEnabled = Boolean(value);
-    if (!value) globalThis.speechSynthesis?.cancel();
+    this.#voice?.setSource('narration', this.#speechEnabled);
+    if (!value) this.#voice?.stop();
   }
 
   get speechEnabled() {
@@ -122,23 +144,19 @@ export class Announcer {
   silence() {
     this.#pendingSkipped = 0;
     this.#lastSpokenAt = 0;
-    if (!globalThis.speechSynthesis) return;
-    try {
-      globalThis.speechSynthesis.cancel();
-    } catch {
-      // Some engines throw on cancel when nothing is speaking.
-    }
+    this.#voice?.stop();
   }
 
   #speak(message, interrupt) {
-    if (!this.#speechEnabled || !globalThis.speechSynthesis) return;
+    if (!this.#voice) return;
 
     const now = Date.now();
     if (!interrupt) {
-      // Never let the spoken commentary fall behind the robot. If speech is
-      // still catching up, drop the message and say how many were missed --
-      // a late description of a moving robot is worse than none.
-      if (globalThis.speechSynthesis.speaking && now - this.#lastSpokenAt < 1200) {
+      // Never let the narration fall behind the robot. If the channel is
+      // still busy, drop this line and count it -- a late description of a
+      // moving robot is worse than none, and interrupting every 200ms would
+      // mean never hearing the end of a sentence.
+      if (this.#voice.speaking && now - this.#lastSpokenAt < 1200) {
         this.#pendingSkipped += 1;
         return;
       }
@@ -149,14 +167,11 @@ export class Announcer {
       }
     }
 
-    if (interrupt) globalThis.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(message);
-    // The speed the student chose for the commentary. Two speech channels on
-    // one page reading at different speeds is not a considered difference,
-    // it is an oversight anyone can hear.
-    utterance.rate = this.rate ?? 1.1;
-    globalThis.speechSynthesis.speak(utterance);
-    this.#lastSpokenAt = now;
+    // Status interrupts; narration takes its turn. Either way there is one
+    // channel and the Voice replaces rather than queues.
+    if (this.#voice.say(message, { source: interrupt ? 'status' : 'narration' })) {
+      this.#lastSpokenAt = now;
+    }
   }
 }
 

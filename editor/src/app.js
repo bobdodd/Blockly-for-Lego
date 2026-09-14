@@ -21,6 +21,7 @@ import 'blockly/blocks';
 
 import { Announcer, describeSensors } from './announcer.js';
 import { takeTheVoice } from './viewer/baton.js';
+import { Voice } from './voice.js';
 import { Commentary } from './viewer/commentary.js';
 import { mountCommentaryControls } from './viewer/commentary-controls.js';
 import { MATS } from './generated/mat-catalogue.js';
@@ -180,13 +181,24 @@ function chosenMat() {
 const speaker = new Speaker({ regionId: 'commentary-region' });
 
 /**
+ * Everything audible on this page goes through here. See src/voice.js.
+ *
+ * The announcer had its own speechSynthesis and two live regions of its own,
+ * and a screen reader read those while the commentary spoke, which is how a
+ * student ended up listening to the mat being described over the top of their
+ * program running.
+ */
+const voice = new Voice({ speaker });
+announcer.voice = voice;
+
+/**
  * Only the window being looked at speaks.
  *
  * The robot view in its own window describes the robot too, and both windows
  * get the same telemetry — so both said it, a moment apart, which sounds like
  * the program running twice.
  */
-const voice = takeTheVoice({
+const baton = takeTheVoice({
   onLost: () => speaker.setYielded(true),
   onTaken: () => speaker.setYielded(false),
   onSilence: () => silence(),
@@ -791,11 +803,13 @@ function applyConnectionLayout() {
   if (ui.logSection) ui.logSection.hidden = listHidden;
   tabs?.setAvailable('tab-robot', connectionKind !== 'hub');
 
-  // Two voices, one speech engine. The commentary cancels whatever is being
-  // spoken before each announcement — that is what keeps it level with the
-  // robot — so leaving the narration list's own voice running would have the
-  // two cutting each other off mid-sentence. Its switch is inside the panel
-  // that just went away, too, so a student could not turn it off.
+  // With the simulator running, the commentary is the better account of the
+  // same events — it is written for listening, where the narration list is
+  // written for reading — so the narration stays out of the spoken stream.
+  // Its switch is inside the panel that just went away, too, so a student
+  // could not turn it off. (They no longer cut each other off: there is one
+  // emitter now, see src/voice.js. This is a choice about what is worth
+  // saying, not a workaround for two voices.)
   //
   // Entries still accumulate in the hidden list, so nothing is lost: it is
   // all there to read when the simulator disconnects.
@@ -823,8 +837,11 @@ function setRunning(running) {
  * sentence with "4 steps skipped".
  */
 function silence() {
+  // One emitter, so one thing to stop. The announcer is told as well, not to
+  // cancel anything -- it cannot any more -- but to drop its skip counter, or
+  // the next line spoken would open with "4 steps skipped".
   announcer.silence();
-  speaker.stop();
+  voice.stop();
 }
 
 /**
@@ -838,7 +855,7 @@ function silence() {
  */
 function silenceEverywhere() {
   silence();
-  voice.silence();
+  baton.silence();
 }
 
 async function run() {
@@ -911,6 +928,13 @@ function ensureRobotView() {
     robotView = createRobotView(ui.scene, {
       onStatus: (message) => { ui.pose.textContent = message; },
       onPose: (text) => { ui.pose.textContent = text; },
+      // Shown, not said. This is the camera framing itself on whichever part
+      // of the robot an event concerns — it is chrome for somebody watching,
+      // and the commentary already says the substance of the same event
+      // ("The colour sensor is on the edge of a line"). It used to be a
+      // polite live region, which made it a third thing talking; saying it
+      // through the one channel instead was worse, because it fires on every
+      // event and cut off the commentary each time.
       onFocus: (label) => {
         ui.focusLabel.textContent = label ? `Showing: ${label}` : '';
       },
@@ -952,7 +976,7 @@ function wireRobotView() {
   }, {
     speaker,
     commentary,
-    takeTheVoice: () => voice.claim(),
+    takeTheVoice: () => baton.claim(),
     onRate: (value) => { announcer.rate = value; },
   });
 
@@ -1226,6 +1250,8 @@ function wireControls() {
   });
 
   ui.speech.addEventListener('change', (event) => {
+    // Whether what the robot is doing joins the one spoken stream. It is no
+    // longer a second voice of its own; see src/voice.js.
     announcer.speechEnabled = event.target.checked;
     announcer.status(
       event.target.checked

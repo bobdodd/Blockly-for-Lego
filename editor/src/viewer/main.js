@@ -48,8 +48,15 @@ const ui = {
 };
 
 const view = new RobotView(ui.canvas, robotDescription, {
-  onStatus: (message) => { ui.status.textContent = message; },
+  // Shown, and said through the one channel this window has. Both of these
+  // used to be live regions of their own, talking over the commentary.
+  onStatus: (message) => {
+    ui.status.textContent = message;
+    speaker.announce(message, { caption: false });
+  },
   onPose: (text) => { ui.pose.textContent = text; },
+  // Shown, not said: the camera framing itself on the part of the robot an
+  // event concerns, where the commentary already says what happened. See app.js.
   onFocus: (label) => { ui.focusLabel.textContent = label ? `Showing: ${label}` : ''; },
 });
 
@@ -60,12 +67,12 @@ const speaker = new Speaker({ regionId: 'commentary-region' });
 
 // Only the window being looked at speaks; see baton.js. Opening this window
 // is itself a claim, because that is what somebody who just opened it expects.
-const voice = takeTheVoice({
+const baton = takeTheVoice({
   onLost: () => speaker.setYielded(true),
   onTaken: () => speaker.setYielded(false),
   onSilence: () => speaker.stop(),
 });
-voice.claim();
+baton.claim();
 const commentary = new Commentary({ view, speaker });
 
 /*
@@ -86,7 +93,7 @@ const commentary = new Commentary({ view, speaker });
 document.addEventListener('keydown', (event) => {
   if (matchShortcut(event) !== 'silence') return;
   speaker.stop();
-  voice.silence();
+  baton.silence();
 });
 
 speaker.caption = mountCommentaryControls({
@@ -103,7 +110,7 @@ speaker.caption = mountCommentaryControls({
 }, {
   speaker,
   commentary,
-  takeTheVoice: () => voice.claim(),
+  takeTheVoice: () => baton.claim(),
   // No narration list in this window, so nothing else to keep in step.
   onRate: () => {},
 });

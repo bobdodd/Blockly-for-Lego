@@ -100,7 +100,35 @@ describe('the spoken commentary\'s markup', () => {
     for (const [name, markup] of pages) {
       assert.ok(markup.includes('id="commentary-region"'), `${name} has no fallback region`);
       const region = markup.slice(markup.indexOf('id="commentary-region"'));
-      assert.match(region.slice(0, region.indexOf('>')), /aria-live="polite"/, name);
+      assert.match(region.slice(0, region.indexOf('>')), /aria-live="assertive"/, name);
+    }
+  });
+
+  it('and that region interrupts rather than queues', () => {
+    // Polite is what produced the backlog. A screen reader reading a polite
+    // region finishes what it was saying and then reads four stale sentences
+    // about where the robot used to be; assertive is the only way to say
+    // "drop that, this is the true one" to a screen reader, and it is the
+    // live-region half of what cancel() does for the browser voice.
+    for (const [name, markup] of pages) {
+      const region = markup.slice(markup.indexOf('id="commentary-region"'));
+      const tag = region.slice(0, region.indexOf('>'));
+      assert.ok(!/aria-live="polite"/.test(tag), `${name} still queues`);
+    }
+  });
+
+  it('and it is the only thing on the page that announces itself', () => {
+    // The whole bug: the narration log, the status paragraph and the camera
+    // label were all live regions, so a screen reader read them while the
+    // commentary spoke through speechSynthesis. speechSynthesis.cancel()
+    // cannot touch a screen reader, which is why silencing looked correct in
+    // a test and was still two voices in a room.
+    for (const [name, markup] of pages) {
+      const announcing = [...markup.matchAll(/<[^>]*\b(aria-live="(?:polite|assertive)"|role="(?:log|alert)")[^>]*>/g)]
+        .map((m) => m[0]);
+      assert.equal(announcing.length, 1,
+        `${name} has ${announcing.length} announcing elements:\n  ${announcing.join('\n  ')}`);
+      assert.match(announcing[0], /id="commentary-region"/, name);
     }
   });
 
