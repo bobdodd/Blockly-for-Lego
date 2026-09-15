@@ -200,12 +200,17 @@ export function mountCommentaryControls(elements, parts) {
       parts.onRate?.(speaker.rate);
       showRate();
     });
-    // On release, not on every step: dragging would otherwise cancel and
-    // restart a sentence per pixel. And it is spoken *at* the new speed,
-    // because that is the only way to judge a speed.
-    rate.addEventListener('change', () => {
-      speaker.announce('This is the speed the commentary will be read at.');
-    });
+    // Nothing is spoken here, deliberately.
+    //
+    // Moving the slider is already an announcement: focus is on the control
+    // that changed, so the screen reader reads the new `aria-valuetext` the
+    // moment it is written. Speaking a sample on top of that put the browser
+    // voice and the screen reader in the same ear at the same time — two
+    // voices over each other, which demonstrates nothing about either.
+    //
+    // The sample was here because a speed is a thing you judge by ear, and
+    // that is still true: "Test the voice" is the way to hear it, and it
+    // speaks at whatever the sliders are set to now.
   }
 
   function showRate() {
@@ -219,11 +224,10 @@ export function mountCommentaryControls(elements, parts) {
       speaker.setVolume(Number(volume.value) / 100);
       showVolume();
     });
-    // Speak a sample on release rather than on every step of the slider:
-    // dragging would otherwise cancel and restart a sentence per pixel.
-    volume.addEventListener('change', () => {
-      speaker.announce(speaker.volume > 0 ? 'Commentary at this volume.' : 'Commentary muted.');
-    });
+    // Silent on release, for the reason the speed slider is: the screen
+    // reader is already reading this slider's value, and the browser voice
+    // talking across it is the second stream. "Test the voice" plays a
+    // sample at the volume set here.
   }
 
   function showVolume() {

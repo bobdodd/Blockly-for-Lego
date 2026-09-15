@@ -320,14 +320,24 @@
                   <input type="range" id="commentary-rate"
                          min="0.5" max="5" step="0.25" value="1"
                          aria-valuetext="normal speed" />
-                  <output id="commentary-rate-value" for="commentary-rate">normal speed</output>
+                  <!--
+                    The read-out is a mirror of `aria-valuetext`, for eyes only. An
+                    `<output>` is a live region by default (role="status"), so without
+                    this the screen reader said the value twice on every arrow key: once
+                    as the slider's own value, once as the region changing. Hidden rather
+                    than merely silenced, because the duplicate text read twice in browse
+                    mode too.
+                  -->
+                  <output id="commentary-rate-value" for="commentary-rate"
+                          aria-hidden="true">normal speed</output>
                 </div>
 
                 <div class="commentary-field">
                   <label for="commentary-volume">Volume</label>
                   <input type="range" id="commentary-volume" min="0" max="100" step="10" value="100"
                          aria-valuetext="100%" />
-                  <output id="commentary-volume-value" for="commentary-volume">100%</output>
+                  <output id="commentary-volume-value" for="commentary-volume"
+                          aria-hidden="true">100%</output>
                 </div>
 
                 <div class="commentary-actions">

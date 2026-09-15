@@ -612,8 +612,20 @@ describe('setting the speech speed', () => {
     assert.match(markup, /<label for="commentary-rate">/);
   });
 
-  it('speaks a sample at the new speed, because that is how you judge one', () => {
-    assert.match(controls, /This is the speed the commentary will be read at/);
+  it('does not speak over the screen reader while the slider moves', () => {
+    // The defect: the slider spoke a sample through the browser voice on
+    // every release, while the screen reader was reading the new value of
+    // the control the student still had focus on. Two voices, one ear.
+    // "Test the voice" is the way to hear the result now.
+    assert.doesNotMatch(controls, /This is the speed the commentary will be read at/);
+    assert.doesNotMatch(controls, /Commentary at this volume/);
+  });
+
+  it('keeps the visible read-out out of the screen reader', () => {
+    // An <output> is role="status", so writing the value there announced it
+    // a second time on top of the slider's own aria-valuetext.
+    assert.match(markup, /id="commentary-rate-value"[^>]*aria-hidden="true"/s);
+    assert.match(markup, /id="commentary-volume-value"[^>]*aria-hidden="true"/s);
   });
 
   it('reads the log aloud at the same speed', () => {
