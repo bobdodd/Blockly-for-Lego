@@ -144,7 +144,6 @@ speaker.caption = mountCommentaryControls({
   commentary,
   takeTheVoice: () => voice.claim(),
   // No narration list in this window, so nothing else to keep in step.
-  onRate: () => {},
 });
 
 // This page watches a run it did not start, so the brief is triggered by the

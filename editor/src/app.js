@@ -233,10 +233,11 @@ const relay = broadcast(
 // than beside the announcer because `relay` is a const declared below it, and
 // a status fired in between would land in its dead zone.
 announcer.onStatus = (text) => relay.tell(text);
-// The log's own voice reads at the speed chosen for the commentary. Two
-// speech channels on one page at different speeds is an oversight you can
-// hear, not a considered difference.
-announcer.rate = speaker.rate;
+// The log is not given a speed. It has no voice to set one on: the announcer
+// writes live regions and the student's own screen reader reads them, at
+// whatever rate they have configured it to. Setting a rate here wrote to a
+// property nothing defines and nothing read — see the rule at the top of
+// announcer.js, which this was quietly contradicting.
 
 let commentary = null;
 
@@ -1275,7 +1276,6 @@ function wireRobotView() {
     speaker,
     commentary,
     takeTheVoice: () => voice.claim(),
-    onRate: (value) => { announcer.rate = value; },
   });
 
   tabs = createTabs(ui.tablist, {

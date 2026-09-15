@@ -197,7 +197,6 @@ export function mountCommentaryControls(elements, parts) {
 
     rate.addEventListener('input', () => {
       speaker.setRate(Number(rate.value));
-      parts.onRate?.(speaker.rate);
       showRate();
     });
     // Nothing is spoken here, deliberately.

@@ -580,6 +580,7 @@ describe('setting the speech speed', () => {
   const markup = read('index.html');
   const controls = read('src/viewer/commentary-controls.js');
   const app = read('src/app.js');
+  const announcer = read('src/announcer.js');
 
   it('is a native range, so the keyboard and the screen reader come free', () => {
     const slider = markup.slice(markup.indexOf('id="commentary-rate"'));
@@ -638,11 +639,22 @@ describe('setting the speech speed', () => {
     assert.doesNotMatch(elements, /<output/);
   });
 
-  it('reads the log aloud at the same speed', () => {
-    // Two speech channels on one page at different speeds is an oversight
-    // anyone can hear.
-    assert.match(app, /announcer\.rate = speaker\.rate;/);
-    assert.match(app, /onRate: \(value\) => \{ announcer\.rate = value; \}/);
+  it('does not try to give the log a speed of its own', () => {
+    // This slider sets the rate of the commentary's browser voice. The log is
+    // not a voice: the announcer writes live regions and the student's own
+    // screen reader reads them, at whatever rate they configured it to, which
+    // a page cannot set and has no business wanting to.
+    //
+    // It used to write `announcer.rate`, a property Announcer does not define
+    // and nothing ever read, under a comment about keeping two speech channels
+    // in step. There was only ever one speech channel.
+    assert.doesNotMatch(app, /announcer\.rate/);
+    // Code, not prose: announcer.js's own header explains at length that
+    // `speechSynthesis` belongs to the robot view and never to the log, and
+    // an assertion that cannot tell a comment from a call fails on the
+    // explanation of the rule it is checking.
+    const code = announcer.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    assert.doesNotMatch(code, /speechSynthesis/);
   });
 });
 
