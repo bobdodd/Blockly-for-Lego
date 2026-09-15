@@ -125,12 +125,23 @@ these tables that does not follow the rest.
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>G</kbd> | Stop |
 | <kbd>Ctrl</kbd>+<kbd>S</kbd> | Save |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> | Save as |
+| <kbd>Ctrl</kbd>+<kbd>/</kbd> | Show the keyboard help, and hide it again |
+| <kbd>Esc</kbd> | Stop the talking, without stopping the program |
 
-All four work **everywhere, including inside the blocks**, which is where a
-student spends their time. On a Mac these four take <kbd>Cmd</kbd> *or*
+These work **everywhere, including inside the blocks**, which is where a
+student spends their time — and is the whole point of
+<kbd>Ctrl</kbd>+<kbd>/</kbd>: the keys you most need naming are the ones you
+are in the middle of using, and the help closes back onto the block you were
+on rather than dropping you at a toolbar button. It is not a letter because
+by the time it was wanted there were no letters left: Blockly holds C, J, V,
+X, Y and Z with Control, and the browser most of the rest.
+
+On a Mac every one of them with a modifier takes <kbd>Cmd</kbd> *or*
 <kbd>Ctrl</kbd> — they accept either, where Blockly's keys above are one or
 the other depending on the platform — and the buttons relabel themselves to
-say <kbd>Cmd</kbd>.
+say <kbd>Cmd</kbd>. <kbd>Esc</kbd> has no modifier at all, and is refused
+while one is held so that it cannot fire in the middle of a screen reader's
+own <kbd>Esc</kbd>.
 
 These keys are not arbitrary. They are what is left once Blockly and the
 browser have taken theirs — Blockly binds Control with C, J, V, X, Y, Z, the

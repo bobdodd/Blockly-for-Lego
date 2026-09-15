@@ -19,7 +19,9 @@
  * the browser have taken theirs: B, E, G, I, M and S.
  *
  * Control+G is "go". Control+S is save, which browsers claim for "save page"
- * and every web application overrides.
+ * and every web application overrides. Control+/ opens the keyboard help, and
+ * is the one binding here that is not a letter, because by the time it was
+ * needed there were no letters left.
  *
  * **Escape is the exception to both rules**, and to the modifier rule above:
  * it is the one binding here with no modifier at all, because silencing is
@@ -29,13 +31,22 @@
  * a student pressing Escape inside the blocks wants both things.
  */
 
-/** @typedef {'run'|'stop'|'save'|'saveAs'|'silence'|null} Shortcut */
+/** @typedef {'run'|'stop'|'save'|'saveAs'|'help'|'silence'|null} Shortcut */
 
 const BINDINGS = [
   { key: 'g', shift: false, action: 'run', label: 'Run the program' },
   { key: 'g', shift: true, action: 'stop', label: 'Stop the program' },
   { key: 's', shift: false, action: 'save', label: 'Save' },
   { key: 's', shift: true, action: 'saveAs', label: 'Save as a new file' },
+  // Not a letter, because the letters are gone: Blockly has C, J, V, X, Y and
+  // Z with Control, and the browser most of the rest. "/" is free of both, and
+  // Control+/ is what several editors already use for "what are the keys".
+  //
+  // Matched on the character rather than the physical key, so on a layout
+  // where "/" needs Shift this is whatever the student's own keyboard calls
+  // "/" — which is the point, since the label is generated from the same
+  // table and will agree with it.
+  { key: '/', shift: false, action: 'help', label: 'Show this keyboard help' },
 ];
 
 /**

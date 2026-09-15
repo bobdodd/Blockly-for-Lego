@@ -1141,39 +1141,70 @@ function silence() {
  * silence to anybody listening, so the request goes out on the voice channel
  * as well. See baton.js.
  */
+/** Built once, the first time the help is asked for. */
+let keyboardHelpFilled = false;
+
 /**
- * The keyboard help, filled in the first time it is asked for.
+ * Where to put focus back when the help closes.
  *
- * Built on open rather than at start-up because the answer depends on what
- * Blockly has registered, and Blockly registers as it initialises. Built once
- * and kept: the bindings do not change while the page is open, and rebuilding
- * would throw away where the student had got to in the table.
+ * Not the button that opens it. The key that opens this works inside the
+ * blocks, which is where it is worth having and where it will mostly be
+ * pressed — so returning focus to a toolbar button would answer "which key
+ * moves a block" by moving the student out of the blocks. Whatever had focus
+ * when it opened gets it back.
  */
+let keyboardHelpCameFrom = null;
+
+/**
+ * Show the keyboard help, or hide it if it is already up.
+ *
+ * A toggle because the same key does both: `showModal` on a dialog that is
+ * already open throws, and the key is reachable from inside the dialog.
+ *
+ * Filled on first open rather than at start-up, because the answer depends on
+ * what Blockly has registered and Blockly registers as it initialises. Kept
+ * after that: the bindings do not change while the page is open, and
+ * rebuilding would throw away where the student had reached in the table.
+ */
+function toggleKeyboardHelp() {
+  const dialog = ui.keyboardHelp;
+  if (!dialog || !ui.keyboardHelpBody) return;
+
+  if (dialog.open) {
+    dialog.close();
+    return;
+  }
+
+  if (!keyboardHelpFilled) {
+    renderKeyboardHelp(
+      ui.keyboardHelpBody,
+      keyboardHelp(Blockly, { platform: navigator.platform ?? '' }),
+    );
+    keyboardHelpFilled = true;
+  }
+
+  keyboardHelpCameFrom = document.activeElement;
+  // showModal, not show: it is the modal one that holds focus inside and
+  // makes the rest of the page inert rather than merely covered.
+  dialog.showModal();
+}
+
 function wireKeyboardHelp() {
-  const { openKeyboardHelp, keyboardHelp: dialog, keyboardHelpBody, closeKeyboardHelp } = ui;
-  if (!openKeyboardHelp || !dialog || !keyboardHelpBody) return;
+  const { openKeyboardHelp, keyboardHelp: dialog, closeKeyboardHelp } = ui;
+  if (!openKeyboardHelp || !dialog) return;
 
-  let filled = false;
-
-  openKeyboardHelp.addEventListener('click', () => {
-    if (!filled) {
-      renderKeyboardHelp(
-        keyboardHelpBody,
-        keyboardHelp(Blockly, { platform: navigator.platform ?? '' }),
-      );
-      filled = true;
-    }
-    // showModal, not show: it is the modal one that holds focus inside and
-    // makes the rest of the page inert rather than merely covered.
-    dialog.showModal();
-  });
-
+  openKeyboardHelp.addEventListener('click', toggleKeyboardHelp);
   closeKeyboardHelp?.addEventListener('click', () => dialog.close());
 
-  // Focus goes back where it came from. A dialog that closes leaving focus on
-  // <body> puts a student who cannot see back at the top of the page with no
-  // sign that anything moved.
-  dialog.addEventListener('close', () => openKeyboardHelp.focus());
+  // A dialog that closes leaving focus on <body> puts a student who cannot
+  // see back at the top of the page, with nothing said about the move.
+  dialog.addEventListener('close', () => {
+    const back = keyboardHelpCameFrom;
+    keyboardHelpCameFrom = null;
+    // `isConnected` because the workspace can rebuild while the help is up.
+    if (back?.isConnected && typeof back.focus === 'function') back.focus();
+    else openKeyboardHelp.focus();
+  });
 }
 
 function silenceEverywhere() {
@@ -1516,6 +1547,7 @@ function labelShortcuts() {
   label(ui.run, 'run');
   label(ui.stop, 'stop');
   label(ui.saveProgram, 'save');
+  label(ui.openKeyboardHelp, 'help');
 }
 
 function wireProgramControls() {
@@ -1626,7 +1658,8 @@ function wireControls() {
     // Blockly had already claimed it for a block's menu.
     event.preventDefault();
 
-    if (action === 'run') run();
+    if (action === 'help') toggleKeyboardHelp();
+    else if (action === 'run') run();
     else if (action === 'stop') stop();
     else if (action === 'save') saveProgram();
     else if (action === 'saveAs') saveProgram({ prompt: true });

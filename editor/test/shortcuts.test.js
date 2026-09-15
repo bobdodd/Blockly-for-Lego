@@ -29,6 +29,16 @@ describe('what each key press asks for', () => {
     assert.equal(matchShortcut(press('g', { metaKey: true })), 'run');
   });
 
+  it('opens the keyboard help on Ctrl+/, and Cmd+/ on a Mac', () => {
+    assert.equal(matchShortcut(press('/', { ctrlKey: true })), 'help');
+    assert.equal(matchShortcut(press('/', { metaKey: true })), 'help');
+  });
+
+  it('leaves a plain / alone, so it can still be typed into a field', () => {
+    assert.equal(matchShortcut(press('/')), null);
+    assert.equal(matchShortcut(press('/', { shiftKey: true })), null);
+  });
+
   it('stops on Ctrl+Shift+G', () => {
     assert.equal(matchShortcut(press('g', { ctrlKey: true, shiftKey: true })), 'stop');
   });
@@ -97,8 +107,23 @@ describe('staying out of Blockly\'s way', () => {
     // changes its bindings rather than encoding a snapshot of them.
     const blocklyKeys = new Set(Object.keys(Blockly.ShortcutRegistry.registry.getKeyMap()));
 
-    for (const { key, shift } of shortcuts) {
-      const code = key.toUpperCase().charCodeAt(0);
+    // A key code, not a character code. They agree for the letters, which is
+    // why `charCodeAt` worked here until a binding arrived that was not one:
+    // "/" is character 47 and key code 191, so the old sum checked
+    // `Control+47` — a string Blockly can never produce — and passed without
+    // looking at anything. Punctuation has to be named.
+    const PUNCTUATION = { '/': Blockly.utils.KeyCodes.SLASH };
+    const codeFor = (key) => PUNCTUATION[key] ?? Blockly.utils.KeyCodes[key.toUpperCase()];
+
+    // Escape is in this list and takes no modifier, so there is no
+    // `Control+...` form of it to collide with.
+    for (const { key, shift } of shortcuts.filter((entry) => entry.modifier)) {
+      const code = codeFor(key);
+      assert.equal(
+        typeof code, 'number',
+        `no key code known for "${key}" — name it in PUNCTUATION above, or `
+          + 'this binding goes unchecked',
+      );
       const candidates = shift
         ? [`Shift+Control+${code}`, `Control+Shift+${code}`]
         : [`Control+${code}`];
@@ -111,6 +136,19 @@ describe('staying out of Blockly\'s way', () => {
         );
       }
     }
+  });
+
+  it('checks the slash by its key code, not its character code', () => {
+    // Guards the fix rather than the bug: if this ever compares Control+47
+    // again the collision check above is looking at a string Blockly cannot
+    // produce, and is therefore checking nothing.
+    assert.equal(Blockly.utils.KeyCodes.SLASH, 191);
+    assert.notEqual(Blockly.utils.KeyCodes.SLASH, '/'.charCodeAt(0));
+    const bound = Object.keys(Blockly.ShortcutRegistry.registry.getKeyMap());
+    assert.ok(
+      !bound.includes(`Control+${Blockly.utils.KeyCodes.SLASH}`),
+      'Blockly has taken Ctrl+/; the keyboard help needs a different key',
+    );
   });
 
   it('would have caught the Ctrl+Enter collision', () => {
