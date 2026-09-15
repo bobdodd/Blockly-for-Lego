@@ -1054,3 +1054,73 @@ button:disabled {
     --blockly-selection-width: 4px;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Keyboard help
+
+   A native <dialog>. Only the look is here; holding focus, making the rest of
+   the page inert and closing on Escape are the element's own doing.
+
+   No font-size below 1rem anywhere in it, including in the <kbd>s. A table of
+   key names is exactly the text somebody with low vision most needs to read,
+   and keycap styling that shrinks it to look like a key is a decoration paid
+   for by the reader.
+--------------------------------------------------------------------------- */
+.keyboard-help {
+  max-width: 44rem;
+  width: calc(100% - 2rem);
+  max-height: calc(100vh - 4rem);
+  padding: 1rem 1.25rem 1.5rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--ink);
+}
+
+.keyboard-help::backdrop {
+  /* Dark in both themes: it sits over the page, not over the palette. */
+  background: rgb(0 0 0 / 0.55);
+}
+
+/* The heading and Close stay put while the tables scroll under them, so the
+   way out of a long table is never somewhere you have to scroll to find. */
+.keyboard-help-head {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-block: 0.25rem 0.5rem;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+
+.keyboard-help-head h2 { margin: 0; }
+.keyboard-help h3 { margin: 1.25rem 0 0.35rem; }
+.keyboard-help .hint { margin: 0 0 0.5rem; }
+
+.keyboard-help-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.keyboard-help-table th,
+.keyboard-help-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.35rem 0.6rem 0.35rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.keyboard-help-table th { color: var(--muted); font-weight: 600; }
+.keyboard-help-table td:first-child { white-space: nowrap; width: 1%; }
+
+.keyboard-help-table kbd {
+  font: inherit;
+  font-weight: 600;
+  padding: 0.1rem 0.35rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--page);
+}

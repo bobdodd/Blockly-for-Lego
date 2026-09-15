@@ -172,6 +172,18 @@
     </section>
 
     <!--
+      Help gets its own toolbar rather than joining one of the two above.
+      Both of those are labelled for what they act on — the program, and
+      running it — and a help button belongs to neither. Its own section
+      means a screen reader moving by landmark finds "Help" as a place.
+    -->
+    <section class="toolbar" aria-label="Help">
+      <button type="button" id="open-keyboard-help" class="secondary">
+        Keyboard help
+      </button>
+    </section>
+
+    <!--
       The blocks are the main content, so <main> is the workspace itself.
 
       It used to wrap both panels, which put the <aside> inside it. A
@@ -411,5 +423,28 @@
     </div>
 
     <script type="module" src="dist/app.js"></script>
+    <!--
+      A native <dialog>, opened with showModal().
+
+      It brings the things a hand-built modal gets wrong: focus goes inside
+      and is held there, the rest of the page is inert to a screen reader
+      rather than merely covered up, and Escape closes it. Escape is also
+      this editor's "stop talking", and that is fine — a student pressing it
+      wants the quiet and the dialog gone, and neither is at the other's cost.
+
+      Empty here: the rows are written by src/keyboard-help.js from Blockly's
+      own registry when the dialog is first opened, because a table of keys
+      typed into this file is one that can go quietly out of date.
+    -->
+    <dialog id="keyboard-help" class="keyboard-help"
+            aria-labelledby="keyboard-help-heading">
+      <div class="keyboard-help-head">
+        <h2 id="keyboard-help-heading">Keyboard help</h2>
+        <button type="button" id="close-keyboard-help" class="secondary">
+          Close
+        </button>
+      </div>
+      <div id="keyboard-help-body"></div>
+    </dialog>
   </body>
 </html>

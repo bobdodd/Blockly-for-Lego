@@ -32,10 +32,10 @@
 /** @typedef {'run'|'stop'|'save'|'saveAs'|'silence'|null} Shortcut */
 
 const BINDINGS = [
-  { key: 'g', shift: false, action: 'run' },
-  { key: 'g', shift: true, action: 'stop' },
-  { key: 's', shift: false, action: 'save' },
-  { key: 's', shift: true, action: 'saveAs' },
+  { key: 'g', shift: false, action: 'run', label: 'Run the program' },
+  { key: 'g', shift: true, action: 'stop', label: 'Stop the program' },
+  { key: 's', shift: false, action: 'save', label: 'Save' },
+  { key: 's', shift: true, action: 'saveAs', label: 'Save as a new file' },
 ];
 
 /**
@@ -81,9 +81,28 @@ export function shortcutLabel(action, platform = globalThis.navigator?.platform 
   return `${modifier}+${binding.shift ? 'Shift+' : ''}${binding.key.toUpperCase()}`;
 }
 
-/** Every binding, for building a help table. */
-export const shortcuts = BINDINGS.map(({ key, shift, action }) => ({
-  action,
-  key: key.toUpperCase(),
-  shift,
-}));
+/**
+ * Every binding, for building a help table.
+ *
+ * Escape is on the end rather than in `BINDINGS`, because `matchShortcut`
+ * answers it before reaching that table — it is the one binding with no
+ * modifier, and `modifier: false` is how a reader of this list is told so.
+ * Which key stands in for Control is left to the caller: it depends on the
+ * platform, and this module is a pure function of a keyboard event.
+ */
+export const shortcuts = [
+  ...BINDINGS.map(({ key, shift, action, label }) => ({
+    action,
+    label,
+    key: key.toUpperCase(),
+    shift,
+    modifier: true,
+  })),
+  {
+    action: 'silence',
+    label: 'Stop the talking, without stopping the program',
+    key: 'Esc',
+    shift: false,
+    modifier: false,
+  },
+];

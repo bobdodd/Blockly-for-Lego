@@ -30,6 +30,7 @@ import { broadcast } from './viewer/relay.js';
 import { Speaker } from './viewer/speaker.js';
 import { createTabs } from './tabs.js';
 import { matchShortcut, shortcutLabel } from './shortcuts.js';
+import { keyboardHelp, renderKeyboardHelp } from './keyboard-help.js';
 import { isLocalOrigin } from './environment.js';
 import { InBrowserSimulatorTransport, isSupported as builtInSupported } from './transport/in-browser.js';
 import * as files from './files.js';
@@ -101,6 +102,10 @@ const ui = {
   systemMessage: element('system-message'),
   busy: element('busy'),
   busyLabel: element('busy-label'),
+  openKeyboardHelp: element('open-keyboard-help'),
+  keyboardHelp: element('keyboard-help'),
+  keyboardHelpBody: element('keyboard-help-body'),
+  closeKeyboardHelp: element('close-keyboard-help'),
 };
 
 const announcer = new Announcer({ log: element('log'), status: element('status') });
@@ -1136,6 +1141,41 @@ function silence() {
  * silence to anybody listening, so the request goes out on the voice channel
  * as well. See baton.js.
  */
+/**
+ * The keyboard help, filled in the first time it is asked for.
+ *
+ * Built on open rather than at start-up because the answer depends on what
+ * Blockly has registered, and Blockly registers as it initialises. Built once
+ * and kept: the bindings do not change while the page is open, and rebuilding
+ * would throw away where the student had got to in the table.
+ */
+function wireKeyboardHelp() {
+  const { openKeyboardHelp, keyboardHelp: dialog, keyboardHelpBody, closeKeyboardHelp } = ui;
+  if (!openKeyboardHelp || !dialog || !keyboardHelpBody) return;
+
+  let filled = false;
+
+  openKeyboardHelp.addEventListener('click', () => {
+    if (!filled) {
+      renderKeyboardHelp(
+        keyboardHelpBody,
+        keyboardHelp(Blockly, { platform: navigator.platform ?? '' }),
+      );
+      filled = true;
+    }
+    // showModal, not show: it is the modal one that holds focus inside and
+    // makes the rest of the page inert rather than merely covered.
+    dialog.showModal();
+  });
+
+  closeKeyboardHelp?.addEventListener('click', () => dialog.close());
+
+  // Focus goes back where it came from. A dialog that closes leaving focus on
+  // <body> puts a student who cannot see back at the top of the page with no
+  // sign that anything moved.
+  dialog.addEventListener('close', () => openKeyboardHelp.focus());
+}
+
 function silenceEverywhere() {
   silence();
   voice.silence();
@@ -1489,6 +1529,8 @@ function wireProgramControls() {
   });
   // tidy the displayed value only once they have finished typing
   ui.programName.addEventListener('blur', () => setProgramName(ui.programName.value));
+
+  wireKeyboardHelp();
 
   ui.newProgram.addEventListener('click', newProgram);
   ui.openProgram.addEventListener('click', openProgram);
