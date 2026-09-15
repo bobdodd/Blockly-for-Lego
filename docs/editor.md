@@ -66,8 +66,19 @@ Blockly 13 provides the navigation and the screen reader announcements inside
 the workspace. This editor deliberately adds no keyboard handling there,
 because anything it added would fight Blockly's own.
 
-The table below was read out of Blockly's own shortcut registry, not written
-from memory.
+The tables below were read out of Blockly's own shortcut registry, not written
+from memory. The editor will also show you them without leaving the page —
+**Keyboard help**, in the toolbar — and that version is built from the
+registry each time it opens, so when Blockly rebinds something the app is
+right before this page is.
+
+**On a Mac, <kbd>Cmd</kbd> stands in for <kbd>Ctrl</kbd> everywhere it
+appears in the Blockly tables below.** Copy, cut, paste, undo, the tooltip
+key and the block menu are all bound to a single modifier that Blockly
+resolves against the machine it is running on. The exception
+is redo's second binding, <kbd>Ctrl</kbd>+<kbd>Y</kbd>, which stays on
+<kbd>Ctrl</kbd> everywhere — including on a Mac, where it is the one key in
+these tables that does not follow the rest.
 
 ### Moving around the blocks
 
@@ -94,7 +105,7 @@ from memory.
 | <kbd>Delete</kbd> or <kbd>Backspace</kbd> | Delete it |
 | <kbd>C</kbd> | Tidy the workspace |
 | <kbd>Ctrl</kbd>+<kbd>C</kbd> / <kbd>X</kbd> / <kbd>V</kbd> | Copy, cut, paste |
-| <kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd> | Undo, redo |
+| <kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd> or <kbd>Ctrl</kbd>+<kbd>Y</kbd> | Undo, redo |
 
 ### Finding out where you are
 
@@ -116,8 +127,10 @@ from memory.
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> | Save as |
 
 All four work **everywhere, including inside the blocks**, which is where a
-student spends their time. On a Mac, <kbd>Cmd</kbd> stands in for
-<kbd>Ctrl</kbd>, and the buttons relabel themselves to say so.
+student spends their time. On a Mac these four take <kbd>Cmd</kbd> *or*
+<kbd>Ctrl</kbd> — they accept either, where Blockly's keys above are one or
+the other depending on the platform — and the buttons relabel themselves to
+say <kbd>Cmd</kbd>.
 
 These keys are not arbitrary. They are what is left once Blockly and the
 browser have taken theirs — Blockly binds Control with C, J, V, X, Y, Z, the
