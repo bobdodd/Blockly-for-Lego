@@ -1124,3 +1124,87 @@ button:disabled {
   border-radius: 4px;
   background: var(--page);
 }
+
+/* ---------------------------------------------------------------------------
+   Help panel
+
+   Text to be read, so it is given a measure and ordinary reading sizes. No
+   font-size below 1rem anywhere: this is the part of the app somebody opens
+   because they are already stuck.
+--------------------------------------------------------------------------- */
+.help-panel { overflow-y: auto; }
+
+.help-topic-list {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+}
+
+.help-topic-list li { margin: 0; }
+
+/* A link that happens to be a button: it goes to a topic, so it looks like a
+   destination rather than an action. The focus ring is the shared one. */
+.help-topic-link {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.4rem 0.2rem;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.help-topic-link:hover { background: var(--page); }
+
+.help-panel h3 { margin: 1rem 0 0.4rem; }
+.help-panel h3:first-child { margin-top: 0; }
+.help-panel h4 { margin: 1.1rem 0 0.3rem; }
+.help-panel p { margin: 0 0 0.7rem; max-width: 62ch; }
+.help-panel ul, .help-panel ol { margin: 0 0 0.8rem; padding-left: 1.4rem; max-width: 62ch; }
+.help-panel li { margin: 0 0 0.35rem; }
+
+/* The heading a topic moves focus to. It is not a tab stop, so it gets no
+   ring on a mouse click, but it must show one when focus lands there. */
+.help-topic h3:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+
+.help-back { margin-bottom: 0.8rem; }
+
+.help-note {
+  border-left: 4px solid var(--accent);
+  padding: 0.5rem 0.7rem;
+  background: var(--page);
+}
+
+.help-quote {
+  margin: 0 0 0.8rem;
+  padding: 0.5rem 0.7rem;
+  background: var(--page);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  white-space: pre-wrap;
+  font-family: inherit;
+  color: var(--muted);
+  max-width: 62ch;
+}
+
+.help-keys { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.1rem; }
+
+.help-keys kbd {
+  font: inherit;
+  font-weight: 600;
+  padding: 0.1rem 0.35rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--page);
+}
+
+.help-terms { margin: 0 0 0.9rem; max-width: 62ch; }
+.help-terms dt { font-weight: 600; margin-top: 0.5rem; }
+.help-terms dd { margin: 0.1rem 0 0; color: var(--muted); }
+
+.help-open-example { margin: 0.6rem 0 0.3rem; }

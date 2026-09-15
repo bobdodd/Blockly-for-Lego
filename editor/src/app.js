@@ -31,6 +31,8 @@ import { Speaker } from './viewer/speaker.js';
 import { createTabs } from './tabs.js';
 import { matchShortcut, shortcutLabel } from './shortcuts.js';
 import { keyboardHelp, renderKeyboardHelp } from './keyboard-help.js';
+import { helpSections, exampleFor } from './help-content.js';
+import { mountHelpPanel } from './help-panel.js';
 import { isLocalOrigin } from './environment.js';
 import { InBrowserSimulatorTransport, isSupported as builtInSupported } from './transport/in-browser.js';
 import * as files from './files.js';
@@ -106,6 +108,7 @@ const ui = {
   keyboardHelp: element('keyboard-help'),
   keyboardHelpBody: element('keyboard-help-body'),
   closeKeyboardHelp: element('close-keyboard-help'),
+  helpPanel: element('panel-help'),
 };
 
 const announcer = new Announcer({ log: element('log'), status: element('status') });
@@ -1189,6 +1192,29 @@ function toggleKeyboardHelp() {
   dialog.showModal();
 }
 
+/**
+ * The Help panel, built once when the page is wired.
+ *
+ * Built at start-up rather than on first open: it reads the blocks, the
+ * robots, the mats and the keys from modules already loaded, so there is
+ * nothing to wait for, and a panel that is already there is one a screen
+ * reader can reach the moment the tab is chosen.
+ */
+function wireHelpPanel() {
+  if (!ui.helpPanel) return;
+
+  mountHelpPanel(ui.helpPanel, {
+    sections: helpSections,
+    shortcutLabel,
+    exampleFor,
+    onOpenExample: async (example) => {
+      if (!confirmDiscard(`Open "${example.title}"`)) return;
+      // Through the same door as a file, mat and robot warnings included.
+      await applyProject(JSON.stringify(example.program));
+    },
+  });
+}
+
 function wireKeyboardHelp() {
   const { openKeyboardHelp, keyboardHelp: dialog, closeKeyboardHelp } = ui;
   if (!openKeyboardHelp || !dialog) return;
@@ -1490,7 +1516,23 @@ async function openProgram() {
     return;
   }
 
-  const { project, error, warnings } = parseProject(opened.text, {
+  await applyProject(opened.text, { handle: opened.handle });
+}
+
+/**
+ * Put a program that has been read from somewhere into the editor.
+ *
+ * Shared by opening a file and opening one of the help's examples, so an
+ * example gets the same reading, the same refusals, the same mat, and the
+ * same warning when it was written for a different robot. An example that
+ * arrived by a shorter road would be the one program in the editor that had
+ * never been through the door everything else comes through.
+ *
+ * @param {string} text  the file's contents
+ * @param {{handle?: object|null}} [where]  null for a program with no file
+ */
+async function applyProject(text, { handle = null } = {}) {
+  const { project, error, warnings } = parseProject(text, {
     knownBlockTypes: knownBlockTypes(),
     robot: robotConfig,
     knownMats: MATS.map((entry) => entry.name),
@@ -1502,7 +1544,9 @@ async function openProgram() {
   }
 
   loadBlocks(project.blocks);
-  fileHandle = opened.handle;
+  // No handle for an example: Save should ask where to put it rather than
+  // offering to write back over a file the student never chose.
+  fileHandle = handle;
   setProgramName(project.name);
   markSaved();
 
@@ -1563,6 +1607,7 @@ function wireProgramControls() {
   ui.programName.addEventListener('blur', () => setProgramName(ui.programName.value));
 
   wireKeyboardHelp();
+  wireHelpPanel();
 
   ui.newProgram.addEventListener('click', newProgram);
   ui.openProgram.addEventListener('click', openProgram);

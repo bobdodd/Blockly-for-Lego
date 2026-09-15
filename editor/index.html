@@ -222,9 +222,9 @@
           none of the 3D code is even downloaded.
         -->
         <section class="tab-section" aria-labelledby="reference-heading">
-          <h2 id="reference-heading" class="visually-hidden">Robot view and Python</h2>
+          <h2 id="reference-heading" class="visually-hidden">Robot view, Python and Help</h2>
 
-          <div class="tablist" role="tablist" aria-label="Robot view and Python">
+          <div class="tablist" role="tablist" aria-label="Robot view, Python and Help">
             <button type="button" role="tab" id="tab-robot"
                     aria-controls="panel-robot" aria-selected="true" tabindex="0">
               Robot view
@@ -232,6 +232,10 @@
             <button type="button" role="tab" id="tab-python"
                     aria-controls="panel-python" aria-selected="false" tabindex="-1">
               Python
+            </button>
+            <button type="button" role="tab" id="tab-help"
+                    aria-controls="panel-help" aria-selected="false" tabindex="-1">
+              Help
             </button>
           </div>
 
@@ -418,6 +422,20 @@
           <ul id="log" class="log" role="log" aria-live="polite" aria-relevant="additions"></ul>
 
           <button id="clear-log" type="button" class="secondary">Clear this list</button>
+
+          <!--
+            Help lives in a panel rather than a dialog because a tutorial is
+            something you follow while you work. A modal covers the workspace,
+            which makes every step something to memorise before you can do it.
+            The keyboard reference is still a dialog: that one you want over
+            everything and gone again.
+
+            Empty here. Every word is written by src/help-panel.js from
+            src/help-content.js, which reads the blocks, the robots, the mats
+            and the shortcut keys from the places that already define them.
+          -->
+          <div id="panel-help" role="tabpanel" aria-labelledby="tab-help"
+               class="tab-panel help-panel" hidden></div>
         </section>
       </aside>
     </div>

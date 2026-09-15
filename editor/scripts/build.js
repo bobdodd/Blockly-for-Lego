@@ -134,6 +134,17 @@ await bundleMatCatalogue();
 await bundleRobotCatalogue();
 await bundleSimulatorSources();
 
+// After the catalogues, because an example records the robot it was written
+// for and reads it from the one just written. Imported here rather than at the
+// top for the same reason: it reaches for a generated module.
+const { buildExamples } = await import('./gen-examples.mjs');
+await buildExamples();
+
+// Everything above is what `src/generated/` holds, and it is all that the
+// tests need. The bundle below is not, so `npm test` asks for this much and
+// stops, and a test run still needs no build.
+if (process.argv.includes('--generate-only')) process.exit(0);
+
 // Blockly's icons, sounds and cursors. The workspace is injected with
 // media: 'media/', so they have to sit beside index.html.
 await cp(join(root, 'node_modules/blockly/media'), join(root, 'media'), {

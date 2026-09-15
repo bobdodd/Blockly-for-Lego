@@ -114,10 +114,13 @@ export function bodyOf(code) {
  * here is a program that should behave on hardware.
  *
  * @param {string} code generated SPIKE MicroPython
- * @param {{speed?: number, world?: string, timeoutMs?: number}} [options]
+ * @param {{speed?: number, world?: string, mat?: string, robot?: string,
+ *          timeoutMs?: number}} [options]
  */
 export async function runInSimulator(code, options = {}) {
-  const { speed = 200, world, timeoutMs = 60_000 } = options;
+  const {
+    speed = 200, world, mat, robot, timeoutMs = 60_000,
+  } = options;
 
   const directory = await mkdtemp(join(tmpdir(), 'blockly-for-lego-'));
   const programPath = join(directory, 'program.py');
@@ -125,6 +128,11 @@ export async function runInSimulator(code, options = {}) {
 
   const args = ['-m', 'spike_sim', '--run', programPath, '--json', '--speed', String(speed)];
   if (world) args.push('--world', world);
+  // A mat and a robot by name, the way the editor's own pickers choose them,
+  // so a test can run a program against the exercise it was written for
+  // rather than against whatever the default happens to be.
+  if (mat) args.push('--mat', mat);
+  if (robot) args.push('--robot', robot);
 
   try {
     let stdout = '';
