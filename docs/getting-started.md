@@ -161,6 +161,13 @@ Copy the whole of `dist/` every time, and let the old chunks go rather than
 leaving them to pile up. If you are syncing, `rsync -a --delete-after` does
 both in one step.
 
+**Build immediately before you deploy, and never sync a `dist/` you have not
+just built.** `--delete-after` makes the server match your directory exactly,
+so syncing an empty or half-written `dist/` does not fail — it succeeds, and
+takes every script off the server. The site then returns 404 for its own
+code while every page and stylesheet still loads normally, which looks like
+a caching problem and is not. The check below catches it in seconds.
+
 Then, if your web server keeps its own list of what is in the directory
 instead of looking afresh each time — a Next.js site serving these files out
 of `public/`, or a CDN or proxy caching in front of it — **restart it, or

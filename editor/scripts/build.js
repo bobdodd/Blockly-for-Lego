@@ -18,9 +18,7 @@ import * as esbuild from 'esbuild';
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const outdir = join(root, 'dist');
 const serve = process.argv.includes('--serve');
-
-await rm(outdir, { recursive: true, force: true });
-await mkdir(outdir, { recursive: true });
+const generateOnly = process.argv.includes('--generate-only');
 
 /**
  * Bundle the simulator's Python into a module the worker can unpack.
@@ -143,7 +141,18 @@ await buildExamples();
 // Everything above is what `src/generated/` holds, and it is all that the
 // tests need. The bundle below is not, so `npm test` asks for this much and
 // stops, and a test run still needs no build.
-if (process.argv.includes('--generate-only')) process.exit(0);
+if (generateOnly) process.exit(0);
+
+// Emptied here, and not a line earlier.
+//
+// This used to be the first thing the script did, which was harmless until
+// `--generate-only` existed: `npm test` then wiped dist and exited before
+// anything was written back, leaving an empty directory that looked like a
+// build. Deploying is `rsync --delete-after` over that directory, so the next
+// deploy took every bundle file off the server and the site served 404s for
+// its own scripts. Nothing clears dist unless something is about to refill it.
+await rm(outdir, { recursive: true, force: true });
+await mkdir(outdir, { recursive: true });
 
 // Blockly's icons, sounds and cursors. The workspace is injected with
 // media: 'media/', so they have to sit beside index.html.
