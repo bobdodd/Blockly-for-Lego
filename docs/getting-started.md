@@ -148,6 +148,45 @@ The one requirement is that the simulator, if you use it, is reachable from
 the browser. By default the editor looks for `ws://127.0.0.1:8765`, which
 means the simulator must run on the same machine as the browser.
 
+#### Deploying again, over a copy you already published
+
+The bundle is split into pieces, and each piece is named after a hash of what
+is inside it — `dist/chunk-QFXEEZ5D.js` and the like. So a rebuild that
+changes any code gives those files **new names**, and the old names stop
+existing. `index.html` and `dist/app.js` keep theirs.
+
+Two things follow.
+
+Copy the whole of `dist/` every time, and let the old chunks go rather than
+leaving them to pile up. If you are syncing, `rsync -a --delete-after` does
+both in one step.
+
+Then, if your web server keeps its own list of what is in the directory
+instead of looking afresh each time — a Next.js site serving these files out
+of `public/`, or a CDN or proxy caching in front of it — **restart it, or
+purge that cache.** Until you do it serves the files whose names did not
+change and returns 404 for the ones that did, which fails in a way that looks
+like it worked: the copy reports success, `index.html` loads, the page
+appears, and then the blocks never arrive. The console shows a 404 for a
+chunk. A plain static server — nginx, Apache, `python3 -m http.server` —
+reads the directory per request and needs none of this.
+
+Worth checking after any deploy, because "the files copied" and "the site
+works" are not the same claim:
+
+```bash
+SITE=https://your.site/path        # wherever you put editor/
+
+for entry in app.js viewer.js; do
+  curl -s "$SITE/dist/$entry" | grep -oE '(chunk|create)-[A-Z0-9]+\.js'
+done | sort -u | while read -r piece; do
+  curl -s -o /dev/null -w "$piece %{http_code}\n" "$SITE/dist/$piece"
+done
+```
+
+Every line should end in `200`. Anything else and the editor is broken for
+whoever loads it next.
+
 ---
 
 ## Connect a real hub
