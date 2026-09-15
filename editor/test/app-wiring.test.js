@@ -621,11 +621,21 @@ describe('setting the speech speed', () => {
     assert.doesNotMatch(controls, /Commentary at this volume/);
   });
 
-  it('keeps the visible read-out out of the screen reader', () => {
-    // An <output> is role="status", so writing the value there announced it
-    // a second time on top of the slider's own aria-valuetext.
-    assert.match(markup, /id="commentary-rate-value"[^>]*aria-hidden="true"/s);
-    assert.match(markup, /id="commentary-volume-value"[^>]*aria-hidden="true"/s);
+  it('leaves the value to the slider, with no live region beside it', () => {
+    // The defect: the read-out was an <output>, which is role="status" — a
+    // live region. Every arrow key fired two announcements at once, the
+    // slider's own value and the region changing. The APG has the slider
+    // report itself through aria-valuetext and nothing announce alongside.
+    //
+    // A span rather than an <output aria-hidden>, because aria-hidden over a
+    // live region is not honoured consistently and the region is the bug.
+    assert.match(markup, /<span id="commentary-rate-value" aria-hidden="true">/);
+    assert.match(markup, /<span id="commentary-volume-value" aria-hidden="true">/);
+    // Scoped to real elements: the prose above these controls says the word
+    // "<output>" too, and an assertion that cannot tell a comment from a tag
+    // fails on its own explanation.
+    const elements = markup.replace(/<!--[\s\S]*?-->/g, '');
+    assert.doesNotMatch(elements, /<output/);
   });
 
   it('reads the log aloud at the same speed', () => {

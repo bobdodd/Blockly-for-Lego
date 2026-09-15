@@ -133,23 +133,29 @@
                    min="0.5" max="5" step="0.25" value="1"
                    aria-valuetext="normal speed" />
             <!--
-              The read-out is a mirror of `aria-valuetext`, for eyes only. An
-              `<output>` is a live region by default (role="status"), so without
-              this the screen reader said the value twice on every arrow key: once
-              as the slider's own value, once as the region changing. Hidden rather
-              than merely silenced, because the duplicate text read twice in browse
-              mode too.
+              The value belongs to the slider, and to nothing else.
+
+              This used to be an `<output>`, which is `role="status"` — a live
+              region. So every arrow key produced two announcements racing each
+              other: the slider's own value, and the region changing behind it.
+              That is the two voices, and it is what the APG rules out: a slider
+              reports itself through `aria-valuetext`, never through a region
+              announcing alongside it.
+
+              A `<span>` has no implicit live region to suppress, which is why it
+              is a span and not an `<output aria-hidden>`: `aria-hidden` on a live
+              region is not honoured consistently, and a region that still fires is
+              the bug we are removing. `aria-hidden` as well, because the text only
+              repeats what the slider already says.
             -->
-            <output id="commentary-rate-value" for="commentary-rate"
-                    aria-hidden="true">normal speed</output>
+            <span id="commentary-rate-value" aria-hidden="true">normal speed</span>
           </div>
 
           <div class="commentary-field">
             <label for="commentary-volume">Volume</label>
             <input type="range" id="commentary-volume" min="0" max="100" step="10" value="100"
                    aria-valuetext="100%" />
-            <output id="commentary-volume-value" for="commentary-volume"
-                    aria-hidden="true">100%</output>
+            <span id="commentary-volume-value" aria-hidden="true">100%</span>
           </div>
 
           <div class="commentary-actions">
