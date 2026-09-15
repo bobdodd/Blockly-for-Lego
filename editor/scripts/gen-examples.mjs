@@ -22,10 +22,20 @@ import { buildProject } from '../src/project.js';
 
 defineSpikeBlocks();
 
-/** A tiny builder over Blockly's API, so the programs below read as programs. */
-function maker(workspace) {
+/**
+ * A tiny builder over Blockly's API, so the programs below read as programs.
+ *
+ * Every block is given an id rather than letting Blockly invent one. Blockly's
+ * ids are random, so without this the same commit built twice produced
+ * different bytes — 752 characters of difference in the bundle, all of them
+ * ids, which makes a build unreproducible and every deploy look like a change.
+ * Numbered per example, so an id also says where it came from.
+ */
+function maker(workspace, prefix) {
+  let counter = 0;
   const block = (type, fields = {}) => {
-    const made = workspace.newBlock(type);
+    counter += 1;
+    const made = workspace.newBlock(type, `${prefix}-${counter}`);
     for (const [name, value] of Object.entries(fields)) made.setFieldValue(value, name);
     return made;
   };
@@ -172,8 +182,8 @@ export async function buildExamples() {
   const built = EXAMPLES.map((example) => {
   const workspace = new Blockly.Workspace();
   try {
-    const start = workspace.newBlock('spike_when_started');
-    const m = maker(workspace);
+    const m = maker(workspace, example.id);
+    const start = m.block('spike_when_started');
     m.into(start, 'DO', example.build(m));
 
     const blocks = Blockly.serialization.workspaces.save(workspace);
