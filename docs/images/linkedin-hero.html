@@ -8,15 +8,19 @@
     --warm:#ffb27a; --go:#3aa05e; --stop:#d4483a;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  html,body{width:1920px;height:1080px}
-  body{
+  html,body{width:1200px;height:627px;overflow:hidden}
+  body{background:var(--page)}
+  /* Composed at 1920 x 1003 and scaled to fit, so the type scale stays the
+     one it was designed on rather than being re-guessed at small sizes. */
+  .frame{
+    width:1920px; height:1003px; transform:scale(.625); transform-origin:top left;
     background:var(--page); color:var(--ink);
     font-family:Literata,Georgia,serif;
     display:flex; flex-direction:column; justify-content:center;
-    padding:0 150px; overflow:hidden;
+    padding:0 150px;
   }
 
-  .said{display:flex;flex-direction:column;gap:28px;margin-bottom:112px}
+  .said{display:flex;flex-direction:column;gap:26px;margin-bottom:96px}
   .said p{font-size:50px;font-weight:300;line-height:1.24;color:var(--dim)}
   .said p:nth-child(2){color:var(--mid);padding-left:64px}
   .said p:nth-child(3){color:var(--ink);padding-left:128px}
@@ -31,6 +35,7 @@
   svg{display:block;width:100%;height:auto;overflow:visible}
 </style>
 <body>
+  <div class="frame">
   <div class="said">
     <p>The robot started curving to the left.</p>
     <p>The colour sensor is on the <em>edge of a line</em>.</p>
@@ -53,5 +58,6 @@
         <polygon points="24,-13 45,0 24,13" fill="#ffb27a"/>
       </g>
     </svg>
+  </div>
   </div>
 </body>
