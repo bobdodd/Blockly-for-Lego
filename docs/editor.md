@@ -168,6 +168,7 @@ version. It watches what you build and says when each step is done.
 | <kbd>Ctrl</kbd>+<kbd>S</kbd> | Save |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> | Save as |
 | <kbd>Ctrl</kbd>+<kbd>/</kbd> | Show the keyboard help, and hide it again |
+| <kbd>Ctrl</kbd>+<kbd>B</kbd> | Say the guided tutorial’s current step again |
 | <kbd>Esc</kbd> | Stop the talking, without stopping the program |
 
 These work **everywhere, including inside the blocks**, which is where a

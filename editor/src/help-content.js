@@ -56,6 +56,7 @@ const WHAT_THIS_IS = {
       + 'any time, including while you are in the middle of the blocks, to '
       + 'see every key this editor and Blockly understand.' },
     { keys: 'help', what: 'the list of every key' },
+    { keys: 'sayStep', what: 'say the guided tutorial\u2019s current step again' },
   ],
 };
 
@@ -337,7 +338,7 @@ const TUTORIALS = [
     guided: [
       {
         keys: "You are already in the toolbox, on Start. Press the right arrow to go into its list of blocks. You hear \u201cwhen the program starts\u201d. Press Enter to take it. It says it is moving the block on the workspace \u2014 press Enter again to put it down.",
-        keysHint: "The right arrow goes into a category\u2019s blocks; the left arrow comes back out. Enter takes the block, and Enter again accepts where it is going. If you have wandered off, T brings you back to the toolbox from anywhere in the editor.",
+        keysHint: "The right arrow goes into a category\u2019s blocks; the left arrow comes back out. Enter takes the block, and Enter again accepts where it is going. If you have wandered off, T brings you back to the toolbox. Ctrl and B says this step again, from anywhere.",
         say: 'Take a "when the program starts" block from the Start category '
           + 'and put it in the workspace.',
         hint: 'It is the only block in Start. Everything else goes inside it.',

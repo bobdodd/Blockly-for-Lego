@@ -22,7 +22,8 @@ import { EXAMPLES } from '../src/generated/examples.js';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { progress, announcement, block } from '../src/guided.js';
+import { progress, announcement, block, stepWords } from '../src/guided.js';
+import { matchShortcut } from '../src/shortcuts.js';
 
 defineSpikeBlocks();
 
@@ -449,5 +450,62 @@ describe('where a guided tutorial puts you when it starts', () => {
         `${tutorial.id} does not say where the student now is`,
       );
     }
+  });
+});
+
+describe('hearing the step again without leaving the blocks', () => {
+  const app = readFileSync(
+    fileURLToPath(new URL('../src/app.js', import.meta.url)),
+    'utf8',
+  );
+
+  it('is on a key Blockly has not taken', () => {
+    // Plain B is Blockly's previous stack; Control+B is nobody's. Read from
+    // the registry so a rebind fails here rather than silently shadowing.
+    const bound = Object.keys(Blockly.ShortcutRegistry.registry.getKeyMap());
+    const B = Blockly.utils.KeyCodes.B;
+    assert.ok(!bound.includes(`Control+${B}`), 'Blockly has taken Ctrl+B');
+    assert.equal(matchShortcut({ key: 'b', ctrlKey: true }), 'sayStep');
+    assert.equal(matchShortcut({ key: 'b', metaKey: true }), 'sayStep');
+  });
+
+  it('stays out of VoiceOver\u2019s way like every other binding here', () => {
+    assert.equal(matchShortcut({ key: 'b', ctrlKey: true, altKey: true }), null);
+    assert.equal(matchShortcut({ key: 'b' }), null, 'plain B is Blockly\u2019s');
+  });
+
+  it('empties the region before writing, or saying it again is silent', () => {
+    // A live region announces a change. Asking to hear the same step again is
+    // exactly the case where the text has not changed, so writing it straight
+    // back says nothing at all.
+    assert.match(app, /function repeatAloud/);
+    const start = app.indexOf('function repeatAloud');
+    const body = app.slice(start, app.indexOf('\n}', start));
+    assert.match(body, /textContent = ''/);
+    assert.match(body, /setTimeout/);
+  });
+
+  it('says something useful when no tutorial is running', () => {
+    // Rather than nothing, which is indistinguishable from the key not working.
+    assert.match(app, /No guided tutorial is running\. Open the Help tab/);
+  });
+
+  it('uses the same words as the panel and the announcements', () => {
+    // One rule for which version a step is said in, so the key cannot read
+    // out the pointing instructions to somebody doing the keyboard tutorial.
+    const square = tutorials.find((t) => t.id === 'tutorial-square');
+    assert.equal(stepWords(square.guided[0], { keyboard: true }), square.guided[0].keys);
+    assert.equal(stepWords(square.guided[0], {}), square.guided[0].say);
+    assert.match(app, /stepWords\(topic\.guided\[at\], how\)/);
+  });
+
+  it('is written down in the app and in the docs', () => {
+    const doc = readFileSync(
+      fileURLToPath(new URL('../../docs/editor.md', import.meta.url)),
+      'utf8',
+    );
+    assert.match(doc, /<kbd>Ctrl<\/kbd>\+<kbd>B<\/kbd>/);
+    const firstHints = tutorials.map((t) => t.guided[0].keysHint).join(' ');
+    assert.match(firstHints, /Ctrl and B/);
   });
 });

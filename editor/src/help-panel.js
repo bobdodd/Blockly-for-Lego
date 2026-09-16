@@ -29,7 +29,7 @@
 export function mountHelpPanel(container, parts) {
   const {
     sections, shortcutLabel, exampleFor, onOpenExample,
-    onStartGuide, onStopGuide,
+    onStartGuide, onStopGuide, onSayStep,
   } = parts;
   const doc = container.ownerDocument;
 
@@ -150,6 +150,16 @@ export function mountHelpPanel(container, parts) {
     view.append(list);
 
     const actions = make('p', null, 'help-guide-actions');
+
+    // The same thing the key does, for anyone who would rather press a button
+    // — and so that the key is discoverable by meeting it here first.
+    if (onSayStep) {
+      const again = make('button', `Say the step again (${shortcutLabel('sayStep')})`, 'secondary');
+      again.type = 'button';
+      again.addEventListener('click', () => onSayStep());
+      actions.append(again);
+    }
+
     const stop = make('button', 'Stop this tutorial', 'secondary');
     stop.type = 'button';
     stop.addEventListener('click', () => onStopGuide?.());

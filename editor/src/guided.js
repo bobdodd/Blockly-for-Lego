@@ -116,6 +116,19 @@ export function progress(steps, workspace) {
 }
 
 /**
+ * A step in the words of the version the student chose.
+ *
+ * One rule, used by the announcement below, by the key that repeats the step,
+ * and by the panel — so the three can never disagree about what a step says.
+ *
+ * @param {object} step
+ * @param {{keyboard?: boolean}} [how]
+ */
+export function stepWords(step, how = {}) {
+  return how.keyboard && step.keys ? step.keys : step.say;
+}
+
+/**
  * What to say when progress has moved.
  *
  * Returns null when nothing worth saying has happened, which is most changes:
@@ -138,7 +151,7 @@ export function announcement(before, after, steps, how = {}) {
   // The keyboard version says which keys to press. Same steps, same checks,
   // different sentence — so the two versions cannot drift apart about what
   // counts as done.
-  const wording = (step) => (how.keyboard && step.keys ? step.keys : step.say);
+  const wording = (step) => stepWords(step, how);
 
   const next = steps[after.at];
   if (after.at > before.at) {

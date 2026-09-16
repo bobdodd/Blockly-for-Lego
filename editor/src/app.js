@@ -33,7 +33,7 @@ import { matchShortcut, shortcutLabel } from './shortcuts.js';
 import { keyboardHelp, renderKeyboardHelp } from './keyboard-help.js';
 import { helpSections, exampleFor } from './help-content.js';
 import { mountHelpPanel } from './help-panel.js';
-import { progress, announcement } from './guided.js';
+import { progress, announcement, stepWords } from './guided.js';
 import { isLocalOrigin } from './environment.js';
 import { InBrowserSimulatorTransport, isSupported as builtInSupported } from './transport/in-browser.js';
 import * as files from './files.js';
@@ -1221,6 +1221,47 @@ let guided = null;
 /** A workspace with nothing in it, which is where a guided tutorial begins. */
 const EMPTY_PROGRAM = { blocks: { languageVersion: 0, blocks: [] } };
 
+/**
+ * Say the current step again, wherever the student is.
+ *
+ * The tutorial lives in a panel and the work happens in the blocks, and a
+ * student using a screen reader can only be in one of those at a time. The
+ * step is announced when it changes, and before this there was no way to hear
+ * it again without leaving the blocks and finding the panel — which is a long
+ * way to go to be told something you were told a minute ago.
+ */
+function sayCurrentStep() {
+  if (!guided) {
+    announcer.status(
+      'No guided tutorial is running. Open the Help tab and choose one.',
+    );
+    return;
+  }
+
+  const { topic, how, last } = guided;
+  const at = last?.at ?? 0;
+  const text = last?.finished
+    ? 'That is the whole program. Press Run to see what it does.'
+    : `Step ${at + 1} of ${topic.guided.length}. `
+      + `${stepWords(topic.guided[at], how)}`;
+
+  repeatAloud(ui.guideStatus, text);
+}
+
+/**
+ * Put the same words into a live region again.
+ *
+ * A live region announces when its text changes, and asking to hear the step
+ * again is exactly the case where it has not changed — so writing it straight
+ * back is silent. Emptied first, then written on a later turn of the event
+ * loop, so there is a change to notice.
+ */
+function repeatAloud(region, text) {
+  if (!region) return;
+  region.textContent = '';
+  globalThis.setTimeout(() => { region.textContent = text; }, 60);
+}
+
 function startGuide(topic, how = {}) {
   // Cleared first, and this is the reason: the editor opens on a starter
   // program that already has a "when the program starts" and a print block in
@@ -1343,6 +1384,7 @@ function wireHelpPanel() {
     },
     onStartGuide: startGuide,
     onStopGuide: stopGuide,
+    onSayStep: sayCurrentStep,
   });
 }
 
@@ -1835,6 +1877,7 @@ function wireControls() {
     event.preventDefault();
 
     if (action === 'help') toggleKeyboardHelp();
+    else if (action === 'sayStep') sayCurrentStep();
     else if (action === 'run') run();
     else if (action === 'stop') stop();
     else if (action === 'save') saveProgram();

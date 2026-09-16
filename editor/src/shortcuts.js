@@ -31,7 +31,7 @@
  * a student pressing Escape inside the blocks wants both things.
  */
 
-/** @typedef {'run'|'stop'|'save'|'saveAs'|'help'|'silence'|null} Shortcut */
+/** @typedef {'run'|'stop'|'save'|'saveAs'|'help'|'sayStep'|'silence'|null} Shortcut */
 
 const BINDINGS = [
   { key: 'g', shift: false, action: 'run', label: 'Run the program' },
@@ -47,6 +47,10 @@ const BINDINGS = [
   // "/" — which is the point, since the label is generated from the same
   // table and will agree with it.
   { key: '/', shift: false, action: 'help', label: 'Show this keyboard help' },
+  // Free of Blockly, which takes plain B for the previous stack but nothing
+  // with Control, and free of the browser. For hearing the guided tutorial's
+  // current step again without leaving the blocks to go and read it.
+  { key: 'b', shift: false, action: 'sayStep', label: 'Say the tutorial step again' },
 ];
 
 /**
