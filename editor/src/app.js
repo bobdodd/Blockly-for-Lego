@@ -1221,7 +1221,7 @@ let guided = null;
 /** A workspace with nothing in it, which is where a guided tutorial begins. */
 const EMPTY_PROGRAM = { blocks: { languageVersion: 0, blocks: [] } };
 
-function startGuide(topic) {
+function startGuide(topic, how = {}) {
   // Cleared first, and this is the reason: the editor opens on a starter
   // program that already has a "when the program starts" and a print block in
   // it, so a tutorial asking you to add those opened saying two of its six
@@ -1234,13 +1234,14 @@ function startGuide(topic) {
   loadBlocks(EMPTY_PROGRAM);
   markSaved();
 
-  guided = { topic, last: null };
+  guided = { topic, last: null, how };
   ui.guideStatus.textContent = '';
-  helpPanel.startGuide(topic, progress(topic.guided, workspace));
+  helpPanel.startGuide(topic, progress(topic.guided, workspace), how);
   checkGuide({ quiet: true });
   announcer.status(
-    `Started the guided ${topic.title}, with an empty workspace. `
-      + `${topic.guided.length} steps. It will say when each one is done.`,
+    `Started the guided ${topic.title}${how.keyboard ? ', by keyboard' : ''}, `
+      + `with an empty workspace. ${topic.guided.length} steps. It will say `
+      + 'when each one is done.',
   );
 }
 
@@ -1266,7 +1267,9 @@ function checkGuide({ quiet = false } = {}) {
   if (!guided || !workspace) return;
 
   const now = progress(guided.topic.guided, workspace);
-  const say = quiet ? null : announcement(guided.last, now, guided.topic.guided);
+  const say = quiet
+    ? null
+    : announcement(guided.last, now, guided.topic.guided, guided.how);
   guided.last = now;
 
   helpPanel.updateGuide(now);

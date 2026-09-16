@@ -125,8 +125,9 @@ export function progress(steps, workspace) {
  * @param {object|null} before  a previous progress, or null on the first look
  * @param {object} after
  * @param {object[]} steps
+ * @param {{keyboard?: boolean}} [how]  which wording to use
  */
-export function announcement(before, after, steps) {
+export function announcement(before, after, steps, how = {}) {
   if (!before) return null;
   if (after.at === before.at) return null;
 
@@ -134,13 +135,18 @@ export function announcement(before, after, steps) {
     return 'That is the whole program. Press Run to see what it does.';
   }
 
+  // The keyboard version says which keys to press. Same steps, same checks,
+  // different sentence — so the two versions cannot drift apart about what
+  // counts as done.
+  const wording = (step) => (how.keyboard && step.keys ? step.keys : step.say);
+
   const next = steps[after.at];
   if (after.at > before.at) {
     const finishedCount = after.done.filter(Boolean).length;
     return `Step ${before.at + 1} done. ${finishedCount} of ${after.total}. `
-      + `Next: ${next.say}`;
+      + `Next: ${wording(next)}`;
   }
 
   // Backwards: undone, or a block taken out again.
-  return `Step ${after.at + 1} is not done any more: ${next.say}`;
+  return `Step ${after.at + 1} is not done any more: ${wording(next)}`;
 }

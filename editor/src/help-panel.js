@@ -106,10 +106,13 @@ export function mountHelpPanel(container, parts) {
    * throw away focus and the student's place in the list several times a
    * second while they drag a block.
    */
-  function showGuide(topic, state) {
+  function showGuide(topic, state, how = {}) {
+    const keyboard = Boolean(how.keyboard ?? guide?.how?.keyboard);
+    const wording = (step) => (keyboard && step.keys ? step.keys : step.say);
+    const hintOf = (step) => (keyboard && step.keysHint ? step.keysHint : step.hint);
     const view = make('div', null, 'help-guide');
 
-    view.append(make('h3', topic.title));
+    view.append(make('h3', keyboard ? `${topic.title}, by keyboard` : topic.title));
 
     const counted = make('p', null, 'help-guide-count');
     view.append(counted);
@@ -125,7 +128,8 @@ export function mountHelpPanel(container, parts) {
     const hint = make('p', null, 'help-note');
     hint.hidden = true;
     hintButton.addEventListener('click', () => {
-      hint.textContent = guide?.topic.guided[guide.state.at]?.hint ?? '';
+      const step = guide?.topic.guided[guide.state.at];
+      hint.textContent = step ? hintOf(step) : '';
       hint.hidden = false;
       hintButton.hidden = true;
     });
@@ -138,7 +142,7 @@ export function mountHelpPanel(container, parts) {
       // The tick is for eyes; the word is for everyone. A list that marks
       // progress only with a symbol tells a screen reader nothing useful.
       const mark = make('span', '', 'help-guide-mark');
-      const said = make('span', step.say);
+      const said = make('span', wording(step));
       item.append(mark, said);
       list.append(item);
       return { item, mark };
@@ -157,6 +161,7 @@ export function mountHelpPanel(container, parts) {
 
     guide = {
       topic, view, counted, now, hintButton, hint, items, state,
+      how: { keyboard },
     };
     container.replaceChildren(view);
     updateGuide(state);
@@ -179,7 +184,9 @@ export function mountHelpPanel(container, parts) {
 
     guide.now.textContent = state.finished
       ? 'That is the whole program. Press Run to see what it does.'
-      : guide.topic.guided[state.at].say;
+      : (guide.how.keyboard && guide.topic.guided[state.at].keys
+        ? guide.topic.guided[state.at].keys
+        : guide.topic.guided[state.at].say);
 
     // A new step means the old hint is about the wrong thing.
     guide.hint.hidden = true;
@@ -234,16 +241,31 @@ export function mountHelpPanel(container, parts) {
       start.className = running ? 'help-resume-guide' : 'help-start-guide';
       start.addEventListener('click', () => {
         if (running) showGuide(guide.topic, guide.state);
-        else onStartGuide(topic);
+        else onStartGuide(topic, { keyboard: false });
       });
       view.append(start);
+
+      // The same steps and the same checks, told as keystrokes. Its own
+      // button rather than a setting, because it is a different thing to
+      // choose at the start, not a preference to go hunting for: a student
+      // working by ear needs to be told which keys, and one working with a
+      // mouse does not want to read them.
+      if (!running) {
+        const byKeys = make('button', 'Start the keyboard and screen reader version');
+        byKeys.type = 'button';
+        byKeys.className = 'help-start-guide';
+        byKeys.addEventListener('click', () => onStartGuide(topic, { keyboard: true }));
+        view.append(byKeys);
+      }
       view.append(make(
         'p',
         running
           ? 'It is still watching what you build.'
-          : `${topic.guided.length} steps. It watches what you build and says `
-            + 'when each one is done, so you can stay in the blocks. It starts '
-            + 'from an empty workspace. Or just read the tutorial below.',
+          : `${topic.guided.length} steps either way. Both watch what you `
+            + 'build and say when each step is done, so you can stay in the '
+            + 'blocks; the second one also tells you which keys to press for '
+            + 'every block, without a mouse. Both start from an empty '
+            + 'workspace. Or just read the tutorial below.',
         'hint',
       ));
     }

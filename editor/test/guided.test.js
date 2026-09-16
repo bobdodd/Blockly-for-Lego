@@ -316,3 +316,73 @@ describe('a guided tutorial can be found', () => {
     assert.match(panel, /can be read straight through, or followed step/);
   });
 });
+
+describe('the keyboard and screen reader version', () => {
+  it('gives every step keystrokes and a hint of its own', () => {
+    for (const tutorial of tutorials) {
+      for (const [index, step] of tutorial.guided.entries()) {
+        assert.ok(
+          step.keys?.length > 30,
+          `${tutorial.id} step ${index + 1} has no keyboard instruction`,
+        );
+        assert.ok(step.keysHint?.length > 20, `${tutorial.id} step ${index + 1} has no keyboard hint`);
+        assert.notEqual(step.keys, step.say, 'the keyboard version just repeats the other one');
+      }
+    }
+  });
+
+  it('checks exactly the same things as the pointing version', () => {
+    // One set of checks, two sets of words. The versions cannot disagree
+    // about what counts as done, because there is only one `done`.
+    for (const tutorial of tutorials) {
+      for (const step of tutorial.guided) {
+        assert.equal(typeof step.done, 'function');
+        assert.equal(Object.keys(step).filter((k) => k.startsWith('done')).length, 1);
+      }
+    }
+  });
+
+  it('names the keys that Blockly actually binds', () => {
+    // T for the toolbox, Enter to take and to accept, I to be told where you
+    // are: all read from Blockly's own registry, so this fails if it rebinds
+    // one and the instructions go stale.
+    const bound = Blockly.ShortcutRegistry.registry;
+    const keyFor = (name) => bound.getKeyCodesByShortcutName(name).join(',');
+    assert.match(keyFor('focus_toolbox'), /84/, 'T is no longer the toolbox key');
+    assert.match(keyFor('information'), /73/, 'I no longer says where you are');
+    assert.match(keyFor('perform_action'), /13/, 'Enter no longer confirms');
+
+    const said = tutorials.flatMap((t) => t.guided).map((s) => s.keys).join(' ');
+    assert.match(said, /press T/i);
+    assert.match(said, /Enter/);
+    assert.match(said, /right arrow/i);
+  });
+
+  it('tells you how to hear where you are when lost', () => {
+    const said = tutorials.flatMap((t) => t.guided)
+      .flatMap((s) => [s.keys, s.keysHint]).join(' ');
+    assert.match(said, /press I\b/i, 'nothing mentions I for where you are');
+  });
+
+  it('says Escape puts a block back', () => {
+    const said = tutorials.flatMap((t) => t.guided)
+      .flatMap((s) => [s.keys, s.keysHint]).join(' ');
+    assert.match(said, /Escape/);
+  });
+});
+
+describe('announcements follow the version you chose', () => {
+  it('says the keystrokes in the keyboard version and not in the other', () => {
+    const tutorial = tutorials.find((t) => t.id === 'tutorial-square');
+    const state = (at) => ({
+      at, total: tutorial.guided.length, finished: false,
+      done: tutorial.guided.map((_, i) => i < at),
+    });
+    const plain = announcement(state(0), state(1), tutorial.guided);
+    const keys = announcement(state(0), state(1), tutorial.guided, { keyboard: true });
+
+    assert.notEqual(plain, keys);
+    assert.match(keys, /press T/i);
+    assert.doesNotMatch(plain, /press T/i);
+  });
+});

@@ -336,21 +336,27 @@ const TUTORIALS = [
     example: 'drive-square',
     guided: [
       {
+        keys: "Press Tab until you are in the blocks, then press T for the toolbox. You land on Start. Press the right arrow to go into its list of blocks. You hear \u201cwhen the program starts\u201d. Press Enter to take it. It says it is moving the block on the workspace \u2014 press Enter again to put it down.",
+        keysHint: "The right arrow goes into a category\u2019s blocks; the left arrow comes back out. Enter takes the block, and Enter again accepts where it is going.",
         say: 'Take a "when the program starts" block from the Start category '
           + 'and put it in the workspace.',
         hint: 'It is the only block in Start. Everything else goes inside it.',
         done: block('spike_when_started'),
       },
       {
+        keys: "Press T, arrow down to Movement, right arrow into its blocks, then arrow down until you hear \u201cset driving speed to 50 percent\u201d. Press Enter to take it. It will say \u201cmoving set driving speed inside when the program starts\u201d \u2014 that is where you want it, so press Enter to accept. Then press the right arrow twice to reach the number, Enter to open it, type 40, and Enter again.",
+        keysHint: "Listen to what it says after the first Enter. It names the block and where it is about to go. If that is not where you want it, use the arrow keys before you accept.",
         say: 'Inside it, put "set driving speed to 40 percent" from Movement. '
-          + 'Change the 100 to 40.',
-        hint: 'The block arrives saying 100. Move onto the number and type 40.',
+          + 'Change the 50 to 40.',
+        hint: 'The block arrives saying 50. Move onto the number and type 40.',
         done: block('spike_set_speed', {
           inside: 'spike_when_started',
           number: ['PERCENT', 40],
         }),
       },
       {
+        keys: "Press T, arrow down to Control, right arrow in, arrow down to \u201crepeat 4 times\u201d, Enter to take it. It should say inside \u201cwhen the program starts\u201d. If it says it is going inside the speed block instead, press the down arrow until it says after it, then Enter.",
+        keysHint: "While you are placing a block the arrow keys change where it will land, and it says the new place each time. Escape puts it back if you change your mind.",
         say: 'Under the speed block, still inside "when the program starts", '
           + 'put a "repeat 4 times" block from Control.',
         hint: 'It arrives saying 4 already, so only its position needs doing.',
@@ -360,6 +366,8 @@ const TUTORIALS = [
         }),
       },
       {
+        keys: "Press T, arrow down to Movement, right arrow in, arrow down to \u201cdrive forward for 25 centimetres\u201d, Enter. Now listen: it must say inside the repeat block. Use the arrow keys until it does, then Enter.",
+        keysHint: "Inside the repeat and after it sound almost the same and are completely different. \u201cInside\u201d is the word to listen for.",
         say: 'Inside the repeat, put "drive forward for 25 centimetres".',
         hint: 'Inside the repeat, not under it. It arrives forward, 25, '
           + 'centimetres — so it only has to go in the right place.',
@@ -370,6 +378,8 @@ const TUTORIALS = [
         }),
       },
       {
+        keys: "Press T, Movement, right arrow in, arrow down to \u201cturn right for 90 degrees\u201d, Enter. It should say after the drive block and inside the repeat. Arrow until it does, then Enter.",
+        keysHint: "If you lose track of where you are, press I to be told, or Shift and I for more detail.",
         say: 'Under the drive block and still inside the repeat, put "turn '
           + 'right for 90 degrees".',
         hint: 'It must come after the drive block, so the robot drives a side '
@@ -382,6 +392,8 @@ const TUTORIALS = [
         }),
       },
       {
+        keys: "Press T, arrow down to Sound and display, right arrow in, arrow down to \u201cprint\u201d, Enter. This one goes after the repeat, not inside it \u2014 arrow until it says after the repeat block, then Enter.",
+        keysHint: "Outside the repeat means it happens once. Inside, it would happen four times.",
         say: 'Last, under the repeat but outside it, put a "print" block from '
           + 'Sound and display. Put any words you like in it.',
         hint: 'Outside the repeat: it should happen once at the end, not four '
@@ -429,9 +441,11 @@ const TUTORIALS = [
     example: 'follow-line',
     guided: [
       {
+        keys: "Press Tab into the blocks, T for the toolbox, right arrow into Start, Enter to take \u201cwhen the program starts\u201d, Enter to put it down. Then T, arrow down to Movement, right arrow in, arrow down to \u201cset driving speed to 50 percent\u201d, Enter, Enter to accept it inside. Right arrow twice to the number, Enter, type 30, Enter.",
+        keysHint: "Two Enters for every block: one to take it, one to accept where it is going. The words between them tell you where that is.",
         say: 'Start with "when the program starts", and put "set driving '
           + 'speed to 30 percent" inside it.',
-        hint: 'Change the speed block from 100 to 30. A line follower that '
+        hint: 'Change the speed block from 50 to 30. A line follower that '
           + 'goes too fast leaves the line before it notices.',
         done: block('spike_set_speed', {
           inside: 'spike_when_started',
@@ -439,6 +453,8 @@ const TUTORIALS = [
         }),
       },
       {
+        keys: "Press T, arrow down to Control, right arrow in, arrow down to \u201crepeat while\u201d, Enter, and accept it under the speed block. Then right arrow to its dropdown, Enter, arrow to \u201cuntil\u201d, Enter.",
+        keysHint: "The same block does while and until. The dropdown is the first thing inside it, so one right arrow reaches it.",
         say: 'Under the speed block, put a "repeat until" block from Control.',
         hint: 'The Control category has "repeat while" and "repeat until". '
           + 'Choose until, then set the dropdown to "until" if it is not '
@@ -449,6 +465,8 @@ const TUTORIALS = [
         }),
       },
       {
+        keys: "Press T, arrow down to Sensors, right arrow in, arrow down to \u201ccolour sensor C sees black\u201d, Enter. It should say it is going into the repeat block\u2019s test. Accept with Enter, then right arrow to the colour dropdown, Enter, arrow to red, Enter.",
+        keysHint: "The test socket is at the top of the repeat block, and it is the first place a sensor block will offer to go.",
         say: 'Its test is "colour sensor C sees red", from Sensors. That is '
           + 'what tells the robot it has arrived.',
         hint: 'Drop the sensor block into the socket at the top of the repeat '
@@ -459,6 +477,8 @@ const TUTORIALS = [
         }),
       },
       {
+        keys: "Press T, Control, right arrow in, arrow down to \u201cif\u201d, Enter, and put it inside the repeat. Open the block\u2019s own menu with Control and Enter, and choose the option that adds an else. Then add another \u201ccolour sensor C sees black\u201d into its test.",
+        keysHint: "The if block grows an else through its menu. Control and Enter opens the menu for whichever block you are on.",
         say: 'Inside the loop, put an "if / else" block from Control, and '
           + 'make its test "colour sensor C sees black".',
         hint: 'Plain "if" grows an else branch through its little menu — open '
@@ -472,6 +492,8 @@ const TUTORIALS = [
         ),
       },
       {
+        keys: "Twice from Movement: \u201cstart driving with steering\u201d into the if branch, with its number set to minus 25, and another into the else branch set to 25. Type the minus sign before the digits.",
+        keysHint: "If the second one keeps going into the first branch, arrow while you are placing it until it says the else branch.",
         say: 'If it sees black, "start driving with steering" set to minus '
           + '25. Otherwise, another one set to 25.',
         hint: 'Two of the same block with opposite numbers: one steers one '
@@ -482,6 +504,8 @@ const TUTORIALS = [
         ),
       },
       {
+        keys: "Press T, Control, right arrow in, arrow down to \u201cwait 1 seconds\u201d, Enter, and place it inside the loop after the if block. Right arrow to the number, Enter, type 0.1, Enter.",
+        keysHint: "Without this the program never gives the robot time to move and nothing happens at all. It is the step everybody misses.",
         say: 'Still inside the loop and under the if / else, put "wait 0.1 '
           + 'seconds" from Control.',
         hint: 'Without this the program spins without ever letting the robot '
@@ -493,6 +517,8 @@ const TUTORIALS = [
         }),
       },
       {
+        keys: "Two more, both after the loop rather than inside it: \u201cstop driving\u201d from Movement and \u201cprint\u201d from Sound and display. Listen for \u201cafter\u201d rather than \u201cinside\u201d before you accept either.",
+        keysHint: "Press I at any time to hear where you are and what you are on.",
         say: 'After the loop, outside it, put "stop driving" and then a '
           + '"print" block.',
         hint: 'Outside the loop: these happen once, when the red square has '
@@ -551,15 +577,20 @@ const TUTORIALS = [
     example: 'stop-at-wall',
     guided: [
       {
+        keys: "Press Tab into the blocks, T, right arrow into Start, Enter, Enter. Then T, Movement, right arrow in, \u201cset driving speed\u201d, Enter, Enter to accept it inside. Right arrow twice to the number, Enter, type 40, Enter.",
+        keysHint: "Two Enters per block: take it, then accept where it is going.",
         say: 'Start with "when the program starts", and put "set driving '
           + 'speed to 40 percent" inside it.',
-        hint: 'Change the 100 to 40.',
+        hint: 'The speed block arrives saying 50. Move onto the number and '
+          + 'type 40.',
         done: block('spike_set_speed', {
           inside: 'spike_when_started',
           number: ['PERCENT', 40],
         }),
       },
       {
+        keys: "Press T, Movement, right arrow in, arrow down to \u201cstart driving forward\u201d \u2014 not \u201cdrive forward for\u201d, which is a different block. Enter, then accept it under the speed block.",
+        keysHint: "\u201cStart driving\u201d does not wait. \u201cDrive for\u201d does. That difference is what makes the next step possible.",
         say: 'Under it, "start driving forward" from Movement.',
         hint: 'This is the one that does not wait. It sets the motors going '
           + 'and moves straight on to the next block, which is what lets the '
@@ -570,12 +601,16 @@ const TUTORIALS = [
         }),
       },
       {
+        keys: "Press T, Control, right arrow in, arrow down to \u201cwait until\u201d, Enter, and accept it under the driving block.",
+        keysHint: "Wait until holds the program still while the robot keeps moving.",
         say: 'Under that, a "wait until" block from Control.',
         hint: 'Wait until is how a program holds still while the world '
           + 'changes around it.',
         done: block('spike_wait_until', { inside: 'spike_when_started' }),
       },
       {
+        keys: "Press T, arrow down to Maths and logic, right arrow in, arrow down to the comparison block \u2014 it reads as a socket, an equals sign, and another socket. Enter, and accept it into the wait block. Then right arrow to the dropdown, Enter, arrow to the less-than sign, Enter.",
+        keysHint: "The dropdown sits between the two sockets, so it is the second thing you reach going right.",
         say: 'Put a comparison from Maths and logic into the wait, and set '
           + 'its middle dropdown to the less-than sign.',
         hint: 'The comparison block has two sockets and a dropdown between '
@@ -586,6 +621,8 @@ const TUTORIALS = [
         }),
       },
       {
+        keys: "Press T, Sensors, right arrow in, arrow down to \u201cdistance at D in millimetres\u201d, Enter, and put it in the left socket of the comparison. Then move to the right socket and type 120 into it.",
+        keysHint: "Left socket first. If it offers the right one, arrow until it says the left.",
         say: 'On the left of the comparison put "distance at D in '
           + 'millimetres" from Sensors. On the right put 120.',
         hint: '"Distance less than 120" is the robot asking whether the wall '
@@ -596,6 +633,8 @@ const TUTORIALS = [
         ),
       },
       {
+        keys: "Last, after the wait: \u201cstop driving\u201d from Movement, then \u201cprint\u201d from Sound and display.",
+        keysHint: "Both go after the wait block, not inside anything.",
         say: 'After the wait, "stop driving", and then a "print" block.',
         hint: 'These run the moment the waiting is over, which is the moment '
           + 'the wall is close.',
