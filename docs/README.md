@@ -33,6 +33,10 @@ editor: most of what one reports is Blockly's internals working correctly.
 sight, what changed in 2026 to make this a small project rather than a
 research one, what the alternatives were, and the known risks.
 
+**[LinkedIn article](linkedin-article.md)** — the same story for a general
+audience, written to be posted rather than read here. Kept in the repository
+so the claims in it stay next to the code that has to keep them true.
+
 ## Contributing
 
 **[CONTRIBUTING.md](../CONTRIBUTING.md)** — the one non-negotiable rule, how to
