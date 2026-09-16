@@ -1238,11 +1238,57 @@ function startGuide(topic, how = {}) {
   ui.guideStatus.textContent = '';
   helpPanel.startGuide(topic, progress(topic.guided, workspace), how);
   checkGuide({ quiet: true });
+
+  // Step one, said now.
+  //
+  // `quiet` above sets the starting point without announcing, which is right
+  // for every later look and wrong for this one: without this the student
+  // heard "six steps, it will say when each one is done" and then silence,
+  // and had to go and read the panel to find out what the first step was.
+  //
+  // Said through the status region rather than the guide's own, because two
+  // live regions firing at the same moment interleave into one unreadable
+  // sentence. The guide's region takes over from step two.
+  const first = topic.guided[0];
+  const firstSaid = how.keyboard && first.keys ? first.keys : first.say;
+
   announcer.status(
     `Started the guided ${topic.title}${how.keyboard ? ', by keyboard' : ''}, `
       + `with an empty workspace. ${topic.guided.length} steps. It will say `
-      + 'when each one is done.',
+      + `when each one is done. Step 1: ${firstSaid}`,
   );
+
+  // And put the student where the first step happens.
+  //
+  // Focus was left on the tutorial's heading in the help panel, which is a
+  // reasonable place to read from and the wrong place to work from: every
+  // tutorial begins by taking a block out of the toolbox, and getting there
+  // from the panel is a row of Tab presses through everything in between.
+  // Worse for the keyboard version, whose first instruction had to begin
+  // "press Tab until you are in the blocks" — an instruction that cannot say
+  // how many times.
+  focusToolbox();
+}
+
+/**
+ * Put keyboard focus on the toolbox, where blocks come from.
+ *
+ * Through Blockly's focus manager rather than a DOM `focus()` call: the
+ * toolbox is a focusable tree with its own idea of which category is current,
+ * and asking the element directly skips the bookkeeping that makes the arrow
+ * keys carry on from the right place.
+ */
+function focusToolbox() {
+  const toolbox = workspace?.getToolbox?.();
+  if (!toolbox) return false;
+  try {
+    Blockly.getFocusManager().focusTree(toolbox);
+    return true;
+  } catch {
+    // Older or headless Blockly without a focus manager: the tutorial still
+    // works, the student just starts from wherever they were.
+    return false;
+  }
 }
 
 function stopGuide() {

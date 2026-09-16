@@ -336,8 +336,8 @@ const TUTORIALS = [
     example: 'drive-square',
     guided: [
       {
-        keys: "Press Tab until you are in the blocks, then press T for the toolbox. You land on Start. Press the right arrow to go into its list of blocks. You hear \u201cwhen the program starts\u201d. Press Enter to take it. It says it is moving the block on the workspace \u2014 press Enter again to put it down.",
-        keysHint: "The right arrow goes into a category\u2019s blocks; the left arrow comes back out. Enter takes the block, and Enter again accepts where it is going.",
+        keys: "You are already in the toolbox, on Start. Press the right arrow to go into its list of blocks. You hear \u201cwhen the program starts\u201d. Press Enter to take it. It says it is moving the block on the workspace \u2014 press Enter again to put it down.",
+        keysHint: "The right arrow goes into a category\u2019s blocks; the left arrow comes back out. Enter takes the block, and Enter again accepts where it is going. If you have wandered off, T brings you back to the toolbox from anywhere in the editor.",
         say: 'Take a "when the program starts" block from the Start category '
           + 'and put it in the workspace.',
         hint: 'It is the only block in Start. Everything else goes inside it.',
@@ -441,7 +441,7 @@ const TUTORIALS = [
     example: 'follow-line',
     guided: [
       {
-        keys: "Press Tab into the blocks, T for the toolbox, right arrow into Start, Enter to take \u201cwhen the program starts\u201d, Enter to put it down. Then T, arrow down to Movement, right arrow in, arrow down to \u201cset driving speed to 50 percent\u201d, Enter, Enter to accept it inside. Right arrow twice to the number, Enter, type 30, Enter.",
+        keys: "You are already in the toolbox, on Start. Right arrow into its blocks, Enter to take \u201cwhen the program starts\u201d, Enter to put it down. Then T to come back to the toolbox, arrow down to Movement, right arrow in, arrow down to \u201cset driving speed to 50 percent\u201d, Enter, Enter to accept it inside. Right arrow twice to the number, Enter, type 30, Enter.",
         keysHint: "Two Enters for every block: one to take it, one to accept where it is going. The words between them tell you where that is.",
         say: 'Start with "when the program starts", and put "set driving '
           + 'speed to 30 percent" inside it.',
@@ -577,7 +577,7 @@ const TUTORIALS = [
     example: 'stop-at-wall',
     guided: [
       {
-        keys: "Press Tab into the blocks, T, right arrow into Start, Enter, Enter. Then T, Movement, right arrow in, \u201cset driving speed\u201d, Enter, Enter to accept it inside. Right arrow twice to the number, Enter, type 40, Enter.",
+        keys: "You are already in the toolbox, on Start. Right arrow into its blocks, Enter, Enter to put the start block down. Then T to come back, arrow down to Movement, right arrow in, \u201cset driving speed\u201d, Enter, Enter to accept it inside. Right arrow twice to the number, Enter, type 40, Enter.",
         keysHint: "Two Enters per block: take it, then accept where it is going.",
         say: 'Start with "when the program starts", and put "set driving '
           + 'speed to 40 percent" inside it.',

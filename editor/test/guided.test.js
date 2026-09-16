@@ -402,3 +402,52 @@ describe('announcements follow the version you chose', () => {
     assert.doesNotMatch(plain, /press T/i);
   });
 });
+
+describe('where a guided tutorial puts you when it starts', () => {
+  const app = readFileSync(
+    fileURLToPath(new URL('../src/app.js', import.meta.url)),
+    'utf8',
+  );
+
+  it('moves focus to the toolbox, where every tutorial begins', () => {
+    // It used to leave focus on the tutorial's heading in the help panel — a
+    // fine place to read from and the wrong place to work from, since getting
+    // to the blocks from there is a row of Tab presses through everything in
+    // between.
+    const start = app.indexOf('function startGuide(');
+    const end = app.indexOf('\nfunction ', start + 1);
+    const body = app.slice(start, end);
+    assert.match(body, /focusToolbox\(\)/, 'startGuide no longer moves focus');
+    // Through Blockly's own focus manager, not a bare DOM focus() call: the
+    // toolbox is a focusable tree that tracks which category is current.
+    assert.match(app, /getFocusManager\(\)\.focusTree/);
+  });
+
+  it('says the first step, rather than only how many there are', () => {
+    // The defect: `quiet` suppressed the announcement on the first look, so a
+    // student heard "six steps, it will say when each one is done" and then
+    // silence, and had to go and read the panel to find step one.
+    const start = app.indexOf('function startGuide(');
+    const end = app.indexOf('\nfunction ', start + 1);
+    const body = app.slice(start, end);
+    assert.match(body, /Step 1: \$\{firstSaid\}/);
+    // And in the right words for the version chosen.
+    assert.match(body, /how\.keyboard && first\.keys \? first\.keys : first\.say/);
+  });
+
+  it('no longer tells a keyboard student to Tab until they arrive', () => {
+    // An instruction that cannot say how many times, replaced by putting them
+    // there.
+    for (const tutorial of tutorials) {
+      const first = tutorial.guided[0].keys;
+      assert.doesNotMatch(
+        first, /Tab until|Tab into the blocks/i,
+        `${tutorial.id} still opens by asking the student to Tab somewhere`,
+      );
+      assert.match(
+        first, /already in the toolbox/i,
+        `${tutorial.id} does not say where the student now is`,
+      );
+    }
+  });
+});
