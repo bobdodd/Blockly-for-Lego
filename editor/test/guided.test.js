@@ -19,6 +19,9 @@ import { Blockly } from '../src/blockly.js';
 import { defineSpikeBlocks } from '../src/blocks/definitions.js';
 import { helpSections } from '../src/help-content.js';
 import { EXAMPLES } from '../src/generated/examples.js';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
 import { progress, announcement, block } from '../src/guided.js';
 
 defineSpikeBlocks();
@@ -284,5 +287,32 @@ describe('following the steps in order ticks them off in order', () => {
     } finally {
       workspace.dispose();
     }
+  });
+});
+
+describe('a guided tutorial can be found', () => {
+  const panel = readFileSync(
+    fileURLToPath(new URL('../src/help-panel.js', import.meta.url)),
+    'utf8',
+  );
+
+  it('offers the guided version before the tutorial it replaces', () => {
+    // The defect: the button sat after the whole written tutorial — twelfth
+    // of fifteen things in the panel, some eight hundred pixels down — so the
+    // only way to discover the guided version was to read to the end of the
+    // version that makes it unnecessary. Somebody asked where they were.
+    const offer = panel.indexOf("topic.guided && onStartGuide");
+    const body = panel.indexOf('for (const piece of topic.body)');
+    assert.notEqual(offer, -1, 'nothing offers the guided version any more');
+    assert.notEqual(body, -1);
+    assert.ok(
+      offer < body,
+      'the guided version is offered after the tutorial body again',
+    );
+  });
+
+  it('says in the topic list that the tutorials can be guided', () => {
+    // So it is knowable without opening one.
+    assert.match(panel, /can be read straight through, or followed step/);
   });
 });

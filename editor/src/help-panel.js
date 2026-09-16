@@ -219,11 +219,6 @@ export function mountHelpPanel(container, parts) {
     heading.tabIndex = -1;
     view.append(heading);
 
-    for (const piece of topic.body) {
-      const node = render(piece);
-      if (node) view.append(node);
-    }
-
     if (topic.guided && onStartGuide) {
       // Already running this one? Then the button goes back to it rather than
       // starting it, because starting empties the workspace — and a student
@@ -248,9 +243,18 @@ export function mountHelpPanel(container, parts) {
           ? 'It is still watching what you build.'
           : `${topic.guided.length} steps. It watches what you build and says `
             + 'when each one is done, so you can stay in the blocks. It starts '
-            + 'from an empty workspace.',
+            + 'from an empty workspace. Or just read the tutorial below.',
         'hint',
       ));
+    }
+
+    // The writing comes after the choice of how to use it. This button used
+    // to sit below the whole tutorial — twelfth of fifteen things in the
+    // panel and some eight hundred pixels down — so the guided version could
+    // only be found by reading to the end of the version that replaces it.
+    for (const piece of topic.body) {
+      const node = render(piece);
+      if (node) view.append(node);
     }
 
     const example = exampleFor(topic.id);
@@ -292,6 +296,20 @@ export function mountHelpPanel(container, parts) {
 
     for (const section of sections()) {
       view.append(make('h3', section.title));
+
+      // Otherwise the only way to learn that a tutorial can walk you through
+      // it is to open one and read to the bottom.
+      const guidedCount = section.topics.filter((topic) => topic.guided).length;
+      if (guidedCount > 0) {
+        view.append(make(
+          'p',
+          `All ${guidedCount} can be read straight through, or followed step `
+            + 'by step with the editor watching what you build and saying when '
+            + 'each step is done.',
+          'hint',
+        ));
+      }
+
       const list = make('ul', null, 'help-topic-list');
       for (const topic of section.topics) {
         const item = make('li');
