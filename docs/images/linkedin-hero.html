@@ -1,104 +1,150 @@
 <!doctype html>
 <meta charset="utf-8">
 <title>hero</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
   :root{
-    --page:#11161a; --panel:#192126; --ink:#e8eef2; --muted:#a9b6c0;
-    --line:#33414b; --accent:#62c3ea; --warm:#ffb27a;
-    --mat:#f2f5f7; --matline:#12171c; --go:#2f8f4e; --stop:#c0392b;
+    --page:#11161a; --ink:#e8eef2; --muted:#9aa8b3; --accent:#62c3ea;
+    --mat:#f2f5f7; --dim:#0a5f8a;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{width:1920px;height:1080px}
   body{
     background:var(--page); color:var(--ink);
     font-family:Archivo,system-ui,sans-serif;
-    display:grid; grid-template-columns:720px 1fr; align-items:center;
-    gap:80px; padding:84px 80px;
+    /* auto rows, not 1fr: a fractional row absorbs the spare height and
+       leaves the picture stranded against the top of the frame. */
+    display:grid; grid-template-columns:600px 1fr; grid-template-rows:auto auto;
+    align-content:center; align-items:start; gap:30px 70px; padding:0 76px;
   }
-  .eyebrow{
-    font-size:23px; font-weight:700; letter-spacing:.22em; text-transform:uppercase;
-    color:var(--accent); margin-bottom:34px;
-  }
-  h1{
-    font-size:112px; font-weight:800; line-height:.96; letter-spacing:-.025em;
-    text-wrap:balance; margin-bottom:34px;
-  }
-  .sub{
-    font-size:38px; font-weight:500; line-height:1.28; color:var(--muted);
-    max-width:23ch;
-  }
-  .rule{width:132px;height:7px;background:var(--warm);margin:44px 0 34px;border-radius:4px}
-  .url{font-family:"IBM Plex Mono",monospace;font-size:27px;color:var(--ink)}
-
-  figure{display:flex;flex-direction:column;gap:28px}
-  .matrow{display:flex;align-items:center;gap:20px}
-  .matrow .mat{flex:1}
-  .edge{
-    font-size:21px; font-weight:700; line-height:1.15; color:var(--muted);
-    text-transform:uppercase; letter-spacing:.12em; text-align:center; width:76px;
-  }
-  .mat{
-    background:var(--mat); border-radius:10px; padding:0; overflow:hidden;
-    box-shadow:0 26px 60px rgba(0,0,0,.45);
-  }
+  .cap{font-size:21px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
   svg{display:block;width:100%;height:auto}
-  figcaption{
-    font-family:"IBM Plex Mono",monospace; font-size:24px; line-height:1.55;
-    color:var(--muted); border-left:5px solid var(--accent); padding-left:22px;
+  .mat{background:var(--mat);border-radius:12px;overflow:hidden;box-shadow:0 22px 54px rgba(0,0,0,.45)}
+  .right{display:flex;flex-direction:column;gap:22px}
+  .said{
+    font-family:"IBM Plex Mono",monospace;font-size:26px;line-height:1.45;color:var(--ink);
+    border-left:5px solid var(--accent);padding-left:22px;
   }
-  figcaption b{color:var(--ink);font-weight:500}
+  .said span{color:var(--muted)}
 </style>
 <body>
-  <div>
-    <p class="eyebrow">Free &middot; Open source</p>
-    <h1>Blocks for everyone</h1>
-    <p class="sub">Programming LEGO robots with a keyboard and a screen reader.</p>
-    <div class="rule"></div>
-    <p class="url">a11ybob.com/block-lego</p>
-  </div>
+  <p class="cap">The blocks a student builds</p>
+  <p class="cap">What the robot does, and what it says</p>
 
-  <figure>
-    <div class="matrow">
-      <span class="edge">west<br>edge</span>
+  <div id="blocks"></div>
+
+  <div class="right">
     <div class="mat">
-      <!-- The First line mat, 2362 x 1143 mm, drawn to scale. SVG y is
-           flipped from the mat's own north-up coordinates. -->
+      <!-- The First line mat: 2362 x 1143 mm, to scale. SVG y is flipped from
+           the mat's own north-up coordinates. -->
       <svg viewBox="0 0 2362 1143" role="img" aria-label="The mat, seen from above">
-        <rect x="0" y="0" width="2362" height="1143" fill="#f2f5f7"/>
-        <!-- the line to follow: 220,300 to 2000,300 -->
-        <line x1="220" y1="843" x2="2000" y2="843" stroke="#12171c" stroke-width="20"/>
-        <!-- start and target squares -->
+        <rect width="2362" height="1143" fill="#f2f5f7"/>
+
+        <!-- what the words point at, up in the empty half of the mat -->
+        <g font-family="Archivo, sans-serif" font-weight="700" fill="#0a5f8a">
+          <g stroke="#0a5f8a" stroke-width="7" fill="none" stroke-dasharray="18 14">
+            <line x1="690" y1="330" x2="690" y2="790"/>
+            <line x1="1860" y1="330" x2="1935" y2="770"/>
+          </g>
+          <circle cx="690" cy="800" r="18" fill="#0a5f8a"/>
+          <circle cx="1940" cy="782" r="18" fill="#0a5f8a"/>
+          <text x="690" y="292" text-anchor="middle" font-size="68">on the edge of the line</text>
+          <text x="1860" y="292" text-anchor="end" font-size="68">sees red, and stops</text>
+        </g>
+
+        <line x1="220" y1="843" x2="2000" y2="843" stroke="#12171c" stroke-width="22"/>
         <rect x="140" y="763" width="160" height="160" fill="#2f8f4e"/>
         <rect x="1940" y="763" width="160" height="160" fill="#c0392b"/>
-        <!-- the north arrow printed on the mat -->
-        <g stroke="#12171c" stroke-width="16" fill="none" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="260" y1="303" x2="260" y2="103"/>
-          <polyline points="218,163 260,103 302,163"/>
+
+        <!-- a line follower finds the edge, loses it, finds it again -->
+        <path d="M330,843 q76,-44 152,0 q76,44 152,0 q76,-44 152,0 q76,44 152,0
+                 q76,-44 152,0 q76,44 152,0 q76,-44 152,0"
+              fill="none" stroke="#0a5f8a" stroke-width="10" stroke-dasharray="24 20"
+              stroke-linecap="round" opacity=".75"/>
+
+        <!-- the north arrow the mat really has printed on it -->
+        <g stroke="#12171c" stroke-width="18" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="150" y1="620" x2="150" y2="430"/>
+          <polyline points="108,490 150,430 192,490"/>
         </g>
-        <text x="330" y="196" font-family="Archivo, sans-serif" font-size="96"
+        <text x="222" y="523" font-family="Archivo, sans-serif" font-size="104"
               font-weight="700" fill="#12171c">N</text>
-        <!-- the robot, at 1200 mm east and 300 mm north, pointing east -->
+
+        <!-- the robot: 1200 mm east, 300 mm north, pointing east -->
         <g transform="translate(1200 843)">
-          <rect x="-118" y="-128" width="46" height="256" rx="16" fill="#3a4650"/>
-          <rect x="-145" y="-88" width="262" height="176" rx="24" fill="#0a5f8a"/>
-          <polygon points="117,-64 205,0 117,64" fill="#62c3ea"/>
+          <rect x="-124" y="-132" width="48" height="264" rx="16" fill="#3a4650"/>
+          <rect x="-152" y="-92" width="274" height="184" rx="26" fill="#0a5f8a"/>
+          <polygon points="122,-66 214,0 122,66" fill="#62c3ea"/>
         </g>
-        <!-- how far it is from the west edge, which is how the words say it -->
-        <g stroke="#0a5f8a" stroke-width="10" fill="none">
-          <line x1="10" y1="1092" x2="1200" y2="1092"/>
-          <line x1="14" y1="1056" x2="14" y2="1128"/>
-          <line x1="1200" y1="1056" x2="1200" y2="1128"/>
+
+        <!-- measured from the nearer edge, the way the words say it -->
+        <g stroke="#0a5f8a" stroke-width="11" fill="none">
+          <line x1="12" y1="1086" x2="1200" y2="1086"/>
+          <line x1="16" y1="1048" x2="16" y2="1124"/>
+          <line x1="1200" y1="1048" x2="1200" y2="1124"/>
         </g>
-        <text x="605" y="1032" text-anchor="middle" font-family="Archivo, sans-serif"
+        <text x="606" y="1024" text-anchor="middle" font-family="Archivo, sans-serif"
               font-size="70" font-weight="700" fill="#0a5f8a">120 cm from the west edge</text>
       </svg>
     </div>
-      <span class="edge">east<br>edge</span>
-    </div>
-    <figcaption>
-      &ldquo;The robot is <b>120 centimetres from the west edge</b> and 30
-      centimetres from the south edge, <b>pointing east</b>.&rdquo;
-    </figcaption>
-  </figure>
+
+    <p class="said">13.45s&nbsp;&nbsp;The program printed: <span>found the red square</span></p>
+  </div>
+
+<script>
+// The blocks, built rather than hand-drawn, so the notches and the nesting
+// land where Blockly would put them instead of where a pen happened to go.
+const W = 560, H = 78, R = 9, NOTCH_X = 26, NOTCH_W = 26, NOTCH_D = 11;
+
+function statement(x, y, w, fill, label, indent) {
+  const n = NOTCH_X + indent * 0;
+  const d = [
+    `M${x + R},${y}`,
+    `h${n - R}`, `l6,${NOTCH_D}`, `h${NOTCH_W}`, `l6,-${NOTCH_D}`,
+    `h${w - n - NOTCH_W - 12 - R}`, `a${R},${R} 0 0 1 ${R},${R}`,
+    `v${H - 2 * R}`, `a${R},${R} 0 0 1 -${R},${R}`,
+    `h-${w - n - NOTCH_W - 12 - R}`, `l-6,${NOTCH_D}`, `h-${NOTCH_W}`, `l-6,-${NOTCH_D}`,
+    `h-${n - R}`, `a${R},${R} 0 0 1 -${R},-${R}`,
+    `v-${H - 2 * R}`, `a${R},${R} 0 0 1 ${R},-${R}`, 'z',
+  ].join(' ');
+  return `<path d="${d}" fill="${fill}"/>
+    <text x="${x + 28}" y="${y + H / 2 + 10}" font-size="27" font-weight="600" fill="#fff">${label}</text>`;
+}
+
+/** A C-block: header, a spine down its left, and a foot under the wrapped blocks. */
+function wrapper(x, y, w, fill, label, bodyHeight) {
+  const spine = 26;
+  return `
+    ${statement(x, y, w, fill, '', 0)}
+    <rect x="${x}" y="${y + H}" width="${spine}" height="${bodyHeight}" fill="${fill}"/>
+    ${statement(x, y + H + bodyHeight, w, fill, '', 0)}
+    <text x="${x + 28}" y="${y + H / 2 + 10}" font-size="27" font-weight="600" fill="#fff">${label}</text>`;
+}
+
+function hexagon(x, y, w, label) {
+  const h = 46, s = 20;
+  return `<path d="M${x + s},${y} h${w - 2 * s} l${s},${h / 2} l-${s},${h / 2} h-${w - 2 * s} l-${s},-${h / 2} z"
+            fill="#417753" stroke="#2c5238" stroke-width="3"/>
+          <text x="${x + w / 2}" y="${y + h / 2 + 8}" text-anchor="middle" font-size="23"
+                font-weight="600" fill="#fff">${label}</text>`;
+}
+
+const parts = [];
+// when the program starts — the hat every program needs
+parts.push(statement(0, 0, W, '#776541', 'when the program starts', 0));
+// its contents sit indented, the way Blockly nests them
+parts.push(statement(22, H, W - 22, '#416577', 'set driving speed to 30', 0));
+// repeat until <the sensor sees red>
+parts.push(wrapper(22, H * 2, W - 22, '#775341', '', H + 14));
+parts.push(`<text x="50" y="${H * 2 + H / 2 + 10}" font-size="27" font-weight="600" fill="#fff">repeat until</text>`);
+parts.push(hexagon(220, H * 2 + 16, 300, 'colour sensor sees red'));
+// and one block wrapped inside it
+parts.push(statement(56, H * 3 + 7, W - 56, '#416577', 'start driving with steering', 0));
+
+document.getElementById('blocks').innerHTML =
+  `<svg viewBox="0 0 ${W + 4} ${H * 4 + 30}" role="img"
+        aria-label="A stack of blocks: when the program starts, set driving speed to 30, repeat until the colour sensor sees red, start driving with steering">
+     <g font-family="Archivo, sans-serif">${parts.join('')}</g>
+   </svg>`;
+</script>
 </body>
