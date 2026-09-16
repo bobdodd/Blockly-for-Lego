@@ -23,6 +23,9 @@ import { parseProject } from '../src/project.js';
 import { generateFromState, robotConfig } from '../src/generators/python.js';
 import { shortcuts } from '../src/shortcuts.js';
 import { defineSpikeBlocks } from '../src/blocks/definitions.js';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
 import { runInSimulator } from './helpers.js';
 
 defineSpikeBlocks();
@@ -188,5 +191,62 @@ describe('the tutorials keep the promises they make', () => {
       !result.narration.some((line) => /bumped into/i.test(line)),
       'the robot hit something, which is the one thing this program is for not doing',
     );
+  });
+});
+
+describe('the Help panel is where the tab says it is', () => {
+  const markup = readFileSync(
+    fileURLToPath(new URL('../index.html', import.meta.url)),
+    'utf8',
+  );
+
+  /** The text between a <section ...> and the </section> that closes it. */
+  function sectionAt(open) {
+    let depth = 0;
+    let at = open;
+    while (at < markup.length) {
+      const nextOpen = markup.indexOf('<section', at + 1);
+      const nextClose = markup.indexOf('</section>', at + 1);
+      if (nextClose === -1) break;
+      if (nextOpen !== -1 && nextOpen < nextClose) {
+        depth += 1;
+        at = nextOpen;
+      } else if (depth > 0) {
+        depth -= 1;
+        at = nextClose;
+      } else {
+        return markup.slice(open, nextClose);
+      }
+    }
+    throw new Error('unbalanced <section> in index.html');
+  }
+
+  const tabSection = sectionAt(markup.indexOf('<section class="tab-section"'));
+
+  it('puts every panel a tab controls inside the section holding the tabs', () => {
+    // The defect: the Help panel was inserted at the end of the "What the
+    // robot is doing" section instead of the tabbed one, because an anchor
+    // matched the wrong </section>. Choosing the Help tab then showed the log
+    // heading, the quiet checkbox and the whole narration list above the help,
+    // and `hidden` on the panel did nothing about any of it — they were not
+    // in the panel, they were in front of it.
+    const controls = [...markup.matchAll(/aria-controls="([^"]+)"/g)].map((m) => m[1]);
+    assert.ok(controls.length >= 3, 'the tabs have stopped controlling anything');
+
+    for (const id of controls) {
+      assert.ok(
+        tabSection.includes(`id="${id}"`),
+        `${id} is not inside the tab section, so selecting its tab shows `
+          + 'whatever else lives around it',
+      );
+    }
+  });
+
+  it('keeps the narration log out of the tabs, where it is never hidden', () => {
+    // The other half of the same mistake: the log is the primary output for a
+    // student who cannot see the robot view, and it is deliberately not
+    // behind a tab.
+    assert.ok(!tabSection.includes('id="log-section"'));
+    assert.ok(!tabSection.includes('id="log"'));
   });
 });

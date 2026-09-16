@@ -407,6 +407,20 @@
             ></textarea>
             <button id="copy-python" type="button" class="secondary">Copy the Python</button>
           </div>
+
+          <!--
+            Help lives in a panel rather than a dialog because a tutorial is
+            something you follow while you work. A modal covers the workspace,
+            which makes every step something to memorise before you can do it.
+            The keyboard reference is still a dialog: that one you want over
+            everything and gone again.
+
+            Empty here. Every word is written by src/help-panel.js from
+            src/help-content.js, which reads the blocks, the robots, the mats
+            and the shortcut keys from the places that already define them.
+          -->
+          <div id="panel-help" role="tabpanel" aria-labelledby="tab-help"
+               class="tab-panel help-panel" hidden></div>
         </section>
 
         <section id="log-section" aria-labelledby="log-heading" class="log-section">
@@ -423,19 +437,6 @@
 
           <button id="clear-log" type="button" class="secondary">Clear this list</button>
 
-          <!--
-            Help lives in a panel rather than a dialog because a tutorial is
-            something you follow while you work. A modal covers the workspace,
-            which makes every step something to memorise before you can do it.
-            The keyboard reference is still a dialog: that one you want over
-            everything and gone again.
-
-            Empty here. Every word is written by src/help-panel.js from
-            src/help-content.js, which reads the blocks, the robots, the mats
-            and the shortcut keys from the places that already define them.
-          -->
-          <div id="panel-help" role="tabpanel" aria-labelledby="tab-help"
-               class="tab-panel help-panel" hidden></div>
         </section>
       </aside>
     </div>
