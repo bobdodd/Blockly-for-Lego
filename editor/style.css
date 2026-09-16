@@ -1208,3 +1208,28 @@ button:disabled {
 .help-terms dd { margin: 0.1rem 0 0; color: var(--muted); }
 
 .help-open-example { margin: 0.6rem 0 0.3rem; }
+
+/* Guided tutorials. The step to do now is the answer to the only question
+   being asked, so it is the largest thing in the panel. */
+.help-guide-count { color: var(--muted); }
+
+.help-guide-now {
+  font-size: 1.15rem;
+  font-weight: 600;
+  padding: 0.5rem 0.7rem;
+  border-left: 4px solid var(--accent);
+  background: var(--page);
+}
+
+.help-guide-steps { margin: 0 0 0.9rem; padding-left: 1.4rem; max-width: 62ch; }
+.help-guide-steps li { margin: 0 0 0.4rem; }
+
+/* Done and to-do are told apart by the words in the mark as well, because a
+   colour and a weight are nothing to a student listening. */
+.help-guide-steps .is-done { color: var(--muted); }
+.help-guide-steps .is-now { font-weight: 600; }
+.help-guide-mark { font-weight: 600; }
+.help-guide-steps .is-done .help-guide-mark { font-weight: 400; }
+
+.help-guide-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.help-start-guide, .help-resume-guide { margin: 0.6rem 0 0.3rem; }

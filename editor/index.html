@@ -32,6 +32,22 @@
       <p id="status" class="visually-hidden" role="status" aria-live="assertive"></p>
 
       <!--
+        A guided tutorial saying a step is done.
+
+        Out here rather than in the Help panel, because a panel behind an
+        unselected tab is `hidden`, and a live region inside a hidden element
+        announces nothing. A student following a tutorial is in the blocks with
+        whichever tab they left showing, which is usually not this one.
+
+        Polite, not assertive: finishing a step is good news, not news that
+        changes what you can do, and it should wait for the screen reader to
+        finish saying which block just got connected. The same words are
+        written into the panel as plain text, which is deliberately not a
+        second live region — two of them saying it at once is worse than one.
+      -->
+      <p id="guide-status" class="visually-hidden" role="status" aria-live="polite"></p>
+
+      <!--
         The visible half of "something is happening". The status region above
         announces the stage, so this panel is deliberately NOT a live region:
         it would say the same thing twice. It exists for the people the status

@@ -26,6 +26,7 @@ import { BLOCK_DEFINITIONS } from './blocks/definitions.js';
 import { MATS } from './generated/mat-catalogue.js';
 import { ROBOTS } from './generated/robot-catalogue.js';
 import { EXAMPLES } from './generated/examples.js';
+import { block, both } from './guided.js';
 
 /* ------------------------------------------------------------------ *
  * Topics that are written.
@@ -333,6 +334,64 @@ const TUTORIALS = [
     id: 'tutorial-square',
     title: 'Tutorial 1: Drive a square',
     example: 'drive-square',
+    guided: [
+      {
+        say: 'Take a "when the program starts" block from the Start category '
+          + 'and put it in the workspace.',
+        hint: 'It is the only block in Start. Everything else goes inside it.',
+        done: block('spike_when_started'),
+      },
+      {
+        say: 'Inside it, put "set driving speed to 40 percent" from Movement. '
+          + 'Change the 100 to 40.',
+        hint: 'The block arrives saying 100. Move onto the number and type 40.',
+        done: block('spike_set_speed', {
+          inside: 'spike_when_started',
+          number: ['PERCENT', 40],
+        }),
+      },
+      {
+        say: 'Under the speed block, still inside "when the program starts", '
+          + 'put a "repeat 4 times" block from Control.',
+        hint: 'It arrives saying 4 already, so only its position needs doing.',
+        done: block('controls_repeat_ext', {
+          inside: 'spike_when_started',
+          number: ['TIMES', 4],
+        }),
+      },
+      {
+        say: 'Inside the repeat, put "drive forward for 25 centimetres".',
+        hint: 'Inside the repeat, not under it. It arrives forward, 25, '
+          + 'centimetres — so it only has to go in the right place.',
+        done: block('spike_move_for', {
+          inside: 'controls_repeat_ext',
+          fields: { DIRECTION: 'FORWARD', UNIT: 'CM' },
+          number: ['AMOUNT', 25],
+        }),
+      },
+      {
+        say: 'Under the drive block and still inside the repeat, put "turn '
+          + 'right for 90 degrees".',
+        hint: 'It must come after the drive block, so the robot drives a side '
+          + 'and then turns the corner.',
+        done: block('spike_turn_for', {
+          inside: 'controls_repeat_ext',
+          under: 'spike_move_for',
+          fields: { DIRECTION: 'RIGHT' },
+          number: ['DEGREES', 90],
+        }),
+      },
+      {
+        say: 'Last, under the repeat but outside it, put a "print" block from '
+          + 'Sound and display. Put any words you like in it.',
+        hint: 'Outside the repeat: it should happen once at the end, not four '
+          + 'times.',
+        done: block('spike_print', {
+          inside: 'spike_when_started',
+          notInside: 'controls_repeat_ext',
+        }),
+      },
+    ],
     body: [
       { p: 'Four sides and four turns, ending exactly where it began. This is '
         + 'the first thing worth making a robot do, because whether it worked '
@@ -368,6 +427,82 @@ const TUTORIALS = [
     id: 'tutorial-line',
     title: 'Tutorial 2: Follow a line',
     example: 'follow-line',
+    guided: [
+      {
+        say: 'Start with "when the program starts", and put "set driving '
+          + 'speed to 30 percent" inside it.',
+        hint: 'Change the speed block from 100 to 30. A line follower that '
+          + 'goes too fast leaves the line before it notices.',
+        done: block('spike_set_speed', {
+          inside: 'spike_when_started',
+          number: ['PERCENT', 30],
+        }),
+      },
+      {
+        say: 'Under the speed block, put a "repeat until" block from Control.',
+        hint: 'The Control category has "repeat while" and "repeat until". '
+          + 'Choose until, then set the dropdown to "until" if it is not '
+          + 'already.',
+        done: block('controls_whileUntil', {
+          inside: 'spike_when_started',
+          fields: { MODE: 'UNTIL' },
+        }),
+      },
+      {
+        say: 'Its test is "colour sensor C sees red", from Sensors. That is '
+          + 'what tells the robot it has arrived.',
+        hint: 'Drop the sensor block into the socket at the top of the repeat '
+          + 'block, and set the colour dropdown to red.',
+        done: block('spike_is_color', {
+          inside: 'controls_whileUntil',
+          fields: { PORT: 'C', COLOUR: 'RED' },
+        }),
+      },
+      {
+        say: 'Inside the loop, put an "if / else" block from Control, and '
+          + 'make its test "colour sensor C sees black".',
+        hint: 'Plain "if" grows an else branch through its little menu — open '
+          + 'the block\u2019s menu and add "else".',
+        done: both(
+          block('controls_if', { inside: 'controls_whileUntil' }),
+          block('spike_is_color', {
+            inside: 'controls_if',
+            fields: { PORT: 'C', COLOUR: 'BLACK' },
+          }),
+        ),
+      },
+      {
+        say: 'If it sees black, "start driving with steering" set to minus '
+          + '25. Otherwise, another one set to 25.',
+        hint: 'Two of the same block with opposite numbers: one steers one '
+          + 'way when it is on the line, the other steers back when it is not.',
+        done: both(
+          block('spike_move_steer', { inside: 'controls_if', number: ['STEERING', -25] }),
+          block('spike_move_steer', { inside: 'controls_if', number: ['STEERING', 25] }),
+        ),
+      },
+      {
+        say: 'Still inside the loop and under the if / else, put "wait 0.1 '
+          + 'seconds" from Control.',
+        hint: 'Without this the program spins without ever letting the robot '
+          + 'move, and nothing happens at all. This is the step everybody '
+          + 'misses.',
+        done: block('spike_wait_seconds', {
+          inside: 'controls_whileUntil',
+          number: ['SECONDS', 0.1],
+        }),
+      },
+      {
+        say: 'After the loop, outside it, put "stop driving" and then a '
+          + '"print" block.',
+        hint: 'Outside the loop: these happen once, when the red square has '
+          + 'been found.',
+        done: both(
+          block('spike_move_stop', { notInside: 'controls_whileUntil' }),
+          block('spike_print', { notInside: 'controls_whileUntil' }),
+        ),
+      },
+    ],
     body: [
       { p: 'The robot uses its colour sensor to stay on a black line, and '
         + 'stops when it reaches the red square at the end.' },
@@ -414,6 +549,62 @@ const TUTORIALS = [
     id: 'tutorial-wall',
     title: 'Tutorial 3: Stop at the wall',
     example: 'stop-at-wall',
+    guided: [
+      {
+        say: 'Start with "when the program starts", and put "set driving '
+          + 'speed to 40 percent" inside it.',
+        hint: 'Change the 100 to 40.',
+        done: block('spike_set_speed', {
+          inside: 'spike_when_started',
+          number: ['PERCENT', 40],
+        }),
+      },
+      {
+        say: 'Under it, "start driving forward" from Movement.',
+        hint: 'This is the one that does not wait. It sets the motors going '
+          + 'and moves straight on to the next block, which is what lets the '
+          + 'next step watch while the robot drives.',
+        done: block('spike_move_start', {
+          inside: 'spike_when_started',
+          fields: { DIRECTION: 'FORWARD' },
+        }),
+      },
+      {
+        say: 'Under that, a "wait until" block from Control.',
+        hint: 'Wait until is how a program holds still while the world '
+          + 'changes around it.',
+        done: block('spike_wait_until', { inside: 'spike_when_started' }),
+      },
+      {
+        say: 'Put a comparison from Maths and logic into the wait, and set '
+          + 'its middle dropdown to the less-than sign.',
+        hint: 'The comparison block has two sockets and a dropdown between '
+          + 'them. Less than is the second choice.',
+        done: block('logic_compare', {
+          inside: 'spike_wait_until',
+          fields: { OP: 'LT' },
+        }),
+      },
+      {
+        say: 'On the left of the comparison put "distance at D in '
+          + 'millimetres" from Sensors. On the right put 120.',
+        hint: '"Distance less than 120" is the robot asking whether the wall '
+          + 'has got closer than twelve centimetres.',
+        done: both(
+          block('spike_distance', { inside: 'logic_compare', fields: { PORT: 'D' } }),
+          block('logic_compare', { inside: 'spike_wait_until', number: ['B', 120] }),
+        ),
+      },
+      {
+        say: 'After the wait, "stop driving", and then a "print" block.',
+        hint: 'These run the moment the waiting is over, which is the moment '
+          + 'the wall is close.',
+        done: both(
+          block('spike_move_stop', { inside: 'spike_when_started' }),
+          block('spike_print', { inside: 'spike_when_started' }),
+        ),
+      },
+    ],
     body: [
       { p: 'The robot drives forward and stops before it hits something, '
         + 'using the distance sensor. This is the first program that reacts '

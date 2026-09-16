@@ -33,6 +33,7 @@ import { matchShortcut, shortcutLabel } from './shortcuts.js';
 import { keyboardHelp, renderKeyboardHelp } from './keyboard-help.js';
 import { helpSections, exampleFor } from './help-content.js';
 import { mountHelpPanel } from './help-panel.js';
+import { progress, announcement } from './guided.js';
 import { isLocalOrigin } from './environment.js';
 import { InBrowserSimulatorTransport, isSupported as builtInSupported } from './transport/in-browser.js';
 import * as files from './files.js';
@@ -109,6 +110,7 @@ const ui = {
   keyboardHelpBody: element('keyboard-help-body'),
   closeKeyboardHelp: element('close-keyboard-help'),
   helpPanel: element('panel-help'),
+  guideStatus: element('guide-status'),
 };
 
 const announcer = new Announcer({ log: element('log'), status: element('status') });
@@ -325,6 +327,7 @@ function onWorkspaceChanged(event) {
   refreshPython();
   markUnsaved();
   autosave();
+  checkGuide();
 }
 
 function refreshPython() {
@@ -401,6 +404,11 @@ function loadBlocks(blocks, fallback = null) {
   } finally {
     Blockly.Events.enable();
     refreshPython();
+    // Events were off, so nothing told the guided tutorial that the whole
+    // program just appeared. Without this, opening a saved program — or the
+    // tutorial's own finished one — leaves the steps showing whatever they
+    // showed before, which is the one moment they are most wrong.
+    checkGuide();
   }
 }
 
@@ -1200,18 +1208,92 @@ function toggleKeyboardHelp() {
  * nothing to wait for, and a panel that is already there is one a screen
  * reader can reach the moment the tab is chosen.
  */
+/**
+ * A guided tutorial, if one is running.
+ *
+ * `last` is the progress as of the previous look, and is the only thing
+ * remembered: everything else is asked of the workspace each time, so undo,
+ * deleting a block, or building the program before starting the tutorial all
+ * behave without needing a case each.
+ */
+let guided = null;
+
+/** A workspace with nothing in it, which is where a guided tutorial begins. */
+const EMPTY_PROGRAM = { blocks: { languageVersion: 0, blocks: [] } };
+
+function startGuide(topic) {
+  // Cleared first, and this is the reason: the editor opens on a starter
+  // program that already has a "when the program starts" and a print block in
+  // it, so a tutorial asking you to add those opened saying two of its six
+  // steps were already done. True of the workspace, useless to the student,
+  // and it left blocks in the way of the ones they were about to build.
+  //
+  // confirmDiscard only asks when there is something to lose, so a fresh page
+  // clears without a question and real work is never taken silently.
+  if (!confirmDiscard(`Start the guided ${topic.title}`)) return;
+  loadBlocks(EMPTY_PROGRAM);
+  markSaved();
+
+  guided = { topic, last: null };
+  ui.guideStatus.textContent = '';
+  helpPanel.startGuide(topic, progress(topic.guided, workspace));
+  checkGuide({ quiet: true });
+  announcer.status(
+    `Started the guided ${topic.title}, with an empty workspace. `
+      + `${topic.guided.length} steps. It will say when each one is done.`,
+  );
+}
+
+function stopGuide() {
+  const was = guided?.topic;
+  guided = null;
+  ui.guideStatus.textContent = '';
+  helpPanel.stopGuide();
+  if (was) announcer.status(`Stopped the guided ${was.title}.`);
+}
+
+/**
+ * Look at the workspace and move the tutorial on, if it has moved.
+ *
+ * Says nothing on most changes. Dragging one block produces a great many
+ * events and none of them are worth a sentence; only crossing from one step
+ * to the next is.
+ *
+ * @param {{quiet?: boolean}} [options] `quiet` sets the starting point
+ *   without announcing, for the moment a tutorial opens.
+ */
+function checkGuide({ quiet = false } = {}) {
+  if (!guided || !workspace) return;
+
+  const now = progress(guided.topic.guided, workspace);
+  const say = quiet ? null : announcement(guided.last, now, guided.topic.guided);
+  guided.last = now;
+
+  helpPanel.updateGuide(now);
+  if (say) ui.guideStatus.textContent = say;
+}
+
+let helpPanel = null;
+
 function wireHelpPanel() {
   if (!ui.helpPanel) return;
 
-  mountHelpPanel(ui.helpPanel, {
+  helpPanel = mountHelpPanel(ui.helpPanel, {
     sections: helpSections,
     shortcutLabel,
     exampleFor,
     onOpenExample: async (example) => {
       if (!confirmDiscard(`Open "${example.title}"`)) return;
       // Through the same door as a file, mat and robot warnings included.
+      // A guided tutorial is deliberately left running. A student who opens
+      // the answer because they are stuck gets every step ticked off and told
+      // the program is finished, which connects the answer to the steps it
+      // was made of. Cancelling would just make the tutorial disappear at the
+      // moment it had something to say.
       await applyProject(JSON.stringify(example.program));
     },
+    onStartGuide: startGuide,
+    onStopGuide: stopGuide,
   });
 }
 
