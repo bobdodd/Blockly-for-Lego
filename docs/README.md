@@ -35,7 +35,10 @@ research one, what the alternatives were, and the known risks.
 
 **[LinkedIn article](linkedin-article.md)** — the same story for a general
 audience, written to be posted rather than read here. Kept in the repository
-so the claims in it stay next to the code that has to keep them true.
+so the claims in it stay next to the code that has to keep them true. Its
+header image, and the page that generates it, are in
+[images/](images/) — the mat in it is drawn from the real dimensions of the
+First line mat rather than sketched, so it cannot quietly stop matching.
 
 ## Contributing
 

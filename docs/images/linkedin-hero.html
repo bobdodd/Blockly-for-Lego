@@ -1,0 +1,104 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>hero</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    --page:#11161a; --panel:#192126; --ink:#e8eef2; --muted:#a9b6c0;
+    --line:#33414b; --accent:#62c3ea; --warm:#ffb27a;
+    --mat:#f2f5f7; --matline:#12171c; --go:#2f8f4e; --stop:#c0392b;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:1920px;height:1080px}
+  body{
+    background:var(--page); color:var(--ink);
+    font-family:Archivo,system-ui,sans-serif;
+    display:grid; grid-template-columns:720px 1fr; align-items:center;
+    gap:80px; padding:84px 80px;
+  }
+  .eyebrow{
+    font-size:23px; font-weight:700; letter-spacing:.22em; text-transform:uppercase;
+    color:var(--accent); margin-bottom:34px;
+  }
+  h1{
+    font-size:112px; font-weight:800; line-height:.96; letter-spacing:-.025em;
+    text-wrap:balance; margin-bottom:34px;
+  }
+  .sub{
+    font-size:38px; font-weight:500; line-height:1.28; color:var(--muted);
+    max-width:23ch;
+  }
+  .rule{width:132px;height:7px;background:var(--warm);margin:44px 0 34px;border-radius:4px}
+  .url{font-family:"IBM Plex Mono",monospace;font-size:27px;color:var(--ink)}
+
+  figure{display:flex;flex-direction:column;gap:28px}
+  .matrow{display:flex;align-items:center;gap:20px}
+  .matrow .mat{flex:1}
+  .edge{
+    font-size:21px; font-weight:700; line-height:1.15; color:var(--muted);
+    text-transform:uppercase; letter-spacing:.12em; text-align:center; width:76px;
+  }
+  .mat{
+    background:var(--mat); border-radius:10px; padding:0; overflow:hidden;
+    box-shadow:0 26px 60px rgba(0,0,0,.45);
+  }
+  svg{display:block;width:100%;height:auto}
+  figcaption{
+    font-family:"IBM Plex Mono",monospace; font-size:24px; line-height:1.55;
+    color:var(--muted); border-left:5px solid var(--accent); padding-left:22px;
+  }
+  figcaption b{color:var(--ink);font-weight:500}
+</style>
+<body>
+  <div>
+    <p class="eyebrow">Free &middot; Open source</p>
+    <h1>Blocks for everyone</h1>
+    <p class="sub">Programming LEGO robots with a keyboard and a screen reader.</p>
+    <div class="rule"></div>
+    <p class="url">a11ybob.com/block-lego</p>
+  </div>
+
+  <figure>
+    <div class="matrow">
+      <span class="edge">west<br>edge</span>
+    <div class="mat">
+      <!-- The First line mat, 2362 x 1143 mm, drawn to scale. SVG y is
+           flipped from the mat's own north-up coordinates. -->
+      <svg viewBox="0 0 2362 1143" role="img" aria-label="The mat, seen from above">
+        <rect x="0" y="0" width="2362" height="1143" fill="#f2f5f7"/>
+        <!-- the line to follow: 220,300 to 2000,300 -->
+        <line x1="220" y1="843" x2="2000" y2="843" stroke="#12171c" stroke-width="20"/>
+        <!-- start and target squares -->
+        <rect x="140" y="763" width="160" height="160" fill="#2f8f4e"/>
+        <rect x="1940" y="763" width="160" height="160" fill="#c0392b"/>
+        <!-- the north arrow printed on the mat -->
+        <g stroke="#12171c" stroke-width="16" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="260" y1="303" x2="260" y2="103"/>
+          <polyline points="218,163 260,103 302,163"/>
+        </g>
+        <text x="330" y="196" font-family="Archivo, sans-serif" font-size="96"
+              font-weight="700" fill="#12171c">N</text>
+        <!-- the robot, at 1200 mm east and 300 mm north, pointing east -->
+        <g transform="translate(1200 843)">
+          <rect x="-118" y="-128" width="46" height="256" rx="16" fill="#3a4650"/>
+          <rect x="-145" y="-88" width="262" height="176" rx="24" fill="#0a5f8a"/>
+          <polygon points="117,-64 205,0 117,64" fill="#62c3ea"/>
+        </g>
+        <!-- how far it is from the west edge, which is how the words say it -->
+        <g stroke="#0a5f8a" stroke-width="10" fill="none">
+          <line x1="10" y1="1092" x2="1200" y2="1092"/>
+          <line x1="14" y1="1056" x2="14" y2="1128"/>
+          <line x1="1200" y1="1056" x2="1200" y2="1128"/>
+        </g>
+        <text x="605" y="1032" text-anchor="middle" font-family="Archivo, sans-serif"
+              font-size="70" font-weight="700" fill="#0a5f8a">120 cm from the west edge</text>
+      </svg>
+    </div>
+      <span class="edge">east<br>edge</span>
+    </div>
+    <figcaption>
+      &ldquo;The robot is <b>120 centimetres from the west edge</b> and 30
+      centimetres from the south edge, <b>pointing east</b>.&rdquo;
+    </figcaption>
+  </figure>
+</body>
