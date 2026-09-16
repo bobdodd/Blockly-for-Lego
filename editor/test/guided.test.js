@@ -358,6 +358,22 @@ describe('the keyboard and screen reader version', () => {
     assert.match(said, /right arrow/i);
   });
 
+  it('is written down in docs/editor.md as well as in the app', () => {
+    // Both places, because the app teaches it to a student mid-task and the
+    // page is where a teacher looks before the lesson. Tied to the registry
+    // by the test above, so a rebind fails here rather than quietly leaving
+    // two sets of wrong instructions.
+    const doc = readFileSync(
+      fileURLToPath(new URL('../../docs/editor.md', import.meta.url)),
+      'utf8',
+    );
+    assert.match(doc, /Building a program without a mouse/);
+    assert.match(doc, /Jump to the toolbox/, 'T is still called the block menu');
+    assert.match(doc, /two <kbd>Enter<\/kbd>s are the part worth knowing/);
+    // The preposition is the trick, and the reason the section exists.
+    assert.match(doc, /Listen for the preposition/);
+  });
+
   it('tells you how to hear where you are when lost', () => {
     const said = tutorials.flatMap((t) => t.guided)
       .flatMap((s) => [s.keys, s.keysHint]).join(' ');

@@ -86,12 +86,54 @@ these tables that does not follow the rest.
 | --- | --- |
 | <kbd>Tab</kbd> | Move into the blocks, and back out to the page |
 | <kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> | Move between blocks and into their parts |
-| <kbd>T</kbd> | Jump to the block menu |
-| <kbd>W</kbd> | Jump back to the workspace |
+| <kbd>T</kbd> | Jump to the toolbox, where the blocks come from |
+| <kbd>W</kbd> | Jump back to the workspace, where your program is |
 | <kbd>Enter</kbd> or <kbd>Space</kbd> | Use the thing you are on |
 | <kbd>Esc</kbd> | Leave the menu, or cancel a move |
 | <kbd>N</kbd> / <kbd>B</kbd> | Next / previous stack of blocks |
 | <kbd>H</kbd> / <kbd>Shift</kbd>+<kbd>H</kbd> | Next / previous heading |
+
+### Building a program without a mouse
+
+The tables above say what each key does. This is the order you press them in,
+which is the part that is not obvious from a list.
+
+| | |
+| --- | --- |
+| 1 | <kbd>Tab</kbd> into the blocks, then <kbd>T</kbd> for the toolbox. You land on the first category, and its blocks are listed. |
+| 2 | <kbd>↑</kbd> <kbd>↓</kbd> to choose a category. The list follows you. |
+| 3 | <kbd>→</kbd> to go into that list. |
+| 4 | <kbd>↑</kbd> <kbd>↓</kbd> to choose a block. Each one is read out as you reach it. |
+| 5 | <kbd>Enter</kbd> to **take** the block. |
+| 6 | <kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> to change where it will go. |
+| 7 | <kbd>Enter</kbd> to accept, or <kbd>Esc</kbd> to put it back. |
+
+**The two <kbd>Enter</kbd>s are the part worth knowing.** The first one does
+not finish anything: taking a block out of the toolbox *starts placing it*,
+and until you press <kbd>Enter</kbd> again it is not joined to your program.
+Between the two, Blockly tells you where it is about to land:
+
+> Moving set driving speed to, 50, percent **inside** when the program starts.
+
+That sentence is the whole trick. Listen for the preposition. "Inside the
+repeat" and "after the repeat" sound almost the same and are completely
+different programs — a turn block that lands after a repeat rather than inside
+it drives four sides and turns once. The arrow keys in step 6 change it, and
+it says the new place each time.
+
+Once a block is in place, <kbd>→</kbd> goes into its parts — the numbers and
+the dropdowns — and <kbd>←</kbd> comes back out. On a number,
+<kbd>Enter</kbd> opens it for typing and <kbd>Enter</kbd> again confirms. On a
+dropdown, <kbd>Enter</kbd> opens the list and the arrows move through it.
+
+If you lose your place: <kbd>I</kbd> says where you are,
+<kbd>Shift</kbd>+<kbd>I</kbd> says more, and <kbd>Ctrl</kbd>+<kbd>J</kbd>
+reads the block's tooltip. <kbd>W</kbd> goes back to the workspace from
+anywhere in the toolbox.
+
+The editor will walk you through all of this against a real program: open the
+**Help** tab, choose a tutorial, and take the keyboard and screen reader
+version. It watches what you build and says when each step is done.
 
 ### Changing the program
 
