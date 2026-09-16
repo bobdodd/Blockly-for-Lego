@@ -92,7 +92,8 @@ builds and eight mats, from an open floor to a line with a bend and a wall at
 the end.
 
 Then the part that matters: it narrates. Not logging. Narration, written to be
-read aloud, treated as the product rather than as debug output.
+read aloud by a screen reader, and treated as the product rather than as debug
+output.
 
 > The robot started curving to the left. The colour sensor is on the edge of a
 > line, reflecting 48 percent. The colour sensor now sees red, reflecting 28
@@ -116,10 +117,14 @@ decisions that followed:
   centimetres from the west edge, pointing east". The mats have a north arrow
   printed on them, so the words match the thing on the table and mean the same
   to everyone in the room.
-- **Two channels, on purpose.** What the robot is doing goes to a polite live
-  region, which a screen reader reads without stealing the listener's place.
-  Anything that changes what can be done next — connected, stopped, an error —
-  interrupts, because it has earned the interruption.
+- **The editor itself never speaks.** Everything it has to say goes to one of
+  two live regions and is read by the student's own screen reader, at their
+  speed, in the voice they chose: a polite log for what the robot is doing,
+  which does not steal the listener's place, and an assertive one for things
+  that change what can be done next — connected, stopped, an error. A web page
+  that talks over a screen reader somebody has already configured and learned
+  is not being more accessible; it is talking across the thing they are
+  listening to.
 - **Keyboard shortcuts had to dodge two other systems.** They come from what is
   left after Blockly and the browser have taken theirs. Nothing fires while Alt
   or Option is held, because Control+Option is VoiceOver's modifier: a shortcut
@@ -136,10 +141,17 @@ decisions that followed:
   keyboard and screen reader. The last names the keys for every block, moves
   focus to the toolbox when it starts, gives each step on arrival, confirms out
   loud when a step is done, and repeats the current step on a keypress.
-- **A 3D view for sighted classmates**, driven by the same telemetry the
-  narration comes from, so the two cannot disagree about what the robot is
-  doing. It can also speak, and it pops out onto a second screen for a
-  projector.
+- **The one exception is the 3D view, because a canvas has nothing inside it.**
+  There is no markup in a canvas for a screen reader to move through, so
+  without spoken commentary that panel is the single part of the editor a blind
+  student does not have at all. It is the only place the app uses speech
+  synthesis. The commentary is built from the same telemetry the picture is
+  drawn from rather than estimated from pixels, which is how it can say "20
+  centimetres north of the line"; it works whether or not the tab has ever been
+  opened; the voice, speed and volume are the student's to set; and turning the
+  speech off sends the same words to their screen reader instead. The view also
+  pops out onto a second screen for a projector, so a sighted class and a blind
+  student are following the same run.
 
 None of this rests on assumption about what accessible means: just over 900
 automated tests run across the editor and the simulator, including tests that
